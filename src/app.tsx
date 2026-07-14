@@ -25,6 +25,9 @@ import AgencyParcels from './pages/agency/AgencyParcels';
 import AdminCities from './pages/admin/AdminCities';
 import AgencyUsers from './pages/agency/AgencyUsers';
 import AdminRoutes from './pages/admin/AdminRoutes';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
+
 
 export default function App() {
   return (
@@ -57,6 +60,10 @@ export default function App() {
         <Route path="/admin/cities" element={<AdminLayout><AdminCities /></AdminLayout>} />
         <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
         <Route path="/admin/payments" element={<AdminLayout><AdminPayments /></AdminLayout>} />
+
+        {/* Conditions d'utilisation */}
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
       </Routes>
       <Toaster />
     </BrowserRouter>

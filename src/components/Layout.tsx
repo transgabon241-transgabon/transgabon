@@ -24,11 +24,11 @@ export default function Layout({ children }: { children: ReactNode }) {
           <Link to="/" className="flex items-center gap-3 group">
             <img 
               src={logo} 
-              alt="Logo Gabon Mobilité" 
+              alt="Logo TransGabon-Connect" 
               className="h-9 w-auto object-contain group-hover:scale-105 transition-transform" 
             />
             <span className="font-black text-xl tracking-tighter text-primary hidden sm:block">
-              Gabon Mobilité
+              TransGabon-Connect
             </span>
           </Link>
 
@@ -128,16 +128,18 @@ export default function Layout({ children }: { children: ReactNode }) {
       <main className="flex-1 bg-slate-50/50">{children}</main>
 
       <footer className="border-t bg-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center gap-4">
-            <img src={logo} alt="Logo" className="h-10 w-auto opacity-50 grayscale hover:grayscale-0 transition-all" />
-            <p className="text-center text-sm text-muted-foreground font-medium">
-              © {new Date().getFullYear()} Gabon Mobilité — Plateforme nationale de mobilité et logistique.
-            </p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
-              République Gabonaise
-            </p>
+        <div className="container mx-auto px-4 flex flex-col items-center gap-6">
+          <img src={logo} alt="Logo" className="h-10 w-auto opacity-50" />
+          
+          {/* LIENS JURIDIQUES OBLIGATOIRES */}
+          <div className="flex gap-6 text-[11px] uppercase font-black tracking-widest text-slate-500">
+            <Link to="/privacy" className="hover:text-primary transition-colors">Confidentialité</Link>
+            <Link to="/terms" className="hover:text-primary transition-colors">Conditions d'utilisation</Link>
           </div>
+
+          <p className="text-center text-sm text-muted-foreground font-medium">
+            © {new Date().getFullYear()} TransGabon-Connect — République Gabonaise
+          </p>
         </div>
       </footer>
     </div>
