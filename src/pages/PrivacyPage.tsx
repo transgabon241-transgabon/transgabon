@@ -8,7 +8,7 @@ export default function PrivacyPage() {
       <div className="space-y-8 text-slate-700 leading-relaxed">
         <section>
           <h2 className="text-xl font-bold text-slate-900 mb-3">1. Introduction</h2>
-          <p>La présente Politique de Confidentialité régit la manière dont **Gabon Mobilité** collecte, utilise, conserve et divulgue les informations collectées auprès des utilisateurs de la plateforme. Nous nous engageons à protéger vos données personnelles conformément à la **Loi N°001/2011 relative à la protection des données à caractère personnel** en République Gabonaise.</p>
+          <p>La présente Politique de Confidentialité régit la manière dont **TransGabon Connect** collecte, utilise, conserve et divulgue les informations collectées auprès des utilisateurs de la plateforme. Nous nous engageons à protéger vos données personnelles conformément à la **Loi N°001/2011 relative à la protection des données à caractère personnel** en République Gabonaise.</p>
         </section>
 
         <section>

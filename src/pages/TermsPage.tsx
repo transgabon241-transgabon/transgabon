@@ -8,12 +8,12 @@ export default function TermsPage() {
       <div className="space-y-8 text-slate-700 leading-relaxed">
         <section>
           <h2 className="text-xl font-bold text-slate-900 mb-3">1. Acceptation des conditions</h2>
-          <p>En accédant à Gabon Mobilité, vous acceptez d'être lié par les présentes conditions d'utilisation, toutes les lois et réglementations applicables en République Gabonaise.</p>
+          <p>En accédant à TransGabon-Connect, vous acceptez d'être lié par les présentes conditions d'utilisation, toutes les lois et réglementations applicables en République Gabonaise.</p>
         </section>
 
         <section>
           <h2 className="text-xl font-bold text-slate-900 mb-3">2. Service de Réservation</h2>
-          <p>Gabon Mobilité est une plateforme numérique facilitant la réservation de billets de transport. La plateforme n'est pas le transporteur physique. La responsabilité du transport incombe exclusivement à l'agence de voyage ou à la compagnie ferroviaire sélectionnée lors de l'achat.</p>
+          <p>TransGabon-Connect est une plateforme numérique facilitant la réservation de billets de transport. La plateforme n'est pas le transporteur physique. La responsabilité du transport incombe exclusivement à l'agence de voyage ou à la compagnie ferroviaire sélectionnée lors de l'achat.</p>
         </section>
 
         <section>
@@ -23,7 +23,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-xl font-bold text-slate-900 mb-3">4. Politique de Bagages</h2>
-          <p>Les bagages accompagnés sont soumis aux règles de chaque transporteur. Gabon Mobilité permet l'enregistrement numérique des bagages pour assurer leur traçabilité, mais ne pourra être tenu responsable en cas de perte ou de dégradation par le transporteur.</p>
+          <p>Les bagages accompagnés sont soumis aux règles de chaque transporteur. TransGabon-Connect permet l'enregistrement numérique des bagages pour assurer leur traçabilité, mais ne pourra être tenu responsable en cas de perte ou de dégradation par le transporteur.</p>
         </section>
 
         <section>
