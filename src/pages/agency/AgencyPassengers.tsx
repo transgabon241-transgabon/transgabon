@@ -15,7 +15,8 @@ import {
   CheckCircle2, 
   RefreshCw,
   ChevronLeft,
-  ChevronRight 
+  ChevronRight,
+  Printer // Ajout de l'icône
 } from 'lucide-react';
 
 type Passenger = {
@@ -31,6 +32,7 @@ type Passenger = {
 };
 
 type Data = {
+  companyName: string; // Ajouté pour l'entête
   departureCode: string;
   departureCity: string;
   arrivalCity: string;
@@ -48,6 +50,10 @@ export default function AgencyPassengers() {
   const [unauthorizedError, setUnauthorizedError] = useState<string | null>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
+  // --- LOGIQUE DE SÉCURITÉ ---
+  const userRole = user?.role?.toUpperCase();
+  const isAgencyChief = userRole === 'AGENT' || userRole === 'ADMIN';
+
   // --- ÉTATS POUR LA PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
@@ -60,18 +66,17 @@ export default function AgencyPassengers() {
     try {
       const { data: trip, error: tripError } = await supabase
         .from('trips')
-        .select('*, from:cities!from_id(name), to:cities!to_id(name)')
+        .select('*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)')
         .eq('id', departureId)
         .single();
 
       if (tripError || !trip) throw new Error("Trajet introuvable.");
 
       const agentCompanyId = user.companyId || null;
-      const userRole = user.role?.toUpperCase();
       const isAgencyStaff = ['AGENT', 'AGENCE_EMBARQUEMENT', 'CAISSIER', 'ADMIN'].includes(userRole || '');
 
       if (isAgencyStaff && agentCompanyId && trip.company_id !== agentCompanyId) {
-        setUnauthorizedError("Accès refusé : Vous n'êtes pas autorisé à consulter cette liste.");
+        setUnauthorizedError("Accès refusé.");
         setLoading(false);
         return;
       }
@@ -94,7 +99,7 @@ export default function AgencyPassengers() {
             passengerName: `${p.first_name} ${p.last_name}`,
             passengerPhone: b.contact_phone,
             seatNumber: p.seat_number || '—',
-            status: b.status === 'PAYE' ? 'Confirmé' : b.status === 'EN_ATTENTE_PAIEMENT' ? 'En attente' : b.status,
+            status: b.status === 'PAYE' ? 'Confirmé' : 'En attente',
             paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
             amount: Math.round(b.total_amount / (b.passengers?.length || 1)),
             boarded: p.boarded ?? false
@@ -103,6 +108,7 @@ export default function AgencyPassengers() {
       });
 
       setData({
+        companyName: trip.company.name,
         departureCode: trip.vehicle_number,
         departureCity: trip.from.name,
         arrivalCity: trip.to.name,
@@ -110,205 +116,187 @@ export default function AgencyPassengers() {
         departureTime: trip.departure_time,
         passengers: passengersList
       });
-      setCurrentPage(1); // Reset pagination au chargement
+      setCurrentPage(1);
 
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Erreur de communication.");
+      toast.error("Erreur de communication.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadPassengersData();
-  }, [departureId, user]);
+  useEffect(() => { loadPassengersData(); }, [departureId, user]);
 
-  // --- LOGIQUE DE CALCUL DE LA PAGINATION ---
-  const totalPages = useMemo(() => {
-    return data ? Math.ceil(data.passengers.length / itemsPerPage) : 0;
-  }, [data]);
-
+  const totalPages = useMemo(() => data ? Math.ceil(data.passengers.length / itemsPerPage) : 0, [data]);
   const currentPassengers = useMemo(() => {
     if (!data) return [];
     const start = (currentPage - 1) * itemsPerPage;
     return data.passengers.slice(start, start + itemsPerPage);
   }, [data, currentPage]);
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const handleBoardPassenger = async (passengerId: string) => {
     setBoardingId(passengerId);
     try {
-      const { error } = await supabase
-        .from('passengers')
-        .update({ boarded: true })
-        .eq('id', passengerId);
-
-      if (error) throw error;
-
-      setData((prev) => {
+      await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
+      setData(prev => {
         if (!prev) return prev;
-        return {
-          ...prev,
-          passengers: prev.passengers.map((p) =>
-            p.id === passengerId ? { ...p, boarded: true } : p
-          ),
-        };
+        return { ...prev, passengers: prev.passengers.map(p => p.id === passengerId ? { ...p, boarded: true } : p) };
       });
-
-      toast.success("Passager enregistré à bord !");
-    } catch (err) {
-      toast.error("Erreur lors de l'enregistrement.");
+      toast.success("Embarqué !");
     } finally {
       setBoardingId(null);
     }
   };
 
-  if (loading) return (
-    <div className="space-y-4 p-6">
-      <Skeleton className="h-8 w-64" />
-      <Skeleton className="h-20 w-full rounded-xl" />
-      <div className="space-y-2">
-        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}
-      </div>
-    </div>
-  );
-
-  if (unauthorizedError) {
-    return (
-      <div className="container mx-auto px-4 py-12 text-center max-w-sm space-y-4">
-        <AlertCircle className="h-10 w-10 mx-auto text-destructive" />
-        <h3 className="font-bold text-lg">Accès non autorisé</h3>
-        <p className="text-xs text-muted-foreground leading-relaxed">{unauthorizedError}</p>
-        <Button variant="outline" className="w-full" onClick={() => navigate('/agency/departures')}>Retour aux départs</Button>
-      </div>
-    );
-  }
-
-  if (!data) return <p className="text-center py-12 text-muted-foreground">Données introuvables</p>;
+  if (loading) return <div className="p-8"><Skeleton className="h-64 w-full rounded-3xl" /></div>;
+  if (unauthorizedError) return <div className="p-20 text-center font-bold text-red-500">{unauthorizedError}</div>;
+  if (!data) return null;
 
   return (
     <div className="text-foreground text-left p-4">
-      <Link to="/agency/departures" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Retour aux départs
-      </Link>
+      {/* HEADER SECTION - CACHÉ À L'IMPRESSION */}
+      <div className="print:hidden">
+        <Link to="/agency/departures" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
+          <ArrowLeft className="h-4 w-4" /> Retour aux départs
+        </Link>
 
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <Users className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Liste des passagers</h1>
-          <p className="text-muted-foreground text-sm uppercase font-semibold">
-            {data.departureCode} • {data.departureCity} → {data.arrivalCity}
-          </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Users className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black italic">Manifeste Passagers</h1>
+              <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">
+                {data.departureCode} • {data.departureCity} → {data.arrivalCity}
+              </p>
+            </div>
+          </div>
+          
+          {/* BOUTON D'IMPRESSION RÉSERVÉ AU CHEF D'AGENCE / ADMIN */}
+          {isAgencyChief && (
+            <Button onClick={handlePrint} className="gap-2 font-black rounded-xl shadow-lg h-11 px-6">
+              <Printer className="h-4 w-4" /> IMPRIMER (PDF)
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="border rounded-xl overflow-hidden bg-card shadow-sm">
+      {/* --- VERSION IMPRIMABLE (Visible uniquement sur papier/PDF) --- */}
+      <div className="hidden print:block mb-8 border-b-4 border-primary pb-4">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-black uppercase text-primary">{data.companyName}</h1>
+            <p className="text-sm font-bold text-slate-500 tracking-widest">MANIFESTE DE DÉPART OFFICIEL</p>
+          </div>
+          <div className="text-right">
+             <p className="text-xs font-bold uppercase">Date: {new Date(data.departureDate).toLocaleDateString('fr-FR')}</p>
+             <p className="text-xs font-bold uppercase">Heure: {data.departureTime}</p>
+             <p className="text-xs font-bold uppercase text-primary">N° Voyage: {data.departureCode}</p>
+          </div>
+        </div>
+        <div className="mt-4 text-center p-2 bg-slate-100 rounded-lg font-black text-sm uppercase">
+          {data.departureCity} ➔ {data.arrivalCity}
+        </div>
+      </div>
+
+      <div className="border-2 rounded-3xl overflow-hidden bg-card shadow-sm print:border-none print:shadow-none">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50 border-b">
+          <thead className="bg-muted/50 border-b-2 print:bg-slate-50">
             <tr>
-              <th className="text-left p-4 font-semibold">#</th>
-              <th className="text-left p-4 font-semibold">N° Billet</th>
-              <th className="text-left p-4 font-semibold">Passager</th>
-              <th className="text-left p-4 font-semibold hidden lg:table-cell">Téléphone</th>
-              <th className="text-left p-4 font-semibold">Siège</th>
-              <th className="text-left p-4 font-semibold">Paiement</th>
-              <th className="text-left p-4 font-semibold text-center">Embarquement</th>
-              <th className="text-right p-4 font-semibold">Montant</th>
+              <th className="text-left p-4 font-black uppercase text-[10px]">#</th>
+              <th className="text-left p-4 font-black uppercase text-[10px]">N° Billet</th>
+              <th className="text-left p-4 font-black uppercase text-[10px]">Passager</th>
+              <th className="text-left p-4 font-black uppercase text-[10px]">Téléphone</th>
+              <th className="text-left p-4 font-black uppercase text-[10px]">Siège</th>
+              <th className="text-left p-4 font-black uppercase text-[10px] print:hidden">Embarquement</th>
+              {/* Colonne signature pour le papier */}
+              <th className="hidden print:table-cell text-left p-4 font-black uppercase text-[10px]">Signature</th>
+              <th className="text-right p-4 font-black uppercase text-[10px] print:hidden">Montant</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {data.passengers.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-muted-foreground italic">
-                  Aucun passager enregistré pour ce voyage.
+          <tbody className="divide-y-2 divide-border">
+            {/* À l'impression, on peut vouloir imprimer TOUT le monde, pas juste la page actuelle */}
+            {/* Si c'est le cas, remplace currentPassengers par data.passengers ici */}
+            {(window.matchMedia('print').matches ? data.passengers : currentPassengers).map((p, i) => (
+              <tr key={p.id} className="hover:bg-muted/10 transition-colors print:break-inside-avoid">
+                <td className="p-4 text-muted-foreground font-bold">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
+                <td className="p-4 font-mono text-xs font-black text-primary uppercase">{p.bookingNumber}</td>
+                <td className="p-4 font-bold text-slate-800">{p.passengerName}</td>
+                <td className="p-4 font-medium text-slate-500">{p.passengerPhone}</td>
+                <td className="p-4">
+                  <Badge variant="secondary" className="font-black rounded-lg">{p.seatNumber}</Badge>
+                </td>
+                
+                {/* INTERFACE WEB : BOUTONS */}
+                <td className="p-4 text-center print:hidden">
+                  {p.boarded ? (
+                    <span className="text-emerald-600 font-black text-[10px] uppercase flex items-center justify-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> À BORD
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-[10px] font-black border-2 gap-1 uppercase"
+                      onClick={() => handleBoardPassenger(p.id)}
+                      disabled={boardingId === p.id}
+                    >
+                      {boardingId === p.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
+                      Embarquer
+                    </Button>
+                  )}
+                </td>
+
+                {/* VERSION PAPIER : CASE VIDE POUR SIGNATURE */}
+                <td className="hidden print:table-cell p-4 border-l">
+                   <div className="h-6 w-24 border-b border-slate-300"></div>
+                </td>
+
+                <td className="p-4 text-right font-black text-slate-700 print:hidden">
+                  {p.amount.toLocaleString()} <span className="text-[9px] text-muted-foreground">F</span>
                 </td>
               </tr>
-            ) : (
-              currentPassengers.map((p, i) => (
-                <tr key={p.id} className="hover:bg-muted/20 transition-colors">
-                  <td className="p-4 text-muted-foreground">
-                    {(currentPage - 1) * itemsPerPage + (i + 1)}
-                  </td>
-                  <td className="p-4 font-mono text-xs font-bold text-primary">{p.bookingNumber}</td>
-                  <td className="p-4 font-medium">{p.passengerName}</td>
-                  <td className="p-4 hidden lg:table-cell text-muted-foreground">{p.passengerPhone}</td>
-                  <td className="p-4">
-                    <span className="bg-secondary text-secondary-foreground px-2.5 py-0.5 rounded-md text-xs font-bold">
-                      {p.seatNumber}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold ${p.paymentStatus === 'Payé' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {p.paymentStatus}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex justify-center">
-                      {p.boarded ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Confirmé
-                        </span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 text-xs gap-1.5 font-bold border-primary/30 text-primary hover:bg-primary hover:text-white transition-all"
-                          onClick={() => handleBoardPassenger(p.id)}
-                          disabled={boardingId === p.id}
-                        >
-                          {boardingId === p.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
-                          Embarquer
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4 text-right font-bold text-slate-700">
-                    {p.amount.toLocaleString()} <span className="text-[10px] text-muted-foreground ml-0.5">FCFA</span>
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* --- CONTRÔLES DE PAGINATION --- */}
+      {/* --- PAGINATION (CACHÉE À L'IMPRESSION) --- */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8 bg-white p-3 rounded-2xl border w-fit mx-auto shadow-sm">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            disabled={currentPage === 1} 
-            onClick={() => setCurrentPage(p => p - 1)}
-            className="rounded-xl h-10 w-10"
-          >
+        <div className="flex items-center justify-center gap-4 mt-8 print:hidden">
+          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border-2">
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-1 text-sm font-bold">
-            <span className="text-primary">{currentPage}</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-500">{totalPages}</span>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            disabled={currentPage === totalPages} 
-            onClick={() => setCurrentPage(p => p + 1)}
-            className="rounded-xl h-10 w-10"
-          >
+          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Page {currentPage} / {totalPages}</span>
+          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border-2">
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
       )}
 
-      <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/10 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="text-sm font-medium text-slate-600 italic">
-          * Liste mise à jour en temps réel
+      {/* FOOTER MANIFESTE (PAPIER) */}
+      <div className="hidden print:flex justify-between mt-12 px-4 border-t pt-4">
+        <div className="text-center">
+          <p className="text-[10px] font-black uppercase text-slate-400">Signature Chauffeur / Pilote</p>
+          <div className="mt-8 h-12 w-48 border border-dashed border-slate-200 rounded-lg"></div>
         </div>
-        <div className="text-base font-bold text-primary bg-white px-4 py-2 rounded-lg shadow-sm border">
-          Total : {data.passengers.length} passager(s) • {data.passengers.reduce((s, p) => s + p.amount, 0).toLocaleString()} FCFA
+        <div className="text-center">
+          <p className="text-[10px] font-black uppercase text-slate-400">Cachet & Signature Agence</p>
+          <div className="mt-8 h-12 w-48 border border-dashed border-slate-200 rounded-lg"></div>
+        </div>
+      </div>
+
+      <div className="mt-6 p-6 bg-slate-50 rounded-3xl border-2 border-dashed flex flex-col sm:flex-row justify-between items-center gap-4 print:bg-white print:border-none">
+        <div className="text-xs font-bold text-slate-500 italic">
+          * Manifeste généré le {new Date().toLocaleString('fr-FR')}
+        </div>
+        <div className="text-lg font-black text-primary bg-white px-6 py-2 rounded-2xl shadow-sm border-2">
+          Total : {data.passengers.length} passager(s)
         </div>
       </div>
     </div>
