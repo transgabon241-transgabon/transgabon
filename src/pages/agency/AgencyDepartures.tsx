@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
+import { supabase } from '@/lib/supabase'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Pencil, Trash2, Users, ArrowRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Departure = {
@@ -51,6 +51,10 @@ export default function AgencyDepartures() {
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // --- ÉTATS POUR LA PAGINATION ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   // Form state
   const [routeId, setRouteId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
@@ -60,7 +64,7 @@ export default function AgencyDepartures() {
   const [price, setPrice] = useState('');
   const [status, setStatus] = useState('');
 
-  const isBoardingAgent = user?.role === 'Agent Embarquement'; // <-- AJOUT DE LA VARIABLE DE SÉCURITÉ DE RÔLE
+  const isBoardingAgent = user?.role === 'Agent Embarquement';
 
   const loadData = async () => {
     if (!user) return;
@@ -69,10 +73,9 @@ export default function AgencyDepartures() {
       const companyId = user.companyId || null;
       if (!companyId) return;
 
-      // 1. Récupération des départs (trips) de la compagnie depuis Supabase
       const { data: tripsData } = await supabase
         .from('trips')
-        .select('*, from:cities!from_id(name), to:cities!to_id(name)') // Jointure non ambiguë
+        .select('*, from:cities!from_id(name), to:cities!to_id(name)')
         .eq('company_id', companyId)
         .order('departure_date', { ascending: true });
 
@@ -87,12 +90,12 @@ export default function AgencyDepartures() {
         price: t.price,
         totalSeats: t.seats_total,
         bookingCount: t.seats_total - t.seats_left,
-        status: t.status || 'Programmé' // Lecture du vrai statut de la base PostgreSQL
+        status: t.status || 'Programmé'
       }));
 
       setDepartures(formattedDeps);
+      setCurrentPage(1); // Reset à la page 1 lors du rechargement
 
-      // 2. Récupération des itinéraires
       const { data: routesData } = await supabase.from('routes').select('*');
       const formattedRoutes: Route[] = (routesData || []).map(r => ({
         id: r.id,
@@ -101,7 +104,6 @@ export default function AgencyDepartures() {
       }));
       setRoutes(formattedRoutes);
 
-      // 3. Récupération de la flotte de véhicules
       const { data: vehiclesData } = await supabase
         .from('vehicles')
         .select('*')
@@ -123,6 +125,14 @@ export default function AgencyDepartures() {
   };
 
   useEffect(() => { loadData(); }, [user]);
+
+  // --- LOGIQUE DE CALCUL DE LA PAGINATION ---
+  const totalPages = Math.ceil(departures.length / itemsPerPage);
+  const currentItems = useMemo(() => {
+    const lastIndex = currentPage * itemsPerPage;
+    const firstIndex = lastIndex - itemsPerPage;
+    return departures.slice(firstIndex, lastIndex);
+  }, [departures, currentPage]);
 
   const resetForm = () => {
     setRouteId(''); setVehicleId(''); setDepDate(''); setDepTime(''); setArrTime(''); setPrice(''); setStatus('');
@@ -146,22 +156,20 @@ export default function AgencyDepartures() {
     setSaving(true);
     try {
       if (editId) {
-        // Mise à jour d'un départ existant (Prend désormais en compte le statut et l'heure d'arrivée)
         const { error } = await supabase
           .from('trips')
           .update({
             departure_date: depDate,
             departure_time: depTime,
-            arrival_time: arrTime, // Enregistrement de l'heure d'arrivée
+            arrival_time: arrTime,
             price: Number(price),
-            status: status // Enregistrement du nouveau statut de transport
+            status: status
           })
           .eq('id', editId);
 
         if (error) throw new Error(error.message);
         toast.success('Trajet mis à jour avec succès !');
       } else {
-        // Enregistrement géographiques et matérielles liées
         const selectedRoute = routes.find(r => r.id === routeId);
         const selectedVehicle = vehicles.find(v => v.id === vehicleId);
 
@@ -180,7 +188,6 @@ export default function AgencyDepartures() {
           return;
         }
 
-        // Création d'un départ de voyage (par défaut au statut 'Programmé')
         const { error } = await supabase
           .from('trips')
           .insert([{
@@ -197,7 +204,7 @@ export default function AgencyDepartures() {
             price: Number(price),
             seats_total: selectedVehicle.totalSeats,
             seats_left: selectedVehicle.totalSeats,
-            status: 'Programmé' // Statut initial
+            status: 'Programmé'
           }]);
 
         if (error) throw new Error(error.message);
@@ -230,7 +237,6 @@ export default function AgencyDepartures() {
     <div className="text-foreground text-left">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Gestion des départs</h1>
-        {/* SÉCURITÉ : Masque le bouton vert de création pour l'agent d'embarquement */}
         {!isBoardingAgent && (
           <Button onClick={openCreate} className="gap-2"><Plus className="h-4 w-4" /> Nouveau départ</Button>
         )}
@@ -244,54 +250,83 @@ export default function AgencyDepartures() {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {departures.map(dep => (
-            <div key={dep.id} className="border rounded-xl bg-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 font-semibold">
-                  {dep.departureCity} <ArrowRight className="h-4 w-4 text-primary" /> {dep.arrivalCity}
-                  <StatusBadge status={dep.status} />
+        <>
+          <div className="space-y-3">
+            {currentItems.map(dep => (
+              <div key={dep.id} className="border rounded-xl bg-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 font-semibold">
+                    {dep.departureCity} <ArrowRight className="h-4 w-4 text-primary" /> {dep.arrivalCity}
+                    <StatusBadge status={dep.status} />
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {dep.departureCode} • {new Date(dep.departureDate + 'T00:00:00').toLocaleDateString('fr-FR')} • {dep.departureTime} • {dep.bookingCount}/{dep.totalSeats} passagers
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {dep.departureCode} • {new Date(dep.departureDate + 'T00:00:00').toLocaleDateString('fr-FR')} • {dep.departureTime} • {dep.bookingCount}/{dep.totalSeats} passagers
-                </div>
-              </div>
-              <div className="flex items-center gap-2 justify-between md:justify-end">
-                <span className="font-semibold text-primary mr-2">{dep.price.toLocaleString()} FCFA</span>
-                
-                {/* Toujours accessible : lien vers le manifeste passager */}
-                <Link to={`/agency/passengers/${dep.id}`}>
-                  <Button variant="outline" size="sm" title="Liste des passagers"><Users className="h-4 w-4" /></Button>
-                </Link>
+                <div className="flex items-center gap-2 justify-between md:justify-end">
+                  <span className="font-semibold text-primary mr-2">{dep.price.toLocaleString()} FCFA</span>
+                  
+                  <Link to={`/agency/passengers/${dep.id}`}>
+                    <Button variant="outline" size="sm" title="Liste des passagers"><Users className="h-4 w-4" /></Button>
+                  </Link>
 
-                {/* SÉCURITÉ : Masque l'édition (Crayon) et la suppression (Corbeille) pour l'agent d'embarquement */}
-                {!isBoardingAgent && (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => openEdit(dep)} title="Modifier"><Pencil className="h-4 w-4" /></Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="text-destructive" title="Supprimer"><Trash2 className="h-4 w-4" /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader className="text-left">
-                          <AlertDialogTitle>Supprimer ce départ ?</AlertDialogTitle>
-                          <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(dep.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </>
-                )}
+                  {!isBoardingAgent && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => openEdit(dep)} title="Modifier"><Pencil className="h-4 w-4" /></Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-destructive" title="Supprimer"><Trash2 className="h-4 w-4" /></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader className="text-left">
+                            <AlertDialogTitle>Supprimer ce départ ?</AlertDialogTitle>
+                            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(dep.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
+                </div>
               </div>
+            ))}
+          </div>
+
+          {/* --- CONTRÔLES DE PAGINATION --- */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 mt-8 bg-white p-3 rounded-2xl border w-fit mx-auto shadow-sm">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                disabled={currentPage === 1} 
+                onClick={() => setCurrentPage(p => p - 1)}
+                className="rounded-xl h-10 w-10"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-1 text-sm font-bold">
+                <span className="text-primary">{currentPage}</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-500">{totalPages}</span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                disabled={currentPage === totalPages} 
+                onClick={() => setCurrentPage(p => p + 1)}
+                className="rounded-xl h-10 w-10"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
-      {/* Create/Edit Dialog */}
+      {/* Dialog Formulaire */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent>
           <DialogHeader>
@@ -350,7 +385,6 @@ export default function AgencyDepartures() {
   );
 }
 
-// Déclaration du composant d'aide StatusBadge
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     'Programmé': 'bg-blue-100 text-blue-800',

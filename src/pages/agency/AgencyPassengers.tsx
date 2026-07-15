@@ -1,13 +1,22 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from "@/lib/auth-context";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ArrowLeft, Users, AlertCircle, UserCheck, CheckCircle2, RefreshCw } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Users, 
+  AlertCircle, 
+  UserCheck, 
+  CheckCircle2, 
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight 
+} from 'lucide-react';
 
 type Passenger = {
   id: string;
@@ -39,6 +48,10 @@ export default function AgencyPassengers() {
   const [unauthorizedError, setUnauthorizedError] = useState<string | null>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
+  // --- ÉTATS POUR LA PAGINATION ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
   const loadPassengersData = async () => {
     if (!departureId || !user) return;
     setLoading(true);
@@ -53,7 +66,6 @@ export default function AgencyPassengers() {
 
       if (tripError || !trip) throw new Error("Trajet introuvable.");
 
-      // Sécurité Multi-compagnies
       const agentCompanyId = user.companyId || null;
       const userRole = user.role?.toUpperCase();
       const isAgencyStaff = ['AGENT', 'AGENCE_EMBARQUEMENT', 'CAISSIER', 'ADMIN'].includes(userRole || '');
@@ -98,6 +110,7 @@ export default function AgencyPassengers() {
         departureTime: trip.departure_time,
         passengers: passengersList
       });
+      setCurrentPage(1); // Reset pagination au chargement
 
     } catch (err: any) {
       console.error(err);
@@ -110,6 +123,17 @@ export default function AgencyPassengers() {
   useEffect(() => {
     loadPassengersData();
   }, [departureId, user]);
+
+  // --- LOGIQUE DE CALCUL DE LA PAGINATION ---
+  const totalPages = useMemo(() => {
+    return data ? Math.ceil(data.passengers.length / itemsPerPage) : 0;
+  }, [data]);
+
+  const currentPassengers = useMemo(() => {
+    if (!data) return [];
+    const start = (currentPage - 1) * itemsPerPage;
+    return data.passengers.slice(start, start + itemsPerPage);
+  }, [data, currentPage]);
 
   const handleBoardPassenger = async (passengerId: string) => {
     setBoardingId(passengerId);
@@ -202,9 +226,11 @@ export default function AgencyPassengers() {
                 </td>
               </tr>
             ) : (
-              data.passengers.map((p, i) => (
+              currentPassengers.map((p, i) => (
                 <tr key={p.id} className="hover:bg-muted/20 transition-colors">
-                  <td className="p-4 text-muted-foreground">{i + 1}</td>
+                  <td className="p-4 text-muted-foreground">
+                    {(currentPage - 1) * itemsPerPage + (i + 1)}
+                  </td>
                   <td className="p-4 font-mono text-xs font-bold text-primary">{p.bookingNumber}</td>
                   <td className="p-4 font-medium">{p.passengerName}</td>
                   <td className="p-4 hidden lg:table-cell text-muted-foreground">{p.passengerPhone}</td>
@@ -247,6 +273,35 @@ export default function AgencyPassengers() {
           </tbody>
         </table>
       </div>
+
+      {/* --- CONTRÔLES DE PAGINATION --- */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-8 bg-white p-3 rounded-2xl border w-fit mx-auto shadow-sm">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            disabled={currentPage === 1} 
+            onClick={() => setCurrentPage(p => p - 1)}
+            className="rounded-xl h-10 w-10"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-1 text-sm font-bold">
+            <span className="text-primary">{currentPage}</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-500">{totalPages}</span>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            disabled={currentPage === totalPages} 
+            onClick={() => setCurrentPage(p => p + 1)}
+            className="rounded-xl h-10 w-10"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
 
       <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/10 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="text-sm font-medium text-slate-600 italic">

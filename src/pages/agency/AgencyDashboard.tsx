@@ -1,12 +1,21 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
+import { supabase } from '@/lib/supabase'; 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Ticket, DollarSign, Bus, ArrowRight, Eye } from 'lucide-react';
+import { 
+  CalendarDays, 
+  Ticket, 
+  DollarSign, 
+  ArrowRight, 
+  Eye, 
+  ChevronLeft, 
+  ChevronRight,
+  Clock
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type DashData = {
@@ -42,6 +51,10 @@ export default function AgencyDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // --- ÉTATS POUR LA PAGINATION ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   useEffect(() => {
     if (!user) return;
 
@@ -54,7 +67,6 @@ export default function AgencyDashboard() {
           return;
         }
 
-        // Appel de la fonction RPC analytique d'agence
         const { data: res, error } = await supabase.rpc('get_agency_dashboard_stats', {
           p_company_id: companyId
         });
@@ -71,48 +83,71 @@ export default function AgencyDashboard() {
     fetchAgencyData();
   }, [user]);
 
+  // --- LOGIQUE DE PAGINATION ---
+  const totalPages = useMemo(() => {
+    if (!data) return 0;
+    return Math.ceil(data.recentBookings.length / itemsPerPage);
+  }, [data]);
+
+  const currentBookings = useMemo(() => {
+    if (!data) return [];
+    const start = (currentPage - 1) * itemsPerPage;
+    return data.recentBookings.slice(start, start + itemsPerPage);
+  }, [data, currentPage]);
+
   if (loading) return <DashSkeleton />;
-  if (error) return <div className="text-destructive p-8 text-left">{error}</div>;
+  if (error) return <div className="text-destructive p-8 text-left font-bold bg-red-50 rounded-3xl border-2 border-red-100">{error}</div>;
   if (!data) return null;
 
   return (
-    <div className="text-foreground text-left">
-      <h1 className="text-2xl font-bold mb-1">{data.companyName}</h1>
-      <p className="text-muted-foreground mb-6">Tableau de bord agence</p>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <KPI icon={CalendarDays} label="Départs aujourd'hui" value={data.todayDepartures} />
-        <KPI icon={Ticket} label="Réservations du jour" value={data.totalBookingsToday} />
-        <KPI icon={DollarSign} label="Revenus totaux" value={`${data.totalRevenue.toLocaleString()} FCFA`} />
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8">
+      <div>
+        <h1 className="text-3xl font-black italic text-slate-900 tracking-tight">{data.companyName}</h1>
+        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Tableau de bord agence</p>
       </div>
 
-      {/* Upcoming departures */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Prochains départs</h2>
-          <Link to="/agency/departures"><Button variant="outline" size="sm">Gérer</Button></Link>
+      {/* KPIs STYLE PROFESSIONNEL */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <KPI icon={CalendarDays} label="Départs aujourd'hui" value={data.todayDepartures} color="text-blue-600" bg="bg-blue-50" />
+        <KPI icon={Ticket} label="Ventes du jour" value={data.totalBookingsToday} color="text-emerald-600" bg="bg-emerald-50" />
+        <KPI icon={DollarSign} label="Chiffre d'affaires" value={`${data.totalRevenue.toLocaleString()} F`} color="text-primary" bg="bg-primary/5" />
+      </div>
+
+      {/* PROCHAINS DÉPARTS */}
+      <div className="bg-card border-2 rounded-[2.5rem] p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6 px-2">
+          <h2 className="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" /> Prochains départs
+          </h2>
+          <Link to="/agency/departures">
+            <Button variant="ghost" size="sm" className="font-bold text-primary hover:bg-primary/10">Voir tout</Button>
+          </Link>
         </div>
+
         {data.upcomingDepartures.length === 0 ? (
-          <p className="text-muted-foreground text-sm py-8 text-center">Aucun départ à venir</p>
+          <div className="p-10 text-center border-2 border-dashed rounded-3xl text-muted-foreground italic">
+            Aucun départ programmé
+          </div>
         ) : (
           <div className="space-y-3">
             {data.upcomingDepartures.slice(0, 5).map(dep => (
-              <div key={dep.id} className="border rounded-xl bg-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div key={dep.id} className="bg-white border-2 border-slate-50 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-primary/20 transition-colors">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 font-semibold">
+                  <div className="flex items-center gap-2 font-bold text-slate-800">
                     {dep.departureCity} <ArrowRight className="h-4 w-4 text-primary" /> {dep.arrivalCity}
                     <StatusBadge status={dep.status} />
                   </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {dep.departureCode} • {new Date(dep.departureDate + 'T00:00:00').toLocaleDateString('fr-FR')} à {dep.departureTime}
+                  <div className="text-xs font-bold text-muted-foreground uppercase mt-1">
+                    {dep.departureCode} • {new Date(dep.departureDate + 'T00:00:00').toLocaleDateString('fr-FR')} • {dep.departureTime}
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm justify-between md:justify-end">
-                  <span>{dep.bookingCount}/{dep.totalSeats} passagers</span>
-                  <span className="font-semibold text-primary">{dep.price.toLocaleString()} FCFA</span>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs font-black text-primary">{dep.bookingCount}/{dep.totalSeats} PLACES</p>
+                    <p className="text-[10px] font-bold text-slate-400">{dep.price.toLocaleString()} FCFA</p>
+                  </div>
                   <Link to={`/agency/passengers/${dep.id}`}>
-                    <Button variant="outline" size="sm" className="gap-1"><Eye className="h-3 w-3" /> Passagers</Button>
+                    <Button variant="outline" size="sm" className="rounded-xl border-2 font-bold h-9">Manifeste</Button>
                   </Link>
                 </div>
               </div>
@@ -121,53 +156,85 @@ export default function AgencyDashboard() {
         )}
       </div>
 
-      {/* Recent bookings */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Dernières réservations</h2>
+      {/* DERNIÈRES RÉSERVATIONS AVEC PAGINATION */}
+      <div className="bg-card border-2 rounded-[2.5rem] p-6 shadow-sm overflow-hidden">
+        <h2 className="text-lg font-black uppercase tracking-tighter mb-6 px-2">Dernières réservations</h2>
+        
         {data.recentBookings.length === 0 ? (
-          <p className="text-muted-foreground text-sm py-8 text-center">Aucune réservation</p>
+          <p className="text-muted-foreground text-sm py-12 text-center italic">Aucune réservation aujourd'hui</p>
         ) : (
-          <div className="border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-3 font-medium">N° Billet</th>
-                  <th className="text-left p-3 font-medium hidden md:table-cell">Passager</th>
-                  <th className="text-left p-3 font-medium">Siège</th>
-                  <th className="text-left p-3 font-medium">Statut</th>
-                  <th className="text-right p-3 font-medium">Montant</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recentBookings.map(b => (
-                  <tr key={b.id} className="border-t">
-                    <td className="p-3 font-mono text-xs">{b.bookingNumber}</td>
-                    <td className="p-3 hidden md:table-cell">{b.passengerName}</td>
-                    <td className="p-3">{b.seatNumber || '—'}</td>
-                    <td className="p-3"><StatusBadge status={b.status} /></td>
-                    <td className="p-3 text-right font-medium">{b.amount.toLocaleString()} FCFA</td>
+          <>
+            <div className="border rounded-2xl overflow-hidden mb-6">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b">
+                  <tr>
+                    <th className="text-left p-4 font-black uppercase text-[10px] text-slate-500">N° Billet</th>
+                    <th className="text-left p-4 font-black uppercase text-[10px] text-slate-500 hidden md:table-cell">Passager</th>
+                    <th className="text-left p-4 font-black uppercase text-[10px] text-slate-500">Siège</th>
+                    <th className="text-left p-4 font-black uppercase text-[10px] text-slate-500 text-center">Statut</th>
+                    <th className="text-right p-4 font-black uppercase text-[10px] text-slate-500">Montant</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {currentBookings.map(b => (
+                    <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4 font-mono font-bold text-primary">{b.bookingNumber}</td>
+                      <td className="p-4 hidden md:table-cell font-bold text-slate-700">{b.passengerName}</td>
+                      <td className="p-4">
+                        <Badge variant="secondary" className="font-black rounded-md">{b.seatNumber || '—'}</Badge>
+                      </td>
+                      <td className="p-4 text-center"><StatusBadge status={b.status} /></td>
+                      <td className="p-4 text-right font-black text-slate-900">{b.amount.toLocaleString()} F</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* CONTRÔLES DE PAGINATION */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 pt-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  disabled={currentPage === 1} 
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="rounded-xl h-10 w-10 border hover:bg-slate-50"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <div className="flex items-center gap-1 font-black text-xs uppercase tracking-widest text-slate-400">
+                  <span className="text-primary">Page {currentPage}</span>
+                  <span>sur</span>
+                  <span>{totalPages}</span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  disabled={currentPage === totalPages} 
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="rounded-xl h-10 w-10 border hover:bg-slate-50"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function KPI({ icon: Icon, label, value }: { icon: any; label: string; value: string | number }) {
+function KPI({ icon: Icon, label, value, color, bg }: { icon: any; label: string; value: string | number; color: string; bg: string }) {
   return (
-    <div className="bg-card border rounded-xl p-5">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center shrink-0">
-          <Icon className="h-5 w-5 text-accent-foreground" />
-        </div>
-        <div>
-          <div className="text-2xl font-bold">{value}</div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-        </div>
+    <div className="bg-white border-2 border-slate-50 rounded-[2rem] p-6 shadow-sm shadow-slate-100/50 flex items-center gap-5">
+      <div className={`h-14 w-14 rounded-2xl ${bg} flex items-center justify-center shrink-0`}>
+        <Icon className={`h-7 w-7 ${color}`} />
+      </div>
+      <div>
+        <div className="text-2xl font-black tracking-tight text-slate-900 leading-none mb-1">{value}</div>
+        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</div>
       </div>
     </div>
   );
@@ -175,29 +242,35 @@ function KPI({ icon: Icon, label, value }: { icon: any; label: string; value: st
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    'Programmé': 'bg-blue-100 text-blue-800',
-    'Embarquement': 'bg-orange-100 text-orange-800',
-    'Parti': 'bg-emerald-100 text-emerald-800',
-    'Arrivé': 'bg-green-100 text-green-800',
-    'Annulé': 'bg-red-100 text-red-800',
-    'En attente': 'bg-yellow-100 text-yellow-800',
-    'Confirmé': 'bg-green-100 text-green-800',
-    'Terminé': 'bg-blue-100 text-blue-800',
-    'Remboursé': 'bg-gray-100 text-gray-800',
+    'Programmé': 'bg-blue-100 text-blue-800 border-blue-200',
+    'Embarquement': 'bg-orange-100 text-orange-800 border-orange-200',
+    'Parti': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    'Arrivé': 'bg-green-100 text-green-800 border-green-200',
+    'Annulé': 'bg-red-100 text-red-800 border-red-200',
+    'En attente': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'Confirmé': 'bg-green-100 text-green-800 border-green-200',
+    'Terminé': 'bg-blue-100 text-blue-800 border-blue-200',
+    'Remboursé': 'bg-slate-100 text-slate-800 border-slate-200',
   };
-  return <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${colors[status] || 'bg-muted'}`}>{status}</span>;
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${colors[status] || 'bg-muted border-slate-100'}`}>
+      {status}
+    </span>
+  );
 }
 
 function DashSkeleton() {
   return (
-    <div className="text-left">
-      <Skeleton className="h-8 w-48 mb-2" />
-      <Skeleton className="h-4 w-32 mb-6" />
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+    <div className="max-w-6xl mx-auto p-4 space-y-8">
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-64 rounded-xl" />
+        <Skeleton className="h-4 w-40 rounded-xl" />
       </div>
-      <Skeleton className="h-6 w-40 mb-4" />
-      {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl mb-3" />)}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-[2rem]" />)}
+      </div>
+      <Skeleton className="h-64 w-full rounded-[2.5rem]" />
+      <Skeleton className="h-96 w-full rounded-[2.5rem]" />
     </div>
   );
 }
