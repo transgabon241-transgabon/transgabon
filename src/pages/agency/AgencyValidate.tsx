@@ -14,9 +14,21 @@ import {
   RefreshCw, 
   Users, 
   UserCheck, 
-  AlertCircle 
+  AlertCircle,
+  Package,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Tarifs forfaitaires pour le mode BUS
+const BUS_LUGGAGE_RATES = [
+  { label: 'Sac de voyage / Valise', price: 1000 },
+  { label: 'Grand Sac (Ballot / Mbinda)', price: 2000 },
+  { label: 'Sac de vivres (Riz/Manioc)', price: 1500 },
+  { label: 'Carton / Caisse', price: 2500 },
+  { label: 'Électroménager (TV, etc)', price: 3000 },
+];
 
 type PassengerData = {
   id: string;
@@ -43,6 +55,11 @@ type Result = {
     paymentStatus: string;
     rawStatus: string;
     passengers: PassengerData[];
+    // Infos pour les bagages
+    tripType: string;
+    luggageRule: string; 
+    freeWeight: number;
+    excessPrice: number;
   };
 };
 
@@ -53,32 +70,23 @@ export default function AgencyValidate() {
   const [result, setResult] = useState<Result | null>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
-  // --- LOGIQUE DES RÔLES (Correction de la casse) ---
-  const userRole = user?.role?.toUpperCase(); // On force tout en MAJUSCULES pour la comparaison
+  // États pour le formulaire bagages
+  const [weightInput, setWeightInput] = useState<string>('');
+  const [selectedBusItem, setSelectedBusItem] = useState(BUS_LUGGAGE_RATES[0]);
+  const [qtyInput, setQtyInput] = useState('1');
 
-  // Qui a le droit d'encaisser l'argent ?
+  const userRole = user?.role?.toUpperCase();
   const canCollectMoney = ['CAISSIER', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
-  
-  // Qui a le droit de valider l'embarquement (quai) ?
   const canBoardPassengers = ['AGENCE_EMBARQUEMENT', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
-  
-  // Liste de tous les personnels d'agence
   const isAgencyStaff = ['AGENT', 'AGENCE_EMBARQUEMENT', 'CAISSIER', 'SERVICE_COLIS', 'ADMIN'].includes(userRole || '');
 
-  /**
-   * Valide le billet (Recherche et vérification du statut)
-   */
   const handleValidate = async (forcedRef?: string) => {
     const targetRef = forcedRef || qrInput.trim();
     if (!targetRef) return;
 
     setLoading(true);
-    if (!forcedRef) setResult(null); // Ne pas reset si on vient d'un encaissement pour éviter le flash
-
     try {
       let ref = targetRef.toUpperCase();
-      
-      // Tentative de parsing si c'est un QR Code JSON
       try {
         const parsed = JSON.parse(targetRef);
         if (parsed && parsed.ref) ref = parsed.ref.toUpperCase();
@@ -91,240 +99,221 @@ export default function AgencyValidate() {
         .single();
 
       if (error || !b) {
-        setResult({ valid: false, message: 'Numéro de billet introuvable ou invalide.' });
-        toast.error('Billet introuvable');
+        setResult({ valid: false, message: 'Billet introuvable.' });
         return;
       }
 
-      // Sécurité : Vérifier que l'agent appartient à la même compagnie que le trajet
-      const agentCompanyId = user?.companyId;
-      if (isAgencyStaff && agentCompanyId && b.trip.company_id !== agentCompanyId) {
-        setResult({ 
-          valid: false, 
-          message: `Accès refusé : Ce billet appartient à une autre compagnie.` 
-        });
-        toast.error("Accès non autorisé.");
+      if (isAgencyStaff && user?.companyId && b.trip.company_id !== user.companyId) {
+        setResult({ valid: false, message: `Accès refusé : Compagnie différente.` });
         return;
       }
 
       const lead = b.passengers[0];
       const passengerName = lead ? `${lead.first_name} ${lead.last_name}` : 'Anonyme';
-      const seatNumber = b.passengers.map((p: any) => p.seat_number).filter(Boolean).join(', ') || '—';
-
-      let isValid = false;
-      let messageLabel = '';
-
-      if (b.status === 'PAYE') {
-        isValid = true;
-        messageLabel = 'Billet validé ! Accès à bord autorisé.';
-      } else if (b.status === 'EN_ATTENTE_PAIEMENT') {
-        isValid = false;
-        messageLabel = 'Attention : Paiement en attente.';
-      } else {
-        isValid = false;
-        messageLabel = 'Attention : Billet annulé ou remboursé.';
-      }
-
+      
       setResult({
-        valid: isValid,
-        message: messageLabel,
+        valid: b.status === 'PAYE',
+        message: b.status === 'PAYE' ? 'Billet validé !' : 'Attention : Paiement requis.',
         booking: {
           id: b.id,
           bookingNumber: b.reference,
           passengerName,
           passengerPhone: b.contact_phone,
-          seatNumber,
+          seatNumber: b.passengers.map((p: any) => p.seat_number).filter(Boolean).join(', ') || '—',
           departureCity: b.trip.from.name,
           arrivalCity: b.trip.to.name,
           departureDate: b.trip.departure_date,
           departureTime: b.trip.departure_time,
-          paymentStatus: b.status === 'PAYE' ? 'Payé' : b.status === 'ANNULE' ? 'Annulé' : 'Non payé',
+          paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
           rawStatus: b.status,
-          passengers: (b.passengers || []).map((p: any) => ({
-            id: p.id,
-            firstName: p.first_name,
-            lastName: p.last_name,
-            idNumber: p.id_number,
-            seatNumber: p.seat_number,
-            boarded: p.boarded
-          }))
+          passengers: b.passengers.map((p: any) => ({ ...p, firstName: p.first_name, lastName: p.last_name })),
+          tripType: b.trip.type, // 'TRAIN' ou 'BUS'
+          luggageRule: b.trip.luggage_rule_type || 'PER_ITEM',
+          freeWeight: b.trip.free_weight_limit || 30,
+          excessPrice: b.trip.excess_weight_price || 500,
         }
       });
-
-      if (isValid && !forcedRef) toast.success('Billet valide');
-    } catch (e: any) {
+    } catch (e) {
       toast.error('Erreur lors de la vérification.');
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Action de quai : Faire monter un passager
-   */
-  const handleBoardPassenger = async (passengerId: string) => {
-    if (!canBoardPassengers) {
-      toast.error("Seul l'agent d'embarquement peut valider la montée.");
-      return;
-    }
-    setBoardingId(passengerId);
+  const handleSaveLuggage = async () => {
+    if (!result?.booking) return;
+    setLoading(true);
+
     try {
-      const { error } = await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
+      let payload: any = {
+        booking_id: result.booking.id,
+        passenger_id: result.booking.passengers[0].id,
+      };
+
+      if (result.booking.tripType === 'TRAIN') {
+        const w = parseFloat(weightInput);
+        const excess = Math.max(0, w - result.booking.freeWeight);
+        payload = {
+          ...payload,
+          label: `Surplus Bagage (${w}kg)`,
+          weight: w,
+          is_excess_weight: excess > 0,
+          total_price: excess * result.booking.excessPrice,
+          quantity: 1
+        };
+      } else {
+        const qty = parseInt(qtyInput);
+        payload = {
+          ...payload,
+          label: selectedBusItem.label,
+          quantity: qty,
+          price_per_unit: selectedBusItem.price,
+          total_price: selectedBusItem.price * qty,
+        };
+      }
+
+      const { error } = await supabase.from('luggages').insert([payload]);
       if (error) throw error;
 
-      setResult((prev) => {
-        if (!prev || !prev.booking) return prev;
-        return {
-          ...prev,
-          booking: {
-            ...prev.booking,
-            passengers: prev.booking.passengers.map((p) => p.id === passengerId ? { ...p, boarded: true } : p),
-          },
-        };
-      });
+      toast.success("Bagage enregistré !");
+      setWeightInput('');
+      setQtyInput('1');
+    } catch (e) {
+      toast.error("Erreur lors de l'enregistrement du bagage.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBoardPassenger = async (passengerId: string) => {
+    setBoardingId(passengerId);
+    try {
+      await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
+      handleValidate(result?.booking?.bookingNumber);
       toast.success("Passager à bord !");
-    } catch (err) {
-      toast.error("Erreur de mise à jour.");
     } finally {
       setBoardingId(null);
     }
   };
 
-  /**
-   * Action de caisse : Encaisser le paiement en espèces
-   */
   const handleCollectPayment = async () => {
-    if (!result?.booking?.id || !canCollectMoney) {
-      toast.error("Action non autorisée");
-      return;
-    }
-
     setLoading(true);
     try {
-      // 1. Mise à jour en base de données
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'PAYE' })
-        .eq('id', result.booking.id);
-
-      if (error) throw error;
-
-      toast.success("Encaissement validé avec succès !");
-
-      // 2. Rafraîchir les données pour débloquer l'embarquement
-      // On passe la référence actuelle pour remettre à jour l'état 'result'
-      const currentRef = result.booking.bookingNumber;
-      await handleValidate(currentRef);
-
-    } catch (e: any) {
-      console.error(e);
-      toast.error("Erreur lors de l'encaissement.");
+      await supabase.from('bookings').update({ status: 'PAYE' }).eq('id', result?.booking?.id);
+      handleValidate(result?.booking?.bookingNumber);
+      toast.success("Paiement validé !");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-lg text-foreground text-left mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-2">Contrôle & Caisse</h1>
-      <p className="text-muted-foreground mb-8 text-sm">Vérifiez la validité du titre de transport</p>
+    <div className="max-w-xl text-foreground text-left mx-auto p-4 pb-20">
+      <h1 className="text-2xl font-black mb-1">Contrôle & Bagages</h1>
+      <p className="text-muted-foreground mb-8 text-xs uppercase tracking-widest font-bold">Gestion des départs en temps réel</p>
 
-      {/* ZONE DE RECHERCHE */}
-      <div className="bg-card border rounded-2xl p-6 mb-6">
-        <Label className="text-base font-semibold mb-2 block">Numéro de billet ou scan</Label>
+      <div className="bg-card border-2 rounded-3xl p-6 mb-6 shadow-sm">
+        <Label className="text-xs font-black uppercase mb-3 block text-primary">Scanner ou saisir le numéro</Label>
         <div className="flex gap-2">
-          <Input
-            value={qrInput}
-            onChange={e => setQrInput(e.target.value)}
-            placeholder="GAB-XXXXXX"
-            onKeyDown={e => e.key === 'Enter' && handleValidate()}
-            disabled={loading}
-          />
-          <Button onClick={() => handleValidate()} disabled={loading || !qrInput.trim()} className="shrink-0">
-            {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          <Input value={qrInput} onChange={e => setQrInput(e.target.value)} placeholder="GAB-XXXXXX" onKeyDown={e => e.key === 'Enter' && handleValidate()} />
+          <Button onClick={() => handleValidate()} disabled={loading} className="rounded-xl px-6">
+            {loading ? <RefreshCw className="animate-spin" /> : <Search />}
           </Button>
         </div>
       </div>
 
-      {result && (
-        <div className="space-y-4">
-          {/* CARTE DE RÉSULTAT */}
-          <div className={`border-2 rounded-2xl p-6 ${result.valid ? 'border-emerald-500 bg-emerald-500/5' : 'border-red-500 bg-red-500/5'}`}>
-            <div className="flex items-center gap-3 mb-4">
-              {result.valid ? <CheckCircle className="h-8 w-8 text-emerald-600" /> : <XCircle className="h-8 w-8 text-red-600" />}
-              <span className={`text-xl font-bold ${result.valid ? 'text-emerald-800' : 'text-red-800'}`}>
-                {result.message}
-              </span>
+      {result && result.booking && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+          {/* CARTE BILLET */}
+          <div className={`border-2 rounded-3xl p-6 ${result.valid ? 'border-emerald-500 bg-emerald-50/30' : 'border-amber-500 bg-amber-50/30'}`}>
+            <div className="flex items-center gap-3 mb-6">
+              {result.valid ? <CheckCircle className="h-8 w-8 text-emerald-600" /> : <AlertCircle className="h-8 w-8 text-amber-600" />}
+              <span className="text-xl font-black">{result.message}</span>
             </div>
 
-            {result.booking && (
-              <div className="grid grid-cols-2 gap-4 mt-4 text-sm border-t pt-4">
-                <InfoField label="N° Billet" value={result.booking.bookingNumber} />
-                <InfoField label="Passager" value={result.booking.passengerName} />
-                <InfoField label="Trajet" value={`${result.booking.departureCity} → ${result.booking.arrivalCity}`} />
-                <InfoField label="Paiement" value={result.booking.paymentStatus} />
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-y-4 text-sm border-t border-dashed pt-4">
+              <InfoField label="Passager" value={result.booking.passengerName} />
+              <InfoField label="N° Billet" value={result.booking.bookingNumber} />
+              <InfoField label="Trajet" value={`${result.booking.departureCity} → ${result.booking.arrivalCity}`} />
+              <InfoField label="Siège" value={result.booking.seatNumber} />
+            </div>
 
-            {/* LISTE D'EMBARQUEMENT (Visible uniquement si payé) */}
-            {result.valid && result.booking && (
-              <div className="border-t border-border pt-4 mt-4 space-y-3">
-                <h3 className="font-bold text-sm flex items-center gap-1.5">
-                  <Users className="h-4.5 w-4.5" /> Liste d'embarquement
-                </h3>
-                <div className="space-y-2">
-                  {result.booking.passengers.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between bg-muted/30 p-3 rounded-xl text-sm border">
-                      <div className="text-left">
-                        <p className="font-semibold">{p.firstName} {p.lastName}</p>
-                        <p className="text-xs text-primary font-bold">Siège {p.seatNumber || "—"}</p>
+            {/* SECTION BAGAGES (S'ADAPTE AU TYPE) */}
+            <div className="mt-8 pt-6 border-t-2 border-white/50">
+              <h3 className="font-black text-sm flex items-center gap-2 mb-4 uppercase tracking-tighter">
+                <Package className="h-4 w-4 text-primary" /> Enregistrement Bagages
+              </h3>
+              
+              <div className="bg-white/60 p-4 rounded-2xl space-y-4">
+                {result.booking.tripType === 'TRAIN' ? (
+                  /* MODE TRAIN : POIDS */
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-bold uppercase">Poids total (Limite : {result.booking.freeWeight}kg gratuit)</Label>
+                    <div className="flex gap-2">
+                      <Input type="number" placeholder="Ex: 45" value={weightInput} onChange={e => setWeightInput(e.target.value)} className="bg-white" />
+                      <Button onClick={handleSaveLuggage} variant="secondary" className="font-bold">Calculer</Button>
+                    </div>
+                    {parseFloat(weightInput) > result.booking.freeWeight && (
+                      <p className="text-xs font-bold text-red-600">
+                        Surplus : {parseFloat(weightInput) - result.booking.freeWeight}kg • À payer : {(parseFloat(weightInput) - result.booking.freeWeight) * result.booking.excessPrice} FCFA
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  /* MODE BUS : PAR ARTICLE */
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-2">
+                      <select 
+                        className="w-full h-10 rounded-lg border bg-white px-3 text-sm font-semibold"
+                        onChange={(e) => setSelectedBusItem(JSON.parse(e.target.value))}
+                      >
+                        {BUS_LUGGAGE_RATES.map((item, i) => (
+                          <option key={i} value={JSON.stringify(item)}>{item.label} ({item.price} F)</option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-20 bg-white font-bold" />
+                        <Button onClick={handleSaveLuggage} className="flex-1 font-bold gap-2">
+                          <Plus className="h-4 w-4"/> Ajouter
+                        </Button>
                       </div>
-                      <div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* EMBARQUEMENT */}
+            {result.valid && (
+              <div className="mt-8 pt-6 border-t border-dashed">
+                 <h3 className="font-black text-sm mb-4 uppercase">Contrôle Quai</h3>
+                 <div className="space-y-2">
+                    {result.booking.passengers.map(p => (
+                      <div key={p.id} className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm border border-emerald-100">
+                        <span className="font-bold text-sm">{p.firstName} {p.lastName}</span>
                         {p.boarded ? (
-                          <span className="text-emerald-600 font-bold flex items-center gap-1 text-xs">
-                            <CheckCircle className="h-3 w-3"/> Embarqué
-                          </span>
+                          <span className="text-emerald-600 font-black text-[10px] uppercase flex items-center gap-1"><CheckCircle className="h-3 w-3"/> Embarqué</span>
                         ) : (
-                          <Button 
-                            size="sm" 
-                            disabled={!canBoardPassengers || boardingId === p.id}
-                            onClick={() => handleBoardPassenger(p.id)}
-                          >
-                             {boardingId === p.id ? <RefreshCw className="h-3 w-3 animate-spin"/> : <UserCheck className="h-3.5 w-3.5 mr-1"/>}
-                             {canBoardPassengers ? "Valider" : "Quai uniquement"}
+                          <Button size="sm" onClick={() => handleBoardPassenger(p.id)} disabled={boardingId === p.id} className="h-8 text-xs font-bold">
+                             {boardingId === p.id ? <RefreshCw className="animate-spin h-3 w-3"/> : "Valider montée"}
                           </Button>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                 </div>
               </div>
             )}
           </div>
 
-          {/* ACTION DE CAISSE (Si en attente de paiement) */}
-          {result.booking && result.booking.rawStatus === 'EN_ATTENTE_PAIEMENT' && (
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-              {canCollectMoney ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" /> Action Caissier : Encaisser le billet
-                  </p>
-                  <Button 
-                    onClick={handleCollectPayment} 
-                    disabled={loading}
-                    className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12"
-                  >
-                    <CreditCard className="h-5 w-5" />
-                    Valider le paiement en espèces
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-sm text-red-600 font-bold flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 shrink-0" />
-                  Ce billet n'est pas payé. Veuillez envoyer le passager à la caisse avant l'embarquement.
-                </p>
-              )}
+          {/* CAISSE SI NON PAYÉ */}
+          {!result.valid && canCollectMoney && (
+            <div className="bg-amber-600 p-6 rounded-3xl shadow-xl text-white">
+              <p className="font-bold text-sm mb-4 flex items-center gap-2">
+                <CreditCard /> Encaissement au guichet
+              </p>
+              <Button onClick={handleCollectPayment} className="w-full h-12 bg-white text-amber-700 hover:bg-amber-50 font-black text-lg rounded-2xl">
+                Valider le paiement Cash
+              </Button>
             </div>
           )}
         </div>
@@ -336,8 +325,8 @@ export default function AgencyValidate() {
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10px] uppercase font-bold text-muted-foreground">{label}</div>
-      <div className="font-semibold truncate">{value || '—'}</div>
+      <div className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">{label}</div>
+      <div className="font-bold text-slate-800">{value || '—'}</div>
     </div>
   );
 }
