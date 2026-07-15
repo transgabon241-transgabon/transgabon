@@ -20,22 +20,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Tarifs forfaitaires pour le mode BUS
-const BUS_LUGGAGE_RATES = [
-  { label: 'Sac de voyage / Valise', price: 1000 },
-  { label: 'Grand Sac (Ballot / Mbinda)', price: 2000 },
-  { label: 'Sac de vivres (Riz/Manioc)', price: 1500 },
-  { label: 'Carton / Caisse', price: 2500 },
-  { label: 'Électroménager (TV, etc)', price: 3000 },
-];
-
 type PassengerData = {
   id: string;
   firstName: string;
   lastName: string;
-  idNumber: string | null;
-  seatNumber: string | null;
   boarded: boolean;
+  seatNumber: string | null;
 };
 
 type LuggageData = {
@@ -43,6 +33,12 @@ type LuggageData = {
   label: string;
   quantity: number;
   total_price: number;
+};
+
+// Type pour les réglages dynamiques de l'agence
+type AgencyLuggageType = {
+  label: string;
+  price: number;
 };
 
 type Result = {
@@ -60,10 +56,10 @@ type Result = {
     rawStatus: string;
     passengers: PassengerData[];
     tripType: string;
-    luggageRule: string; 
     freeWeight: number;
     excessPrice: number;
     luggages: LuggageData[];
+    companyId: string;
   };
 };
 
@@ -74,14 +70,15 @@ export default function AgencyValidate() {
   const [result, setResult] = useState<Result | null>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
+  // États pour les bagages dynamiques
+  const [agencyRates, setAgencyRates] = useState<AgencyLuggageType[]>([]);
   const [weightInput, setWeightInput] = useState<string>('');
-  const [selectedBusItem, setSelectedBusItem] = useState(BUS_LUGGAGE_RATES[0]);
+  const [selectedBusItem, setSelectedBusItem] = useState<AgencyLuggageType | null>(null);
   const [qtyInput, setQtyInput] = useState('1');
 
   const userRole = user?.role?.toUpperCase();
   const canCollectMoney = ['CAISSIER', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
   const canBoardPassengers = ['AGENCE_EMBARQUEMENT', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
-  const isAgencyStaff = ['AGENT', 'AGENCE_EMBARQUEMENT', 'CAISSIER', 'SERVICE_COLIS', 'ADMIN'].includes(userRole || '');
 
   const handleValidate = async (forcedRef?: string) => {
     const targetRef = forcedRef || qrInput.trim();
@@ -95,12 +92,13 @@ export default function AgencyValidate() {
         if (parsed && parsed.ref) ref = parsed.ref.toUpperCase();
       } catch (e) {}
 
+      // 1. Récupérer le billet et les infos compagnie
       const { data: b, error } = await supabase
         .from('bookings')
         .select(`
           *, 
-          trip:trips(*, from:cities!from_id(name), to:cities!to_id(name), company:companies(name)), 
-          passengers(*),
+          trip:trips(*, from:cities!from_id(name), to:cities!to_id(name), company:companies(*)), 
+          passengers(*), 
           luggages(*)
         `)
         .eq('reference', ref)
@@ -111,19 +109,24 @@ export default function AgencyValidate() {
         return;
       }
 
-      if (isAgencyStaff && user?.companyId && b.trip.company_id !== user.companyId) {
-        setResult({ valid: false, message: `Accès refusé : Compagnie différente.` });
-        return;
+      // 2. Charger les tarifs de bagages personnalisés de cette agence
+      const { data: rates } = await supabase
+        .from('company_luggage_settings')
+        .select('label, price')
+        .eq('company_id', b.trip.company_id);
+
+      if (rates && rates.length > 0) {
+        setAgencyRates(rates);
+        setSelectedBusItem(rates[0]);
       }
 
-      const lead = b.passengers[0];
       setResult({
         valid: b.status === 'PAYE',
-        message: b.status === 'PAYE' ? 'Billet validé !' : 'Attention : Paiement requis.',
+        message: b.status === 'PAYE' ? 'Billet prêt' : 'Paiement en attente',
         booking: {
           id: b.id,
           bookingNumber: b.reference,
-          passengerName: lead ? `${lead.first_name} ${lead.last_name}` : 'Anonyme',
+          passengerName: `${b.passengers[0]?.first_name} ${b.passengers[0]?.last_name}`,
           passengerPhone: b.contact_phone,
           seatNumber: b.passengers.map((p: any) => p.seat_number).filter(Boolean).join(', ') || '—',
           departureCity: b.trip.from.name,
@@ -131,15 +134,16 @@ export default function AgencyValidate() {
           paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
           rawStatus: b.status,
           passengers: b.passengers.map((p: any) => ({ ...p, firstName: p.first_name, lastName: p.last_name })),
-          tripType: b.trip.type || 'BUS',
-          luggageRule: b.trip.luggage_rule_type || 'PER_ITEM',
-          freeWeight: b.trip.free_weight_limit || 30,
-          excessPrice: b.trip.excess_weight_price || 500,
+          tripType: b.trip.type,
+          // Utilise les réglages de la compagnie ou des valeurs par défaut
+          freeWeight: b.trip.company.default_free_weight_limit || 30,
+          excessPrice: b.trip.company.default_excess_weight_price || 500,
           luggages: b.luggages || [],
+          companyId: b.trip.company_id
         }
       });
     } catch (e) {
-      toast.error('Erreur de chargement.');
+      toast.error('Erreur.');
     } finally {
       setLoading(false);
     }
@@ -148,10 +152,8 @@ export default function AgencyValidate() {
   const handleSaveLuggage = async () => {
     if (!result?.booking) return;
     
-    // RÈGLE 2 : Bloquer si déjà embarqué
-    const isAnyBoarded = result.booking.passengers.some(p => p.boarded);
-    if (isAnyBoarded) {
-      toast.error("Impossible d'ajouter des bagages : Passager déjà à bord.");
+    if (result.booking.passengers.some(p => p.boarded)) {
+      toast.error("Interdit : Passager déjà à bord.");
       return;
     }
 
@@ -159,89 +161,57 @@ export default function AgencyValidate() {
     try {
       let payload: any = {
         booking_id: result.booking.id,
-        passenger_id: result.booking.passengers[0]?.id || null,
+        passenger_id: result.booking.passengers[0].id,
       };
 
       if (result.booking.tripType === 'TRAIN') {
         const w = parseFloat(weightInput);
-        if (isNaN(w) || w <= 0) {
-          toast.error("Poids invalide.");
-          setLoading(false);
-          return;
-        }
         const excess = Math.max(0, w - result.booking.freeWeight);
-        payload = { ...payload, label: `Poids: ${w}kg`, weight: w, is_excess_weight: excess > 0, total_price: excess * result.booking.excessPrice, quantity: 1, price_per_unit: result.booking.excessPrice };
+        payload = { ...payload, label: `Poids: ${w}kg`, total_price: excess * result.booking.excessPrice, quantity: 1 };
       } else {
+        if (!selectedBusItem) return;
         const qty = parseInt(qtyInput);
-        if (isNaN(qty) || qty <= 0) {
-          toast.error("Quantité invalide.");
-          setLoading(false);
-          return;
-        }
-        payload = { ...payload, label: selectedBusItem.label, quantity: qty, price_per_unit: selectedBusItem.price, total_price: selectedBusItem.price * qty };
+        payload = { ...payload, label: selectedBusItem.label, quantity: qty, total_price: selectedBusItem.price * qty };
       }
 
       const { error } = await supabase.from('luggages').insert([payload]);
       if (error) throw error;
-      toast.success("Bagage enregistré !");
-      await handleValidate(result.booking.bookingNumber);
+      toast.success("Bagage ajouté");
+      handleValidate(result.booking.bookingNumber);
       setWeightInput('');
-      setQtyInput('1');
     } catch (e) {
-      toast.error("Erreur enregistrement.");
+      toast.error("Erreur.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleBoardPassenger = async (passengerId: string) => {
-    // RÈGLE 1 : Bloquer si non payé
     if (result?.booking?.rawStatus !== 'PAYE') {
-      toast.error("Le billet doit être payé avant l'embarquement.");
+      toast.error("Paiement requis avant l'embarquement.");
       return;
     }
-
     setBoardingId(passengerId);
     try {
-      const { error } = await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
-      if (error) throw error;
-      await handleValidate(result?.booking?.bookingNumber);
-      toast.success("Passager à bord !");
+      await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
+      handleValidate(result?.booking?.bookingNumber);
+      toast.success("Embarqué !");
     } finally {
       setBoardingId(null);
     }
   };
 
-  const handleCollectPayment = async () => {
-    if (!result?.booking?.id || !canCollectMoney) return;
-    setLoading(true);
-    try {
-      await supabase.from('bookings').update({ status: 'PAYE' }).eq('id', result.booking.id);
-      toast.success("Paiement encaissé !");
-      await handleValidate(result.booking.bookingNumber);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const luggageTotal = result?.booking?.luggages?.reduce((sum, l) => sum + Number(l.total_price || 0), 0) || 0;
   const isAnyPassengerBoarded = result?.booking?.passengers.some(p => p.boarded) || false;
+  const luggageTotal = result?.booking?.luggages?.reduce((sum, l) => sum + Number(l.total_price || 0), 0) || 0;
 
   return (
     <div className="max-w-xl text-foreground text-left mx-auto p-4 pb-20">
-      <h1 className="text-2xl font-black mb-1 italic text-primary">Contrôle & Bagages</h1>
-      <p className="text-muted-foreground mb-8 text-[10px] uppercase font-bold tracking-[0.2em]">Service National de Transport</p>
+      <h1 className="text-2xl font-black mb-8 italic text-primary">Contrôle & Bagages</h1>
 
-      <div className="bg-card border-2 border-primary/10 rounded-3xl p-6 mb-6 shadow-sm">
+      <div className="bg-card border-2 border-primary/10 rounded-3xl p-6 mb-6">
         <div className="flex gap-2">
-          <Input 
-            value={qrInput} 
-            onChange={e => setQrInput(e.target.value)} 
-            placeholder="Référence billet..." 
-            className="h-12 rounded-xl font-bold"
-            onKeyDown={e => e.key === 'Enter' && handleValidate()} 
-          />
-          <Button onClick={() => handleValidate()} disabled={loading} className="h-12 w-14 rounded-xl">
+          <Input value={qrInput} onChange={e => setQrInput(e.target.value)} placeholder="Référence..." className="h-12 rounded-xl font-bold" />
+          <Button onClick={() => handleValidate()} disabled={loading} className="h-12 px-6 rounded-xl">
             {loading ? <RefreshCw className="animate-spin" /> : <Search />}
           </Button>
         </div>
@@ -271,16 +241,16 @@ export default function AgencyValidate() {
                   </div>
                 ))}
                 <div className="flex justify-between p-2 bg-primary text-white rounded-lg font-black text-xs">
-                  <span>TOTAL BAGAGES</span>
+                  <span>TOTAL À PAYER (BAGAGES)</span>
                   <span>{luggageTotal.toLocaleString()} FCFA</span>
                 </div>
               </div>
             )}
 
-            {/* SECTION AJOUT BAGAGES : Bloquée si embarqué */}
+            {/* SECTION AJOUT BAGAGES */}
             <div className="p-4 bg-white/40 rounded-2xl border-2 border-primary/5 relative">
               <h3 className="text-xs font-black uppercase mb-3 flex items-center gap-2">
-                <Package className="h-4 w-4" /> Enregistrement Bagage
+                <Package className="h-4 w-4 text-primary" /> Nouveau Bagage
               </h3>
               
               {isAnyPassengerBoarded ? (
@@ -290,48 +260,51 @@ export default function AgencyValidate() {
               ) : (
                 result.booking.tripType === 'TRAIN' ? (
                   <div className="flex gap-2">
-                    <Input type="number" placeholder="Poids total (kg)" value={weightInput} onChange={e => setWeightInput(e.target.value)} className="bg-white" />
-                    <Button onClick={handleSaveLuggage} className="font-bold">Calculer</Button>
+                    <Input type="number" placeholder="Poids (kg)" value={weightInput} onChange={e => setWeightInput(e.target.value)} className="bg-white" />
+                    <Button onClick={handleSaveLuggage} className="font-bold">Valider</Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <select className="w-full h-11 rounded-xl border bg-white px-3 text-sm font-bold" onChange={(e) => setSelectedBusItem(JSON.parse(e.target.value))}>
-                      {BUS_LUGGAGE_RATES.map((item, i) => (
-                        <option key={i} value={JSON.stringify(item)}>{item.label} ({item.price} F)</option>
-                      ))}
-                    </select>
-                    <div className="flex gap-2">
-                      <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-20 font-bold bg-white" />
-                      <Button onClick={handleSaveLuggage} className="flex-1 font-black text-xs uppercase">Ajouter au billet</Button>
-                    </div>
+                    {agencyRates.length > 0 ? (
+                      <>
+                        <select 
+                          className="w-full h-11 rounded-xl border bg-white px-3 text-sm font-bold" 
+                          onChange={(e) => setSelectedBusItem(JSON.parse(e.target.value))}
+                        >
+                          {agencyRates.map((item, i) => (
+                            <option key={i} value={JSON.stringify(item)}>{item.label} ({item.price} F)</option>
+                          ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-20 font-bold bg-white" />
+                          <Button onClick={handleSaveLuggage} className="flex-1 font-black text-xs">AJOUTER</Button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-[10px] text-red-500 font-bold uppercase text-center py-2 italic">Aucun tarif bagage configuré par l'agence.</p>
+                    )}
                   </div>
                 )
               )}
             </div>
 
-            {/* LISTE D'EMBARQUEMENT : Bloquée si non payé */}
+            {/* EMBARQUEMENT */}
             <div className="mt-8 pt-6 border-t border-dashed">
-               <h3 className="font-black text-sm mb-4 uppercase flex items-center gap-2">
-                 <Users className="h-4 w-4" /> Contrôle Embarquement
-               </h3>
-               
+               <h3 className="font-black text-sm mb-4 uppercase">Embarquement</h3>
                {!result.valid ? (
-                 <div className="bg-amber-100 p-4 rounded-xl border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-2">
-                   <AlertCircle className="h-4 w-4" /> Veuillez encaisser le paiement avant d'autoriser la montée.
+                 <div className="bg-amber-100 p-4 rounded-xl text-amber-800 text-xs font-bold flex items-center gap-2">
+                   <AlertCircle className="h-4 w-4" /> Paiement requis pour embarquer.
                  </div>
                ) : (
                  <div className="space-y-2">
                     {result.booking.passengers.map(p => (
-                      <div key={p.id} className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-xs border border-emerald-100">
-                        <div>
-                          <p className="font-bold text-sm">{p.firstName} {p.lastName}</p>
-                          <p className="text-xs text-primary font-bold">Siège {p.seatNumber || "—"}</p>
-                        </div>
+                      <div key={p.id} className="flex items-center justify-between bg-white p-3 rounded-2xl border border-emerald-100 shadow-sm">
+                        <span className="font-bold text-sm">{p.firstName} {p.lastName}</span>
                         {p.boarded ? (
-                          <span className="text-emerald-600 font-black text-[10px] uppercase flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5"/> À bord</span>
+                          <span className="text-emerald-600 font-black text-[10px] uppercase flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5"/> À BORD</span>
                         ) : (
-                          <Button size="sm" onClick={() => handleBoardPassenger(p.id)} disabled={!canBoardPassengers || boardingId === p.id} className="h-8 text-xs font-black">
-                             {boardingId === p.id ? <RefreshCw className="animate-spin h-3 w-3"/> : "Valider"}
+                          <Button size="sm" onClick={() => handleBoardPassenger(p.id)} disabled={boardingId === p.id || !canBoardPassengers} className="h-8 font-black">
+                             {boardingId === p.id ? <RefreshCw className="animate-spin h-3 w-3"/> : "VALIDER"}
                           </Button>
                         )}
                       </div>
@@ -341,14 +314,10 @@ export default function AgencyValidate() {
             </div>
           </div>
 
-          {/* CAISSIER : Visible si non payé */}
           {!result.valid && canCollectMoney && (
-            <div className="bg-amber-600 p-6 rounded-3xl shadow-xl text-white">
-              <p className="font-bold text-sm mb-4 flex items-center gap-2"><CreditCard /> Action Caissier</p>
-              <Button onClick={handleCollectPayment} disabled={loading} className="w-full h-12 bg-white text-amber-700 hover:bg-amber-50 font-black text-lg rounded-2xl">
-                {loading ? <RefreshCw className="animate-spin" /> : "Encaisser maintenant"}
-              </Button>
-            </div>
+            <Button onClick={() => handleCollectPayment()} className="w-full h-12 bg-emerald-600 text-white font-black rounded-2xl gap-2">
+              <CreditCard className="h-5 w-5" /> Valider Paiement Cash
+            </Button>
           )}
         </div>
       )}

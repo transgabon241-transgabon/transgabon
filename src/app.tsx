@@ -14,6 +14,7 @@ import AgencyVehicles from './pages/agency/AgencyVehicles';
 import AgencyValidate from './pages/agency/AgencyValidate';
 import AgencyPassengers from './pages/agency/AgencyPassengers';
 import AgencyRefunds from './pages/agency/AgencyRefunds';
+import LuggageSettings from './pages/agency/LuggageSettings'; // <-- IMPORTATION
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCompanies from './pages/admin/AdminCompanies';
@@ -52,6 +53,8 @@ export default function App() {
         <Route path="/agency/passengers/:departureId" element={<AgencyLayout><AgencyPassengers /></AgencyLayout>} />
         <Route path="/agency/parcels" element={<AgencyLayout><AgencyParcels /></AgencyLayout>} />
         <Route path="/agency/refunds" element={<AgencyLayout><AgencyRefunds /></AgencyLayout>} />
+        {/* NOUVELLE ROUTE CONFIG BAGAGES */}
+        <Route path="/agency/luggage-settings" element={<AgencyLayout><LuggageSettings /></AgencyLayout>} />
 
         {/* Admin routes */}
         <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
