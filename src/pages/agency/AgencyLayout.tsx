@@ -29,6 +29,7 @@ const NAV_ITEMS = [
   { path: '/agency/luggage-settings', label: 'Réglages Bagages', icon: Settings2 },
   // NOUVEAU : Lien vers les réglages colis
   { path: '/agency/parcel-settings', label: 'Réglages Colis', icon: Truck },
+  { path: '/agency/payments', label: 'Ma Caisse', icon: DollarSign },
 ];
 
 export default function AgencyLayout({ children }: { children: ReactNode }) {
@@ -62,6 +63,10 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
     if (user.role === 'Caissier') {
       return ['/agency/validate', '/agency/refunds'].includes(item.path);
     }
+
+    if (user.role === 'Caissier' || user.role === 'Agent') {
+    return ['/agency/validate', '/agency/refunds', '/agency/payments'].includes(item.path);
+  }
     
     // Les rôles 'Agent' (Manager) et 'Administrateur' voient tout, 
     // y compris les nouveaux 'luggage-settings' et 'parcel-settings'

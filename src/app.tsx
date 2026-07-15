@@ -29,6 +29,7 @@ import AdminRoutes from './pages/admin/AdminRoutes';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import ParcelSettings from './pages/agency/ParcelSettings';
+import AgencyPayments from './pages/agency/AgencyPayments';
 
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
         {/* NOUVELLE ROUTE CONFIG BAGAGES */}
         <Route path="/agency/luggage-settings" element={<AgencyLayout><LuggageSettings /></AgencyLayout>} />
         <Route path="/agency/parcel-settings" element={<AgencyLayout><ParcelSettings /></AgencyLayout>} />
+        <Route path="/agency/payments" element={<AgencyLayout><AgencyPayments /></AgencyLayout>} />
 
         {/* Admin routes */}
         <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />

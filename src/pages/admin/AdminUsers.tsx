@@ -1,14 +1,14 @@
 "use client"
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
+import { useEffect, useState, useMemo } from 'react';
+import { supabase } from '@/lib/supabase'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Pencil, UsersRound } from 'lucide-react';
+import { Search, Pencil, UsersRound, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 type User = {
@@ -38,9 +38,12 @@ export default function AdminUsers() {
   const [editCompany, setEditCompany] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // --- ÉTATS POUR LA PAGINATION ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const loadData = async () => {
     try {
-      // Lecture simultanée de tous les utilisateurs et compagnies dans Supabase
       const [uRes, cRes] = await Promise.all([
         supabase.from('User').select('*, Company:companies(name)').order('firstName', { ascending: true }),
         supabase.from('companies').select('id, name').order('name', { ascending: true }),
@@ -49,7 +52,6 @@ export default function AdminUsers() {
       if (uRes.error) throw new Error(uRes.error.message);
       if (cRes.error) throw new Error(cRes.error.message);
 
-      // Mappage des rôles et compagnies vers le format attendu par l'UI
       const formattedUsers: User[] = (uRes.data || []).map(u => {
         let mappedRole = 'Voyageur';
         if (u.role === 'ADMIN') mappedRole = 'Administrateur';
@@ -88,7 +90,6 @@ export default function AdminUsers() {
     if (!editUser) return;
     setSaving(true);
     try {
-      // Traduction inverse : Rôles textuels vers Enums PostgreSQL
       let dbRole = 'VOYAGEUR';
       if (editRole === 'Administrateur') dbRole = 'ADMIN';
       else if (editRole === 'Agent') dbRole = 'AGENT_AGENCE';
@@ -113,12 +114,25 @@ export default function AdminUsers() {
     }
   };
 
-  const filtered = users
-    .filter(u => {
+  // --- LOGIQUE DE FILTRAGE ET PAGINATION ---
+  const filtered = useMemo(() => {
+    return users.filter(u => {
       if (roleFilter !== 'all' && u.role !== roleFilter) return false;
       const q = search.toLowerCase();
       return !q || u.email.toLowerCase().includes(q) || u.firstName.toLowerCase().includes(q) || u.lastName.toLowerCase().includes(q);
     });
+  }, [users, search, roleFilter]);
+
+  // Reset la page quand on filtre ou recherche
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(startIndex, startIndex + itemsPerPage);
+  }, [filtered, currentPage]);
 
   if (loading) return <div className="space-y-3">{[1,2,3,4].map(i => <Skeleton key={i} className="h-14 rounded-xl" />)}</div>;
 
@@ -147,43 +161,76 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {paginatedUsers.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <UsersRound className="h-12 w-12 mx-auto mb-4" />
           <p>Aucun utilisateur trouvé</p>
         </div>
       ) : (
-        <div className="border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-3 font-medium">Utilisateur</th>
-                <th className="text-left p-3 font-medium hidden md:table-cell">Email</th>
-                <th className="text-left p-3 font-medium hidden lg:table-cell">Téléphone</th>
-                <th className="text-left p-3 font-medium">Rôle</th>
-                <th className="text-left p-3 font-medium hidden md:table-cell">Compagnie</th>
-                <th className="text-right p-3 font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(u => (
-                <tr key={u.id} className="border-t hover:bg-muted/30 text-left">
-                  <td className="p-3 font-medium">{u.firstName} {u.lastName}</td>
-                  <td className="p-3 hidden md:table-cell text-muted-foreground">{u.email}</td>
-                  <td className="p-3 hidden lg:table-cell text-muted-foreground">{u.phone || '—'}</td>
-                  <td className="p-3"><RoleBadge role={u.role} /></td>
-                  <td className="p-3 hidden md:table-cell text-muted-foreground">{u.companyName || '—'}</td>
-                  <td className="p-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
-                  </td>
+        <>
+          <div className="border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-3 font-medium">Utilisateur</th>
+                  <th className="text-left p-3 font-medium hidden md:table-cell">Email</th>
+                  <th className="text-left p-3 font-medium hidden lg:table-cell">Téléphone</th>
+                  <th className="text-left p-3 font-medium">Rôle</th>
+                  <th className="text-left p-3 font-medium hidden md:table-cell">Compagnie</th>
+                  <th className="text-right p-3 font-medium">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginatedUsers.map(u => (
+                  <tr key={u.id} className="border-t hover:bg-muted/30 text-left">
+                    <td className="p-3 font-medium">{u.firstName} {u.lastName}</td>
+                    <td className="p-3 hidden md:table-cell text-muted-foreground">{u.email}</td>
+                    <td className="p-3 hidden lg:table-cell text-muted-foreground">{u.phone || '—'}</td>
+                    <td className="p-3"><RoleBadge role={u.role} /></td>
+                    <td className="p-3 hidden md:table-cell text-muted-foreground">{u.companyName || '—'}</td>
+                    <td className="p-3 text-right">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* --- CONTRÔLES DE PAGINATION --- */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 mt-6 bg-slate-50 p-2 rounded-xl w-fit mx-auto border">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                disabled={currentPage === 1} 
+                onClick={() => setCurrentPage(p => p - 1)}
+                className="h-8 w-8 rounded-lg"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-1 text-xs font-bold">
+                <span className="text-primary">Page {currentPage}</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-500">{totalPages}</span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                disabled={currentPage === totalPages} 
+                onClick={() => setCurrentPage(p => p + 1)}
+                className="h-8 w-8 rounded-lg"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
-      <p className="text-sm text-muted-foreground mt-4 text-left">{filtered.length} utilisateur(s) affiché(s) sur {users.length}</p>
+      <p className="text-sm text-muted-foreground mt-4 text-left">
+        Affichage de {paginatedUsers.length} sur {filtered.length} utilisateur(s) trouvé(s)
+      </p>
 
       {/* Edit dialog */}
       <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) setEditUser(null); }}>
