@@ -14,7 +14,8 @@ import {
   RefreshCw, 
   Users,
   Settings2,
-  Truck // Ajout de l'icône Truck pour les colis
+  Truck,
+  DollarSign // IMPORTATION CORRIGÉE ICI
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -27,7 +28,6 @@ const NAV_ITEMS = [
   { path: '/agency/refunds', label: 'Remboursements', icon: RefreshCw },
   { path: '/agency/users', label: 'Gestion Équipe', icon: Users },
   { path: '/agency/luggage-settings', label: 'Réglages Bagages', icon: Settings2 },
-  // NOUVEAU : Lien vers les réglages colis
   { path: '/agency/parcel-settings', label: 'Réglages Colis', icon: Truck },
   { path: '/agency/payments', label: 'Ma Caisse', icon: DollarSign },
 ];
@@ -52,24 +52,24 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
 
   if (isLoading || !user) return null;
 
-  // FILTRAGE DES ONGLETS SELON LE RÔLE
+  // --- FILTRAGE DES ONGLETS (LOGIQUE NETTOYÉE) ---
   const allowedItems = NAV_ITEMS.filter(item => {
-    if (user.role === 'Agent Embarquement') {
+    const role = user.role;
+
+    if (role === 'Agent Embarquement') {
       return ['/agency/departures', '/agency/validate'].includes(item.path);
     }
-    if (user.role === 'Service Colis') {
+    
+    if (role === 'Service Colis') {
       return ['/agency/parcels'].includes(item.path);
     }
-    if (user.role === 'Caissier') {
-      return ['/agency/validate', '/agency/refunds'].includes(item.path);
+    
+    if (role === 'Caissier') {
+      // Le caissier voit la validation, les remboursements ET sa caisse
+      return ['/agency/validate', '/agency/refunds', '/agency/payments'].includes(item.path);
     }
 
-    if (user.role === 'Caissier' || user.role === 'Agent') {
-    return ['/agency/validate', '/agency/refunds', '/agency/payments'].includes(item.path);
-  }
-    
-    // Les rôles 'Agent' (Manager) et 'Administrateur' voient tout, 
-    // y compris les nouveaux 'luggage-settings' et 'parcel-settings'
+    // Le Chef d'agence (Agent) et l'Admin voient tout par défaut
     return true;
   });
 
