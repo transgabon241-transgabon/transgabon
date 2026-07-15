@@ -2,16 +2,15 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Package, Search, RefreshCw, Trash2, Scale } from 'lucide-react'; // <-- Ajout de Scale
+import { Package, Search, RefreshCw, Trash2, Scale, Check, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
-import { WeighParcelForm } from "@/components/weigh-parcel-form"; // <-- Importation de votre composant de pesée
 
 type Parcel = {
   id: string;
@@ -30,36 +29,51 @@ type Parcel = {
   paymentStatus: string;
 };
 
+type Tariff = {
+  id: string;
+  label: string;
+  price: number;
+  is_weight_based: boolean;
+};
+
 const STATUSES = ['all', 'En attente', 'Pris en charge', 'En transit', 'Arrivé', 'Livré', 'Retourné'];
 const STATUS_COLORS: Record<string, string> = {
-  'En attente': 'bg-yellow-100 text-yellow-800',
-  'Pris en charge': 'bg-blue-100 text-blue-800',
-  'En transit': 'bg-orange-100 text-orange-800',
-  'Arrivé': 'bg-emerald-100 text-emerald-800',
-  'Livré': 'bg-green-100 text-green-800',
-  'Retourné': 'bg-red-100 text-red-800',
+  'En attente': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  'Pris en charge': 'bg-blue-100 text-blue-800 border-blue-200',
+  'En transit': 'bg-orange-100 text-orange-800 border-orange-200',
+  'Arrivé': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  'Livré': 'bg-green-100 text-green-800 border-green-200',
+  'Retourné': 'bg-red-100 text-red-800 border-red-200',
 };
 
 export default function AgencyParcels() {
   const { user } = useAuth();
   const [parcels, setParcels] = useState<Parcel[]>([]);
+  const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
 
-  const load = async (filter?: string) => {
+  // Charger les colis et les tarifs de l'agence
+  const loadData = async () => {
     if (!user?.companyId) return;
     setLoading(true);
     try {
-      const activeFilter = filter || statusFilter;
+      // 1. Charger les tarifs personnalisés
+      const { data: tariffData } = await supabase
+        .from('company_parcel_tariffs')
+        .select('*')
+        .eq('company_id', user.companyId);
+      
+      if (tariffData) setTariffs(tariffData);
 
+      // 2. Charger les colis
       let query = supabase
         .from('parcels')
-        .select('*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)')
+        .select('*, from:cities!from_id(name), to:cities!to_id(name)')
         .eq('company_id', user.companyId);
 
-      if (activeFilter !== 'all') {
-        // Mappage des états UI vers Enums PostgreSQL
+      if (statusFilter !== 'all') {
         const dbStatusMap: Record<string, string> = {
           'En attente': 'COLIS_ENREGISTRE',
           'Pris en charge': 'EN_ATTENTE_DEPART',
@@ -68,61 +82,48 @@ export default function AgencyParcels() {
           'Livré': 'LIVRE',
           'Retourné': 'RETOURNE',
         };
-        query = query.eq('status', dbStatusMap[activeFilter]);
+        query = query.eq('status', dbStatusMap[statusFilter]);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
 
-      if (error) throw new Error(error.message);
-
-      // Mappage des données vers l'UI
-      const formatted: Parcel[] = (data || []).map(p => {
-        const statusLabelMap: Record<string, string> = {
+      const formatted: Parcel[] = (data || []).map(p => ({
+        id: p.id,
+        trackingNumber: p.tracking_number,
+        status: {
           COLIS_ENREGISTRE: 'En attente',
           EN_ATTENTE_DEPART: 'Pris en charge',
           EN_COURS_DE_TRANSPORT: 'En transit',
           ARRIVE_A_DESTINATION: 'Arrivé',
-          DISPONIBLE_POUR_RETRAIT: 'Arrivé',
           LIVRE: 'Livré',
-          RETOURNE: 'Retourné',
-        };
-
-        return {
-          id: p.id,
-          trackingNumber: p.tracking_number,
-          status: statusLabelMap[p.status] || p.status,
-          parcelType: p.parcel_type || 'Colis',
-          departureCity: p.from.name,
-          arrivalCity: p.to.name,
-          departureDate: p.created_at.slice(0, 10),
-          senderName: p.sender_name,
-          senderPhone: p.sender_phone,
-          receiverName: p.receiver_name,
-          receiverPhone: p.receiver_phone,
-          price: p.price,
-          weightKg: p.weight,
-          paymentStatus: p.is_paid ? 'Payé' : 'À payer',
-        };
-      });
+          RETOURNE: 'Retourné'
+        }[p.status as string] || p.status,
+        parcelType: p.parcel_type || 'Colis',
+        departureCity: p.from.name,
+        arrivalCity: p.to.name,
+        departureDate: p.created_at.slice(0, 10),
+        senderName: p.sender_name,
+        senderPhone: p.sender_phone,
+        receiverName: p.receiver_name,
+        receiverPhone: p.receiver_phone,
+        price: p.price,
+        weightKg: p.weight,
+        paymentStatus: p.is_paid ? 'Payé' : 'À payer',
+      }));
 
       setParcels(formatted);
-    } catch (e: any) { 
-      toast.error(e.message || 'Erreur de chargement'); 
-    } finally { 
-      setLoading(false); 
+    } catch (e: any) {
+      toast.error('Erreur de chargement');
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, [user]);
-
-  const handleFilterChange = (v: string) => {
-    setStatusFilter(v);
-    load(v);
-  };
+  useEffect(() => { loadData(); }, [user, statusFilter]);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      // Mappage inverse
       const dbStatusMap: Record<string, string> = {
         'En attente': 'COLIS_ENREGISTRE',
         'Pris en charge': 'EN_ATTENTE_DEPART',
@@ -132,84 +133,90 @@ export default function AgencyParcels() {
         'Retourné': 'RETOURNE',
       };
 
-      const statusInDb = dbStatusMap[newStatus] || newStatus;
+      const { error } = await supabase
+        .from('parcels')
+        .update({ status: dbStatusMap[newStatus] })
+        .eq('id', id);
 
-      // Appel de l'action transactionnelle de mise à jour (RPC) de Supabase
-      const { data: res, error } = await supabase.rpc('update_parcel_status_from_agency', {
-        p_parcel_id: id,
-        p_status: statusInDb,
-        p_comment: `Statut mis à jour par l'agence vers : ${newStatus}`
-      });
-
-      if (error || !res?.success) {
-        throw new Error(error?.message || res?.error);
-      }
-
-      setParcels(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
-      toast.success('Statut mis à jour avec succès !');
-      load();
-    } catch (e: any) { 
-      toast.error(e.message || 'Erreur lors de la mise à jour'); 
+      if (error) throw error;
+      toast.success('Statut mis à jour');
+      loadData();
+    } catch (e: any) {
+      toast.error('Échec de la mise à jour');
     }
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      const { error } = await supabase.from('parcels').delete().eq('id', id);
-      if (error) throw new Error(error.message);
+    const { error } = await supabase.from('parcels').delete().eq('id', id);
+    if (!error) {
       setParcels(prev => prev.filter(p => p.id !== id));
-      toast.success('Colis supprimé de l’historique.');
-    } catch (e: any) { 
-      toast.error(e.message || 'Erreur lors de la suppression'); 
+      toast.success('Supprimé');
     }
   };
 
   const filtered = useMemo(() => {
-    if (!search) return parcels;
     const s = search.toLowerCase();
-    return parcels.filter(p =>
-      p.trackingNumber.toLowerCase().includes(s) ||
-      p.senderName.toLowerCase().includes(s) ||
+    return parcels.filter(p => 
+      p.trackingNumber.toLowerCase().includes(s) || 
+      p.senderName.toLowerCase().includes(s) || 
       p.receiverName.toLowerCase().includes(s)
     );
   }, [parcels, search]);
 
   return (
-    <div className="text-foreground text-left">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+    <div className="max-w-6xl mx-auto p-4 text-left">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Package className="h-6 w-6 text-primary" /> Gestion des colis</h1>
-          <p className="text-muted-foreground text-sm">{parcels.length} colis au total</p>
+          <h1 className="text-3xl font-black italic text-primary flex items-center gap-3">
+            <Package className="h-8 w-8" /> Fret & Logistique
+          </h1>
+          <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest">Gestion des envois de marchandises</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => load()} className="gap-2">
+        <Button variant="outline" onClick={loadData} className="rounded-xl font-bold border-2 gap-2">
           <RefreshCw className="h-4 w-4" /> Actualiser
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="md:col-span-3 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Rechercher par n° suivi, expéditeur, destinataire..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input 
+            placeholder="Rechercher un colis ou un nom..." 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            className="pl-10 h-12 rounded-2xl border-2 focus:ring-primary shadow-sm font-medium" 
+          />
         </div>
-        <Select value={statusFilter} onValueChange={handleFilterChange}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-12 rounded-2xl border-2 font-bold bg-white">
+            <SelectValue placeholder="Filtrer" />
+          </SelectTrigger>
           <SelectContent>
-            {STATUSES.map(s => <SelectItem key={s} value={s}>{s === 'all' ? 'Tous les statuts' : s}</SelectItem>)}
+            {STATUSES.map(s => <SelectItem key={s} value={s} className="font-bold">{s === 'all' ? 'Tous les colis' : s}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-3xl" />)}
+        </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p>Aucun colis trouvé</p>
+        <div className="bg-card border-2 border-dashed rounded-3xl py-20 text-center text-muted-foreground">
+          <Package className="h-12 w-12 mx-auto mb-4 opacity-20" />
+          <p className="font-bold">Aucun colis à afficher</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-4">
           {filtered.map(p => (
-            <ParcelCard key={p.id} parcel={p} onUpdateStatus={handleUpdateStatus} onDelete={handleDelete} />
+            <ParcelCard 
+              key={p.id} 
+              parcel={p} 
+              tariffs={tariffs} 
+              onUpdateStatus={handleUpdateStatus} 
+              onDelete={handleDelete} 
+              onRefresh={loadData}
+            />
           ))}
         </div>
       )}
@@ -217,9 +224,41 @@ export default function AgencyParcels() {
   );
 }
 
-function ParcelCard({ parcel: p, onUpdateStatus, onDelete }: { parcel: Parcel; onUpdateStatus: (id: string, s: string) => void; onDelete: (id: string) => void }) {
+function ParcelCard({ parcel: p, tariffs, onUpdateStatus, onDelete, onRefresh }: any) {
+  const [pricingMode, setPricingMode] = useState(false);
+  const [selectedTariff, setSelectedTariff] = useState<Tariff | null>(null);
+  const [weight, setWeight] = useState(p.weightKg.toString());
+
+  // Calcul dynamique du prix affiché
+  const calculatedPrice = useMemo(() => {
+    if (!selectedTariff) return 0;
+    if (selectedTariff.is_weight_based) {
+      return (parseFloat(weight) || 0) * selectedTariff.price;
+    }
+    return selectedTariff.price;
+  }, [selectedTariff, weight]);
+
+  const handleFinalizePricing = async () => {
+    if (!selectedTariff) return;
+    try {
+      const { error } = await supabase
+        .from('parcels')
+        .update({
+          price: calculatedPrice,
+          weight: parseFloat(weight) || 0,
+          status: 'EN_ATTENTE_DEPART' // On le passe directement en pris en charge
+        })
+        .eq('id', p.id);
+
+      if (error) throw error;
+      toast.success("Prix et poids validés !");
+      onRefresh();
+    } catch (e) {
+      toast.error("Erreur lors de la validation");
+    }
+  };
+
   const nextStatuses: Record<string, string[]> = {
-    'En attente': ['Pris en charge', 'Retourné'],
     'Pris en charge': ['En transit', 'Retourné'],
     'En transit': ['Arrivé', 'Retourné'],
     'Arrivé': ['Livré', 'Retourné'],
@@ -227,61 +266,103 @@ function ParcelCard({ parcel: p, onUpdateStatus, onDelete }: { parcel: Parcel; o
   const available = nextStatuses[p.status] || [];
 
   return (
-    <div className="border rounded-xl bg-card p-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="font-mono text-sm font-semibold text-primary tracking-wide">{p.trackingNumber}</span>
-            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_COLORS[p.status] || 'bg-muted'}`}>{p.status}</span>
-            <Badge variant="outline" className="text-xs">{p.parcelType}</Badge>
+    <div className="bg-card border-2 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all">
+      <div className="flex flex-col lg:flex-row gap-6">
+        
+        {/* Infos Colis */}
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="font-mono font-black text-primary bg-primary/5 px-3 py-1 rounded-lg">{p.trackingNumber}</span>
+            <Badge className={`${STATUS_COLORS[p.status]} border font-black uppercase text-[10px] px-2.5`}>
+              {p.status}
+            </Badge>
           </div>
-          <div className="text-sm text-muted-foreground text-left">
-            {p.departureCity} → {p.arrivalCity} • {p.departureDate ? new Date(p.departureDate + 'T00:00:00').toLocaleDateString('fr-FR') : '-'}
+          
+          <div className="text-sm font-bold text-slate-800">
+            {p.departureCity} <span className="text-primary mx-1">→</span> {p.arrivalCity}
           </div>
-          <div className="text-sm mt-1 text-left">
-            <span className="text-muted-foreground">Exp:</span> {p.senderName} ({p.senderPhone}) → <span className="text-muted-foreground">Dest:</span> {p.receiverName} ({p.receiverPhone})
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs font-medium text-muted-foreground uppercase">
+            <p><span className="text-slate-400">Exp:</span> {p.senderName} ({p.senderPhone})</p>
+            <p><span className="text-slate-400">Dest:</span> {p.receiverName} ({p.receiverPhone})</p>
           </div>
-          <div className="text-sm font-semibold mt-1 text-foreground text-left">{p.price.toLocaleString()} FCFA • {p.weightKg} kg • {p.paymentStatus}</div>
+
+          <div className="pt-2 flex items-center gap-4 text-xs font-black uppercase tracking-tighter">
+             <div className="bg-slate-100 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-slate-600">
+                <Scale className="h-3.5 w-3.5" /> {p.weightKg} KG
+             </div>
+             <div className="bg-emerald-100 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-emerald-700">
+                <Calculator className="h-3.5 w-3.5" /> {p.price.toLocaleString()} FCFA
+             </div>
+             <div className="text-primary italic">{p.paymentStatus}</div>
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-between md:justify-end">
-          {/* Si le colis est en attente de dépôt, on affiche le mini-guichet de pesée pour valider le poids réel */}
-          {p.status === "En attente" ? (
-            <div className="border border-primary/20 rounded-xl p-3 bg-primary/5 max-w-xs space-y-2 text-left">
-              <p className="text-xs font-bold text-primary flex items-center gap-1">
-                <Scale className="h-3.5 w-3.5" /> Guichet de Pesée
-              </p>
-              <WeighParcelForm 
-                parcelId={p.id} 
-                currentWeight={p.weightKg} 
-                currentQuantity={1} 
-              />
+
+        {/* Actions de Guichet */}
+        <div className="flex items-center gap-3 lg:border-l lg:pl-6 shrink-0">
+          
+          {/* SI LE COLIS EST NOUVEAU (EN ATTENTE) : GUICHET DE TARIFICATION */}
+          {p.status === 'En attente' && (
+            <div className="w-full sm:w-auto">
+              {!pricingMode ? (
+                <Button onClick={() => setPricingMode(true)} className="w-full gap-2 font-black bg-emerald-600 hover:bg-emerald-700">
+                  <Scale className="h-4 w-4" /> Tarifer & Peser
+                </Button>
+              ) : (
+                <div className="bg-slate-50 p-4 rounded-2xl border-2 border-primary/20 space-y-3 w-64 animate-in zoom-in-95 duration-200">
+                   <Label className="text-[10px] font-black uppercase">Sélectionner un tarif</Label>
+                   <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
+                      <SelectTrigger className="bg-white h-9 font-bold text-xs"><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                      <SelectContent>
+                        {tariffs.map(t => <SelectItem key={t.id} value={t.id} className="text-xs font-bold">{t.label} ({t.price}F)</SelectItem>)}
+                      </SelectContent>
+                   </Select>
+                   
+                   <div className="flex gap-2">
+                     <div className="flex-1">
+                        <Label className="text-[10px] font-black uppercase">Poids (kg)</Label>
+                        <Input type="number" value={weight} onChange={e => setWeight(e.target.value)} className="h-9 bg-white font-bold" />
+                     </div>
+                     <div className="flex-1">
+                        <Label className="text-[10px] font-black uppercase">Total</Label>
+                        <div className="h-9 flex items-center justify-center font-black text-primary text-xs bg-white border rounded-md">
+                          {calculatedPrice} F
+                        </div>
+                     </div>
+                   </div>
+
+                   <div className="flex gap-2 pt-1">
+                     <Button variant="ghost" size="sm" onClick={() => setPricingMode(false)} className="flex-1 text-[10px] font-bold">Annuler</Button>
+                     <Button size="sm" onClick={handleFinalizePricing} className="flex-1 text-[10px] font-bold bg-primary shadow-lg"><Check className="h-3 w-3 mr-1"/> Valider</Button>
+                   </div>
+                </div>
+              )}
             </div>
-          ) : (
-            /* Sinon, on affiche les boutons de transit habituels (En transit, Arrivé, Livré) */
-            available.map(s => (
-              <Button key={s} variant="outline" size="sm" onClick={() => onUpdateStatus(p.id, s)} className="text-xs font-bold border-primary/20 text-primary hover:bg-primary/5">
-                Passer à : {s}
-              </Button>
-            ))
           )}
 
+          {/* BOUTONS DE TRANSIT CLASSIQUES */}
+          {available.map(s => (
+            <Button key={s} variant="outline" size="sm" onClick={() => onUpdateStatus(p.id, s)} className="font-bold border-2 rounded-xl text-xs hover:bg-primary/5 transition-all">
+              Marquer : {s}
+            </Button>
+          ))}
+
+          {/* SUPPRESSION */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="text-destructive border-destructive/30">
-                <Trash2 className="h-3 w-3" />
+              <Button variant="ghost" size="icon" className="text-red-300 hover:text-red-600 hover:bg-red-50 rounded-xl">
+                <Trash2 className="h-5 w-5" />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader className="text-left">
-                <AlertDialogTitle>Supprimer ce colis ?</AlertDialogTitle>
-                <AlertDialogDescription>Colis {p.trackingNumber}. Cette action est irréversible.</AlertDialogDescription>
-              </AlertDialogHeader>
+            <AlertDialogContent className="rounded-3xl">
+              <AlertDialogHeader><AlertDialogTitle>Supprimer le colis ?</AlertDialogTitle></AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onDelete(p.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                <AlertDialogCancel className="rounded-xl">Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onDelete(p.id)} className="bg-red-600 rounded-xl">Supprimer</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
         </div>
       </div>
     </div>
