@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, Plus, Key, Phone, Mail, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Users, Plus, Key, Phone, Mail, RefreshCw, Trash2, UserCog, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 type AgencyStaff = {
@@ -18,6 +19,7 @@ type AgencyStaff = {
   lastName: string;
   email: string;
   phone: string;
+  role: string;
   roleLabel: string;
 };
 
@@ -40,33 +42,26 @@ export default function AgencyUsers() {
     if (!user?.companyId) return;
     setLoading(true);
     try {
-      // Récupère l'ensemble du personnel de l'agence
       const { data, error } = await supabase
         .from('User')
         .select('*')
         .eq('agencyId', user.companyId)
         .in('role', ['AGENCE_EMBARQUEMENT', 'SERVICE_COLIS', 'CAISSIER']);
 
-      if (error) throw new Error(error.message);
+      if (error) throw error;
 
-      const formatted: AgencyStaff[] = (data || []).map(a => {
-        let label = "Embarquement";
-        if (a.role === "SERVICE_COLIS") label = "Service Colis";
-        else if (a.role === "CAISSIER") label = "Caissier";
-
-        return {
-          id: a.id,
-          firstName: a.firstName,
-          lastName: a.lastName,
-          email: a.email || '—',
-          phone: a.phone,
-          roleLabel: label
-        };
-      });
-
+      const formatted: AgencyStaff[] = (data || []).map(a => ({
+        id: a.id,
+        firstName: a.firstName,
+        lastName: a.lastName,
+        email: a.email || '—',
+        phone: a.phone,
+        role: a.role,
+        roleLabel: a.role === "SERVICE_COLIS" ? "Service Colis" : a.role === "CAISSIER" ? "Caissier" : "Embarquement"
+      }));
       setStaff(formatted);
     } catch (e: any) {
-      toast.error(e.message || "Erreur de chargement de l'équipe");
+      toast.error("Erreur de chargement");
     } finally {
       setLoading(false);
     }
@@ -74,24 +69,10 @@ export default function AgencyUsers() {
 
   useEffect(() => { loadData(); }, [user]);
 
-  const resetForm = () => {
-    setFirstName(''); setLastName(''); setEmail(''); setPhone(''); setPassword('');
-    setRoleToAssign('AGENCE_EMBARQUEMENT'); setEditId(null);
-  };
-
-  const [editId, setEditId] = useState<string | null>(null);
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.companyId) return;
-    if (!email || !password || !firstName || !lastName || !phone || !roleToAssign) {
-      toast.error("Veuillez remplir tous les champs obligatoires.");
-      return;
-    }
     setSaving(true);
-
     try {
-      // Appel de la procédure stockée (RPC) généralisée de création de staff sur Supabase
       const { data: res, error } = await supabase.rpc('create_agency_staff', {
         p_email: email.trim().toLowerCase(),
         p_password: password,
@@ -99,144 +80,138 @@ export default function AgencyUsers() {
         p_last_name: lastName,
         p_phone: phone,
         p_role: roleToAssign,
-        p_company_id: user.companyId
+        p_company_id: user?.companyId
       });
 
-      if (error || !res?.success) {
-        toast.error(error?.message || res?.error || "Erreur de création.");
-        setSaving(false);
-        return;
-      }
+      if (error || !res?.success) throw new Error(res?.error || "Erreur");
 
-      toast.success("Compte collaborateur créé et rattaché à votre agence !");
+      toast.success("Collaborateur recruté !");
       setShowForm(false);
-      resetForm();
       loadData();
-    } catch (err) {
-      toast.error("Erreur réseau d'enregistrement.");
+    } catch (err: any) {
+      toast.error(err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div className="space-y-3">{[1,2].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>;
+  const deleteAgent = async (id: string) => {
+    const { error } = await supabase.from('User').delete().eq('id', id);
+    if (!error) {
+      setStaff(staff.filter(s => s.id !== id));
+      toast.success("Agent supprimé");
+    }
+  };
+
+  if (loading) return <div className="flex justify-center p-20"><RefreshCw className="animate-spin h-10 w-10 text-primary opacity-20" /></div>;
 
   return (
-    <div className="text-foreground text-left">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="h-6 w-6 text-primary" /> Gestion de l&apos;Équipe</h1>
-          <p className="text-sm text-muted-foreground">Pilotez et recrutez le personnel (caisse, embarquement, colis) de votre agence.</p>
+    <div className="max-w-2xl mx-auto p-4 pb-20 space-y-8 text-left">
+      
+      {/* HEADER */}
+      <header className="flex items-center justify-between bg-white p-6 rounded-[2rem] border shadow-sm w-full">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20">
+            <Users className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black italic tracking-tight">Mon Équipe</h1>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Gestion des accès guichet</p>
+          </div>
         </div>
-        <Button onClick={openCreate} className="gap-2"><Plus className="h-4 w-4" /> Recruter un agent</Button>
+        <Button onClick={() => setShowForm(true)} size="icon" className="h-12 w-12 rounded-2xl shadow-lg">
+           <Plus className="h-6 w-6" />
+        </Button>
+      </header>
+
+      {/* LISTE DES AGENTS */}
+      <div className="space-y-4">
+        <h3 className="font-black text-[10px] uppercase tracking-widest text-slate-400 px-6">Personnel Actif</h3>
+        {staff.length === 0 ? (
+          <div className="p-16 text-center border-2 border-dashed rounded-[2.5rem] bg-white">
+            <p className="text-slate-400 italic">Aucun agent enregistré</p>
+          </div>
+        ) : (
+          staff.map((agent) => (
+            <div key={agent.id} className="flex items-center justify-between bg-white border border-slate-100 p-6 rounded-[2rem] hover:shadow-lg transition-all group">
+              <div className="flex items-center gap-4 text-left">
+                <div className="h-14 w-14 rounded-2xl bg-slate-50 flex items-center justify-center text-primary font-black text-xl">
+                  {agent.firstName.charAt(0)}{agent.lastName.charAt(0)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-800 text-lg">{agent.firstName} {agent.lastName}</p>
+                    <Badge className="bg-emerald-50 text-emerald-700 border-none text-[9px] font-black uppercase tracking-tighter">
+                      {agent.roleLabel}
+                    </Badge>
+                  </div>
+                  <div className="flex gap-4 mt-1 text-xs font-bold text-muted-foreground uppercase">
+                    <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {agent.email}</span>
+                    <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {agent.phone}</span>
+                  </div>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => deleteAgent(agent.id)} className="text-slate-200 hover:text-red-600 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all">
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </div>
+          ))
+        )}
       </div>
 
-      {staff.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground border border-dashed rounded-2xl bg-card">
-          <Users className="mx-auto h-10 w-10 text-muted-foreground/60 mb-2" />
-          <p className="text-sm">Aucun collaborateur actif dans votre équipe.</p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={openCreate}>Enregistrer un agent</Button>
-        </div>
-      ) : (
-        <div className="border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="p-3 font-medium">Nom &amp; Prénom</th>
-                <th className="p-3 font-medium">E-mail de connexion</th>
-                <th className="p-3 font-medium">Téléphone</th>
-                <th className="p-3 font-medium">Rôle de guichet</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map((agent) => (
-                <tr key={agent.id} className="border-t hover:bg-muted/20">
-                  <td className="p-3 font-semibold">{agent.firstName} {agent.lastName}</td>
-                  <td className="p-3 text-muted-foreground">{agent.email}</td>
-                  <td className="p-3 font-mono text-xs tracking-wider">{agent.phone}</td>
-                  <td className="p-3">
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      agent.roleLabel === 'Caissier' ? 'bg-emerald-100 text-emerald-800' :
-                      agent.roleLabel === 'Service Colis' ? 'bg-secondary/15 text-secondary' :
-                      'bg-primary/10 text-primary'
-                    }`}>
-                      {agent.roleLabel}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* MODAL DE CRÉATION DE COMPTE COLLABORATEUR D'AGENCE */}
+      {/* MODAL RECRUTEMENT */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent>
-          <DialogHeader><DialogTitle className="text-left">Recruter un collaborateur d&apos;agence</DialogTitle></DialogHeader>
-          <form onSubmit={handleSave} className="space-y-4">
-            <div className="grid gap-3 grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="agentFN">Prénom</Label>
-                <Input id="agentFN" required placeholder="Jean" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={saving} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="agentLN">Nom</Label>
-                <Input id="agentLN" required placeholder="Mba" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={saving} />
-              </div>
+        <DialogContent className="rounded-[2.5rem] p-8 max-w-md border-none shadow-2xl">
+          <DialogHeader>
+            <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+                <UserCog className="h-8 w-8 text-primary" />
             </div>
-
-            {/* Sélecteur de rôle de guichet */}
-            <div className="space-y-1.5">
-              <Label htmlFor="roleAssign">Rôle de guichet à attribuer</Label>
-              <Select value={roleToAssign} onValueChange={(v: any) => setRoleToAssign(v)}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="AGENCE_EMBARQUEMENT">Agent d&apos;embarquement (Contrôle quai)</SelectItem>
-                  <SelectItem value="SERVICE_COLIS">Agent Service Colis (Fret / Logistique)</SelectItem>
-                  <SelectItem value="CAISSIER">Caissier d&apos;agence (Encaissements billets)</SelectItem>
-                </SelectContent>
-              </Select>
+            <DialogTitle className="text-2xl font-black text-left">Recruter un agent</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSave} className="space-y-6 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase ml-1">Prénom</Label>
+                    <Input required placeholder="Ex: Jean" className="h-12 rounded-xl bg-slate-50 border-none" value={firstName} onChange={e => setFirstName(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase ml-1">Nom</Label>
+                    <Input required placeholder="Ex: Mba" className="h-12 rounded-xl bg-slate-50 border-none" value={lastName} onChange={e => setLastName(e.target.value)} />
+                </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="agentPhone">Téléphone</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input id="agentPhone" type="tel" required placeholder="+241 062 00 00 00" className="pl-9" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={saving} />
-              </div>
+                <Label className="text-[10px] font-black uppercase ml-1">Poste de guichet</Label>
+                <Select value={roleToAssign} onValueChange={(v: any) => setRoleToAssign(v)}>
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-none shadow-xl">
+                        <SelectItem value="AGENCE_EMBARQUEMENT" className="font-bold">Contrôleur Quai</SelectItem>
+                        <SelectItem value="SERVICE_COLIS" className="font-bold">Agent Colis / Fret</SelectItem>
+                        <SelectItem value="CAISSIER" className="font-bold">Caissier Billetterie</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="agentEmail">E-mail de connexion</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input id="agentEmail" type="email" required placeholder="nom.agent@gabon.ga" className="pl-9" value={email} onChange={(e) => setEmail(e.target.value)} disabled={saving} />
-              </div>
+                <Label className="text-[10px] font-black uppercase ml-1">Téléphone & Email</Label>
+                <div className="space-y-2">
+                    <Input required type="tel" placeholder="+241 062..." className="h-12 rounded-xl bg-slate-50 border-none" value={phone} onChange={e => setPhone(e.target.value)} />
+                    <Input required type="email" placeholder="agent@email.ga" className="h-12 rounded-xl bg-slate-50 border-none" value={email} onChange={e => setEmail(e.target.value)} />
+                </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="agentPass">Mot de passe temporaire d&apos;accès</Label>
-              <div className="relative">
-                <Key className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input id="agentPass" type="password" required placeholder="Saisir min 6 caractères" className="pl-9" value={password} onChange={(e) => setPassword(e.target.value)} disabled={saving} />
-              </div>
+                <Label className="text-[10px] font-black uppercase ml-1">Mot de passe temporaire</Label>
+                <Input required type="password" placeholder="••••••••" className="h-12 rounded-xl bg-slate-50 border-none" value={password} onChange={e => setPassword(e.target.value)} />
             </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Annuler</Button>
-              <Button type="submit" disabled={saving || !email || !password || !firstName}>
-                {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Créer le compte collaborateur"}
-              </Button>
-            </DialogFooter>
+            <Button type="submit" disabled={saving} className="w-full h-14 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
+                {saving ? <RefreshCw className="animate-spin h-5 w-5" /> : "ACTIVER LE COMPTE"}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
     </div>
   );
-
-  function openCreate() {
-    resetForm();
-    setShowForm(true);
-  }
 }
