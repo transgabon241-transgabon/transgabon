@@ -70,7 +70,7 @@ export default function LuggageSettings() {
 
         {/* --- MODE BUS : FORMULAIRE PUIS LISTE --- */}
         <TabsContent value="bus" className="space-y-10 focus-visible:outline-none">
-          <div className="bg-white border-2 border-primary/5 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
+          <div className="bg-white border-2 border-primary/5 rounded-[3rem] p-10 shadow-2xl shadow-slate-100/50">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
                 <Zap className="h-5 w-5 text-orange-500 fill-orange-500" /> Ajouter un forfait
             </h3>

@@ -62,7 +62,7 @@ export default function ParcelSettings() {
         </TabsList>
 
         {/* --- FORMULAIRE (Empilé en haut) --- */}
-        <div className="bg-white border-2 border-primary/5 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
+        <div className="bg-white border-2 border-primary/5 rounded-[3rem] p-10 shadow-2xl shadow-slate-100/50">
           <h3 className="text-sm font-black uppercase mb-6 flex items-center gap-2 text-slate-400">
             <Plus className="h-4 w-4" /> Nouveau tarif
           </h3>
