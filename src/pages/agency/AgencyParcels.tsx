@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -54,12 +55,12 @@ export default function AgencyParcels() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
 
-  // Charger les colis et les tarifs de l'agence
+  
   const loadData = async () => {
     if (!user?.companyId) return;
     setLoading(true);
     try {
-      // 1. Charger les tarifs personnalisés
+      
       const { data: tariffData } = await supabase
         .from('company_parcel_tariffs')
         .select('*')
