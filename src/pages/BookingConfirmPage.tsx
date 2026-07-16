@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Smartphone, Building2, Check, CreditCard, Ship, Crown, Gem } from 'lucide-react';
+import { Smartphone, Building2, Check, CreditCard, Ship, Crown, Gem, RefreshCw } from 'lucide-react';
 
 type TripDetails = {
   id: string;

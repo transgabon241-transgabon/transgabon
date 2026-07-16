@@ -14,6 +14,7 @@ import {
   Eye, 
   ChevronLeft, 
   ChevronRight,
+  RefreshCw,
   Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
