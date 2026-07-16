@@ -117,10 +117,18 @@ export default function AgencyVehicles() {
    * SAUVEGARDE (CREATE / UPDATE)
    */
   const handleSave = async () => {
-    if (!user?.companyId || !vehicleNumber) return;
+    // Vérification de sécurité avant envoi
+    if (!user?.companyId) {
+      toast.error("Votre compte n'est pas lié à une agence.");
+      return;
+    }
+    if (!vehicleNumber.trim()) {
+      toast.error("Veuillez saisir un numéro d'immatriculation.");
+      return;
+    }
+
     setSaving(true);
     try {
-      // Traduction inverse : UI vers Enums DB
       let dbType = 'BUS';
       if (vehicleType === 'Train') dbType = 'TRAIN';
       if (vehicleType === 'Bateau') dbType = 'BOAT';
@@ -133,19 +141,28 @@ export default function AgencyVehicles() {
         capacity: Number(totalSeats),
         rows: Number(rows),
         seats_per_row: Number(seatsPerRow),
-        company_id: user.companyId
+        company_id: user.companyId // On utilise l'ID de l'agence de l'utilisateur connecté
       };
 
       if (editId) {
-        await supabase.from('vehicles').update(payload).eq('id', editId);
+        const { error } = await supabase.from('vehicles').update(payload).eq('id', editId);
+        if (error) throw error;
         toast.success('Matériel mis à jour');
       } else {
-        await supabase.from('vehicles').insert([payload]);
+        const { error } = await supabase.from('vehicles').insert([payload]);
+        if (error) throw error;
         toast.success('Nouveau matériel ajouté à la flotte');
       }
-      setShowForm(false); resetForm(); loadData();
+
+      setShowForm(false); 
+      resetForm(); 
+      
+      // Petit délai pour laisser Supabase indexer la donnée avant de recharger
+      setTimeout(() => loadData(), 500); 
+
     } catch (e: any) { 
-      toast.error('Erreur lors de l’enregistrement'); 
+      console.error("Erreur d'enregistrement :", e);
+      toast.error(`Erreur : ${e.message || 'Impossible d\'enregistrer'}`); 
     } finally { 
       setSaving(false); 
     }
@@ -175,10 +192,10 @@ export default function AgencyVehicles() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-black italic text-primary tracking-tighter uppercase">Gestion de la Flotte</h1>
-          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Inventaire du matériel de transport</p>
+          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Inventaire de la flotte de transport</p>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-12 px-6 shadow-lg shadow-primary/20 transition-all active:scale-95">
-          <Plus size={20} /> ENREGISTRER UN MATÉRIEL
+          <Plus size={20} /> ENREGISTRER UN VEHICULE
         </Button>
       </div>
 
