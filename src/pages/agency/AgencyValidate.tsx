@@ -67,7 +67,7 @@ type Result = {
     rawStatus: string;
     passengers: PassengerData[];
     tripType: string;
-    registration: string; // NOUVEAU
+    registration: string;
     freeWeight: number;
     excessPrice: number;
     luggages: LuggageData[];
@@ -109,7 +109,6 @@ export default function AgencyValidate() {
         if (parsed && parsed.ref) ref = parsed.ref.toUpperCase();
       } catch (e) {}
 
-      // MISE À JOUR QUERY : Ajout de la jointure vehicle:vehicles(registration)
       const { data: b, error } = await supabase
         .from('bookings')
         .select(`*, trip:trips(*, from:cities!from_id(name), to:cities!to_id(name), company:companies(*), vehicle:vehicles(registration)), passengers(*), luggages(*)`)
@@ -146,7 +145,7 @@ export default function AgencyValidate() {
           rawStatus: b.status,
           passengers: b.passengers.map((p: any) => ({ ...p, firstName: p.first_name, lastName: p.last_name })),
           tripType: b.trip.type,
-          registration: b.trip.vehicle?.registration || '—', // MAPPAGE DE L'IMMATRICULATION
+          registration: b.trip.vehicle?.registration || '—',
           freeWeight: b.trip.company.default_free_weight_limit || 30,
           excessPrice: b.trip.company.default_excess_weight_price || 500,
           luggages: b.luggages || [],
@@ -158,6 +157,33 @@ export default function AgencyValidate() {
       toast.error('Erreur serveur.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * LA FONCTION QUI MANQUAIT : handleBoardPassenger
+   */
+  const handleBoardPassenger = async (passengerId: string) => {
+    if (!canBoardPassengers) {
+      toast.error("Vous n'avez pas les droits pour valider l'embarquement.");
+      return;
+    }
+    setBoardingId(passengerId);
+    try {
+      const { error } = await supabase
+        .from('passengers')
+        .update({ boarded: true })
+        .eq('id', passengerId);
+
+      if (error) throw error;
+
+      toast.success("Passager enregistré à bord !");
+      // Rafraîchir les données pour mettre à jour l'UI
+      handleValidate(result?.booking?.bookingNumber);
+    } catch (e) {
+      toast.error("Erreur lors de la validation.");
+    } finally {
+      setBoardingId(null);
     }
   };
 
@@ -193,17 +219,7 @@ export default function AgencyValidate() {
     }
   };
 
-  const handleBoardPassenger = async (passengerId: string) => {
-    setBoardingId(passengerId);
-    try {
-      await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
-      handleValidate(result?.booking?.bookingNumber);
-      toast.success("Passager à bord");
-    } finally {
-      setBoardingId(null);
-    }
-  };
-
+  // Pagination passagers
   const paginatedPassengers = useMemo(() => {
     if (!result?.booking) return [];
     const start = (currentPage - 1) * itemsPerPage;
@@ -212,8 +228,6 @@ export default function AgencyValidate() {
 
   const totalPages = Math.ceil((result?.booking?.passengers.length || 0) / itemsPerPage);
   const luggageTotal = result?.booking?.luggages?.reduce((sum, l) => sum + Number(l.total_price || 0), 0) || 0;
-
-  // Déterminer l'icône de transport
   const TransportIcon = result?.booking?.tripType === 'BOAT' ? Ship : result?.booking?.tripType === 'TRAIN' ? Train : Bus;
 
   return (
@@ -246,7 +260,6 @@ export default function AgencyValidate() {
 
       {result && result.booking && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          
           <div className={`border-2 rounded-[2rem] p-6 shadow-xl transition-all ${result.valid ? 'border-emerald-500 bg-emerald-50/10' : 'border-amber-500 bg-amber-50/10'}`}>
             
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-dashed border-slate-200">
@@ -265,7 +278,6 @@ export default function AgencyValidate() {
               <InfoField label="Itinéraire" value={`${result.booking.departureCity} → ${result.booking.arrivalCity}`} />
               <InfoField label="Sièges" value={result.booking.seatNumber} />
               
-              {/* AFFICHAGE DE L'IMMATRICULATION ICI */}
               <div className="col-span-2 flex items-center gap-2 pt-2 border-t border-slate-100">
                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                     <TransportIcon size={16} />
@@ -309,13 +321,10 @@ export default function AgencyValidate() {
                       </div>
                     ) : (
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <select 
-                          className="flex-1 h-10 rounded-lg border-2 bg-white px-3 text-xs font-bold"
-                          onChange={(e) => setSelectedBusItem(JSON.parse(e.target.value))}
-                        >
-                          {agencyRates.length > 0 ? agencyRates.map((item, i) => (
+                        <select className="flex-1 h-10 rounded-lg border-2 bg-white px-3 text-xs font-bold" onChange={(e) => setSelectedBusItem(JSON.parse(e.target.value))}>
+                          {agencyRates.map((item, i) => (
                             <option key={i} value={JSON.stringify(item)}>{item.label} ({item.price} F)</option>
-                          )) : <option>Aucun tarif configuré</option>}
+                          ))}
                         </select>
                         <div className="flex gap-2">
                           <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-10 rounded-lg border-2 font-black text-center" />
@@ -342,18 +351,18 @@ export default function AgencyValidate() {
                ) : (
                  <div className="space-y-2">
                     {paginatedPassengers.map(p => (
-                      <div key={p.id} className="flex items-center justify-between bg-white border border-slate-100 p-3 rounded-2xl shadow-xs group">
+                      <div key={p.id} className="flex items-center justify-between bg-white border border-slate-100 p-3 rounded-2xl shadow-xs">
                         <div>
                           <p className="font-bold text-xs text-slate-800">{p.firstName} {p.lastName}</p>
                           <Badge variant="outline" className="h-4 font-black text-[8px] uppercase tracking-tighter border-primary/20 text-primary">Siège {p.seatNumber || "—"}</Badge>
                         </div>
                         {p.boarded ? (
-                          <span className="text-emerald-600 font-black text-[9px] uppercase flex items-center gap-1 px-3 py-1 bg-emerald-50 rounded-lg border border-emerald-100">À Bord</span>
+                          <span className="text-emerald-600 font-black text-[9px] uppercase flex items-center gap-1 px-3 py-1 bg-emerald-50 rounded-lg">À Bord</span>
                         ) : (
                           <Button 
                             onClick={() => handleBoardPassenger(p.id)} 
                             disabled={boardingId === p.id || !canBoardPassengers} 
-                            className="h-8 px-4 font-black uppercase text-[9px] rounded-lg shadow-sm"
+                            className="h-8 px-4 font-black uppercase text-[9px] rounded-lg"
                           >
                              {boardingId === p.id ? <RefreshCw className="animate-spin h-3 w-3"/> : "Valider"}
                           </Button>
@@ -373,19 +382,10 @@ export default function AgencyValidate() {
             </div>
           </div>
 
-          {/* SECTION CAISSE */}
           {!result.valid && canCollectMoney && (
             <div className="bg-emerald-600 p-6 rounded-[2rem] shadow-xl text-white flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none">Caisse agence</p>
-                <h4 className="text-sm font-black uppercase italic mt-1 leading-none">Encaisser le billet</h4>
-              </div>
-              <Button 
-                onClick={() => supabase.from('bookings').update({status:'PAYE'}).eq('id', result.booking?.id).then(()=>handleValidate(result.booking?.bookingNumber))} 
-                className="bg-white text-emerald-700 hover:bg-slate-50 font-black text-xs h-10 px-6 rounded-xl shadow-lg"
-              >
-                VALIDER CASH
-              </Button>
+              <div><p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none">Caisse</p><h4 className="text-sm font-black uppercase italic mt-1 leading-none">Encaisser le billet</h4></div>
+              <Button onClick={() => supabase.from('bookings').update({status:'PAYE'}).eq('id', result.booking?.id).then(()=>handleValidate(result.booking?.bookingNumber))} className="bg-white text-emerald-700 hover:bg-slate-50 font-black text-xs h-10 px-6 rounded-xl shadow-lg">VALIDER CASH</Button>
             </div>
           )}
         </div>
