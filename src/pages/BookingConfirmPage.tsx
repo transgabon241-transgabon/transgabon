@@ -1,21 +1,25 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Smartphone, Building2 } from 'lucide-react';
+import { Smartphone, Building2, Check, CreditCard, Ship, Crown, Gem } from 'lucide-react';
 
 type TripDetails = {
   id: string;
   price: number;
+  vipPrice: number;
+  businessPrice: number;
   companyName: string;
   vehicleNumber: string;
+  type: string; // BUS, TRAIN, BOAT
 };
 
 const PAYMENT_METHODS = [
@@ -27,7 +31,11 @@ const PAYMENT_METHODS = [
 export default function BookingConfirmPage() {
   const { departureId } = useParams();
   const [params] = useSearchParams();
+  
+  // Récupération des infos de l'URL
   const seat = params.get('seat') || '';
+  const shipClass = params.get('class') || 'ECO'; // Par défaut ECO pour les bus/trains
+  
   const navigate = useNavigate();
   const { user, isLoading, loginWithRedirect } = useAuth();
 
@@ -38,14 +46,10 @@ export default function BookingConfirmPage() {
   const [phone, setPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
 
-  // S'assure que l'utilisateur est connecté pour finaliser sa commande
   useEffect(() => {
-    if (!isLoading && !user) {
-      loginWithRedirect({ initialView: 'signin' });
-    }
+    if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
   }, [isLoading, user, loginWithRedirect]);
 
-  // Pré-remplit les informations avec les coordonnées de l'utilisateur connecté
   useEffect(() => {
     if (user) {
       setName(`${user.firstName || ''} ${user.lastName || ''}`.trim());
@@ -53,29 +57,31 @@ export default function BookingConfirmPage() {
     }
   }, [user]);
 
-  // Chargement des détails réels du trajet depuis Supabase
   useEffect(() => {
     if (!departureId) return;
     setLoading(true);
 
     const loadTripDetails = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: d, error } = await supabase
           .from('trips')
           .select('*, company:companies(name)')
           .eq('id', departureId)
           .single();
 
-        if (data && !error) {
+        if (d && !error) {
           setTrip({
-            id: data.id,
-            price: data.price,
-            companyName: (data.company as any)?.name || 'Compagnie',
-            vehicleNumber: data.vehicle_number,
+            id: d.id,
+            price: d.price,
+            vipPrice: d.class_vip_price || d.price * 2,
+            businessPrice: d.class_business_price || d.price * 1.5,
+            companyName: d.company?.name || 'Compagnie',
+            vehicleNumber: d.vehicle_number,
+            type: d.type
           });
         }
       } catch (err) {
-        console.error("Erreur lors du chargement des détails du trajet :", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -84,26 +90,34 @@ export default function BookingConfirmPage() {
     loadTripDetails();
   }, [departureId]);
 
+  // CALCUL DU PRIX FINAL SELON LA CLASSE
+  const finalPrice = useMemo(() => {
+    if (!trip) return 0;
+    if (trip.type === 'BOAT') {
+      if (shipClass === 'VIP') return trip.vipPrice;
+      if (shipClass === 'BUSINESS') return trip.businessPrice;
+    }
+    return trip.price;
+  }, [trip, shipClass]);
+
   const handleSubmit = async () => {
     if (!name.trim() || !phone.trim() || !paymentMethod || !departureId || !seat) {
-      toast.error('Veuillez remplir tous les champs obligatoires.');
+      toast.error('Veuillez remplir tous les champs.');
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // 1. Découpe du nom complet saisi pour remplir Prénom et Nom
       const nameParts = name.trim().split(/\s+/);
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '—';
 
-      // 2. Mappage des énumérations de l'UI vers les valeurs attendues par la base SQL
       let mappedMethod: 'AIRTEL_MONEY' | 'MOOV_MONEY' | 'AGENCE' = 'AGENCE';
       if (paymentMethod === 'airtel_money') mappedMethod = 'AIRTEL_MONEY';
       else if (paymentMethod === 'moov_money') mappedMethod = 'MOOV_MONEY';
 
-      // 3. Appel de la fonction transactionnelle sécurisée (RPC) sur Supabase
+      // Appel RPC Supabase (On envoie le finalPrice calculé)
       const { data, error } = await supabase.rpc('create_booking_transaction', {
         p_trip_id: departureId,
         p_user_id: user?.id || null,
@@ -113,20 +127,15 @@ export default function BookingConfirmPage() {
         p_passenger_last_name: lastName,
         p_seat_number: seat,
         p_payment_method: mappedMethod,
-        p_total_amount: trip ? trip.price : 0,
+        p_total_amount: finalPrice,
       });
 
-      if (error || !data?.success) {
-        toast.error(error?.message || data?.error || 'Erreur lors de la réservation');
-        setSubmitting(false);
-        return;
-      }
+      if (error || !data?.success) throw new Error(error?.message || data?.error);
 
-      toast.success('Réservation créée avec succès !');
-      // Redirige vers la page du billet avec l'identifiant réel du billet généré
+      toast.success('Réservation confirmée !');
       navigate(`/ticket/${data.booking_id}`);
     } catch (err: any) {
-      toast.error('Une erreur réseau est survenue.');
+      toast.error(err.message || 'Erreur lors de la réservation');
     } finally {
       setSubmitting(false);
     }
@@ -135,64 +144,100 @@ export default function BookingConfirmPage() {
   if (isLoading || !user) return null;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-lg">
-      <h1 className="text-2xl font-bold mb-2">Confirmer la réservation</h1>
-      <p className="text-muted-foreground mb-6">Siège sélectionné : <strong>{seat}</strong></p>
+    <div className="container mx-auto px-4 py-8 max-w-lg text-left">
+      <h1 className="text-3xl font-black italic mb-2 tracking-tight">Finaliser ma place</h1>
+      <p className="text-muted-foreground mb-8 text-sm uppercase font-bold tracking-widest">Étape finale · Confirmation</p>
 
       {loading ? (
         <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full rounded-[2rem]" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-xl" />
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
+          {/* RÉCAPITULATIF DU VOYAGE */}
           {trip && (
-            <div className="rounded-xl border border-border bg-muted/20 p-4 text-sm text-left">
-              <p className="font-semibold text-primary">{trip.companyName} · {trip.vehicleNumber}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Montant à régler : <strong>{trip.price.toLocaleString()} FCFA</strong></p>
+            <div className="bg-white border-2 border-primary/10 rounded-[2rem] p-6 shadow-xl shadow-primary/5 relative overflow-hidden">
+               <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="font-black text-primary uppercase text-[10px] tracking-widest mb-1">{trip.companyName}</p>
+                    <p className="font-bold text-slate-800 italic">Voyage n° {trip.vehicleNumber}</p>
+                  </div>
+                  <Badge className="bg-slate-900 text-white border-none font-black px-3 py-1 rounded-full uppercase text-[10px]">
+                    Siège {seat}
+                  </Badge>
+               </div>
+
+               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 mb-4">
+                  <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary font-bold">
+                    {trip.type === 'BOAT' ? <Ship size={20} /> : <Check size={20} />}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Confort sélectionné</p>
+                    <p className="font-black text-sm text-slate-700">{trip.type === 'BOAT' ? shipClass : 'Classe Unique'}</p>
+                  </div>
+               </div>
+
+               <div className="flex justify-between items-end pt-4 border-t border-dashed">
+                  <p className="text-xs font-bold text-slate-400 uppercase">Total à payer</p>
+                  <p className="text-3xl font-black text-primary tracking-tighter">{finalPrice.toLocaleString()} <span className="text-xs">FCFA</span></p>
+               </div>
             </div>
           )}
 
-          <div className="text-left space-y-1.5">
-            <Label htmlFor="nameInput">Nom complet du passager</Label>
-            <Input id="nameInput" value={name} onChange={e => setName(e.target.value)} placeholder="Nom et prénom" className="mt-1" />
-          </div>
-          
-          <div className="text-left space-y-1.5">
-            <Label htmlFor="phoneInput">Numéro de téléphone</Label>
-            <Input id="phoneInput" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+241 XX XX XX XX" className="mt-1" />
+          {/* FORMULAIRE PASSAGER */}
+          <div className="space-y-4 bg-slate-50/50 p-6 rounded-[2rem] border-2 border-white">
+            <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Nom du voyageur</Label>
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Prénom et Nom" className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
+            </div>
+            
+            <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Téléphone de contact</Label>
+                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+241" className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
+            </div>
           </div>
 
-          <div className="text-left">
-            <Label className="mb-3 block">Mode de paiement</Label>
+          {/* MODES DE PAIEMENT */}
+          <div className="space-y-3">
+            <Label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Choisir un mode de paiement</Label>
             <div className="grid gap-3">
               {PAYMENT_METHODS.map(pm => (
                 <button
                   key={pm.value}
                   type="button"
                   onClick={() => setPaymentMethod(pm.value)}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all group ${
                     paymentMethod === pm.value
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border hover:border-primary/40'
+                      ? 'border-primary bg-primary/5 shadow-inner'
+                      : 'border-slate-100 bg-white hover:border-primary/20'
                   }`}
                 >
-                  <pm.icon className="h-5 w-5" />
-                  <span className="font-medium">{pm.label}</span>
+                  <div className="flex items-center gap-4">
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${paymentMethod === pm.value ? 'bg-primary text-white' : 'bg-slate-50 text-slate-400'}`}>
+                       <pm.icon size={20} />
+                    </div>
+                    <span className={`font-bold ${paymentMethod === pm.value ? 'text-primary' : 'text-slate-600'}`}>{pm.label}</span>
+                  </div>
+                  {paymentMethod === pm.value && <div className="h-5 w-5 bg-primary rounded-full flex items-center justify-center text-white"><Check size={12} strokeWidth={4} /></div>}
                 </button>
               ))}
             </div>
           </div>
 
           <Button
-            className="w-full"
-            size="lg"
+            className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-tighter hover:scale-[1.02] transition-transform mt-4"
             onClick={handleSubmit}
             disabled={submitting || !name || !phone || !paymentMethod || !trip}
           >
-            {submitting ? 'Réservation en cours…' : 'Confirmer la réservation'}
+            {submitting ? <RefreshCw className="animate-spin mr-2" /> : <CreditCard className="mr-2 h-6 w-6" />}
+            {submitting ? 'RÉSERVATION...' : 'CONFIRMER ET PAYER'}
           </Button>
+
+          <p className="text-[9px] text-center text-muted-foreground font-medium px-8">
+            En confirmant, vous acceptez les conditions de transport de la compagnie et la politique de confidentialité de Gabon Mobilité.
+          </p>
         </div>
       )}
     </div>

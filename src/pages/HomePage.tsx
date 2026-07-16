@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
-import { Search, Train, Bus, ArrowRightLeft, Calendar, MapPin } from 'lucide-react';
+import { Search, Train, Bus, ArrowRightLeft, Calendar, MapPin, Ship } from 'lucide-react'; // Ajout de Ship
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -20,9 +20,9 @@ const FEATURES = [
 
 const TRANSPORT_TYPES = [
   { icon: Train, label: 'Train (SETRAG)' },
+  { icon: Ship, label: 'Bateau (Maritime)' }, // NOUVEAU
   { icon: Bus, label: 'Bus' },
-  { icon: Bus, label: 'Coaster' },
-  { icon: Bus, label: 'MiniBus' },
+  { icon: Bus, label: 'Coaster / MiniBus' },
 ];
 
 // Liste de secours si la base de données est inaccessible temporairement
@@ -86,18 +86,18 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-black/50" />
         </div>
 
-        {/* CONTENU (Identique à l'original) */}
+        {/* CONTENU */}
         <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
           <div className="max-w-2xl mx-auto text-center mb-10">
             <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">
               Voyagez à travers le Gabon en toute simplicité
             </h1>
             <p className="text-lg md:text-xl opacity-90 leading-relaxed">
-              Réservez vos billets de train et de bus en ligne. Comparez, réservez, payez — sans vous déplacer.
+              Réservez vos billets de train, bateau et bus en ligne. Comparez, réservez, payez — sans vous déplacer.
             </p>
           </div>
 
-          {/* Search form (Identique à l'original) */}
+          {/* Search form */}
           <div className="max-w-3xl mx-auto bg-card text-foreground rounded-2xl p-6 shadow-lg">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-end mb-4 text-left">
               <div>
@@ -139,7 +139,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features (Identique à l'original) */}
+      {/* Features */}
       <section className="py-16">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl font-bold text-center mb-10">Comment ça marche ?</h2>
@@ -157,13 +157,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Transport types (Identique à l'original) */}
+      {/* Transport types */}
       <section className="py-16 bg-muted/50">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl font-bold text-center mb-10">Types de transport disponibles</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
             {TRANSPORT_TYPES.map((t, i) => (
-              <div key={i} className="bg-card rounded-xl p-6 text-center shadow-sm border border-border">
+              <div key={i} className="bg-card rounded-xl p-6 text-center shadow-sm border border-border transition-transform hover:scale-105">
                 <t.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
                 <span className="text-sm font-medium">{t.label}</span>
               </div>

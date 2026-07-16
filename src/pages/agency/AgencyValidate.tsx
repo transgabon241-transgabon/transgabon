@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from "@/lib/auth-context";
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,9 @@ import {
   Plus,
   Lock,
   Calculator,
-  Ticket
+  Ticket,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -71,27 +73,25 @@ type Result = {
 export default function AgencyValidate() {
   const { user } = useAuth();
   
-  // États de l'interface
   const [qrInput, setQrInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
-  // États des formulaires bagages
+  // Pagination pour les passagers
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
+
+  // États bagages
   const [agencyRates, setAgencyRates] = useState<AgencyLuggageType[]>([]);
   const [weightInput, setWeightInput] = useState<string>('');
   const [selectedBusItem, setSelectedBusItem] = useState<AgencyLuggageType | null>(null);
   const [qtyInput, setQtyInput] = useState('1');
 
-  // Gestion des permissions
   const userRole = user?.role?.toUpperCase();
   const canCollectMoney = ['CAISSIER', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
   const canBoardPassengers = ['AGENCE_EMBARQUEMENT', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
 
-  /**
-   * ACTION : VALIDER LE BILLET
-   * Récupère les infos du trajet, des passagers et des bagages déjà enregistrés.
-   */
   const handleValidate = async (forcedRef?: string) => {
     const targetRef = forcedRef || qrInput.trim();
     if (!targetRef) return;
@@ -99,7 +99,6 @@ export default function AgencyValidate() {
     setLoading(true);
     try {
       let ref = targetRef.toUpperCase();
-      // Gestion du format JSON si scan QR direct
       try {
         const parsed = JSON.parse(targetRef);
         if (parsed && parsed.ref) ref = parsed.ref.toUpperCase();
@@ -107,12 +106,7 @@ export default function AgencyValidate() {
 
       const { data: b, error } = await supabase
         .from('bookings')
-        .select(`
-          *, 
-          trip:trips(*, from:cities!from_id(name), to:cities!to_id(name), company:companies(*)), 
-          passengers(*), 
-          luggages(*)
-        `)
+        .select(`*, trip:trips(*, from:cities!from_id(name), to:cities!to_id(name), company:companies(*)), passengers(*), luggages(*)`)
         .eq('reference', ref)
         .single();
 
@@ -121,7 +115,6 @@ export default function AgencyValidate() {
         return;
       }
 
-      // Chargement des tarifs personnalisés de l'agence pour les colis/bagages
       const { data: rates } = await supabase
         .from('company_luggage_settings')
         .select('label, price')
@@ -134,7 +127,7 @@ export default function AgencyValidate() {
 
       setResult({
         valid: b.status === 'PAYE',
-        message: b.status === 'PAYE' ? 'Billet prêt pour départ' : 'Paiement en attente',
+        message: b.status === 'PAYE' ? 'Billet Validé' : 'Paiement Requis',
         booking: {
           id: b.id,
           bookingNumber: b.reference,
@@ -153,23 +146,18 @@ export default function AgencyValidate() {
           companyId: b.trip.company_id
         }
       });
+      setCurrentPage(1);
     } catch (e) {
-      toast.error('Erreur de communication avec le serveur.');
+      toast.error('Erreur serveur.');
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * ACTION : ENREGISTRER UN BAGAGE
-   * Applique la règle selon le transport (Poids pour Train / Forfait pour Bus).
-   */
   const handleSaveLuggage = async () => {
     if (!result?.booking) return;
-    
-    // SÉCURITÉ : On bloque l'ajout si les passagers sont déjà dans le véhicule
     if (result.booking.passengers.some(p => p.boarded)) {
-      toast.error("Impossible : Le passager est déjà embarqué.");
+      toast.error("Interdit : Passager déjà à bord.");
       return;
     }
 
@@ -183,203 +171,198 @@ export default function AgencyValidate() {
       if (result.booking.tripType === 'TRAIN') {
         const w = parseFloat(weightInput);
         const excess = Math.max(0, w - result.booking.freeWeight);
-        payload = { ...payload, label: `Pesée: ${w}kg`, total_price: excess * result.booking.excessPrice, quantity: 1 };
+        payload = { ...payload, label: `Poids: ${w}kg`, total_price: excess * result.booking.excessPrice, quantity: 1 };
       } else {
         if (!selectedBusItem) return;
         const qty = parseInt(qtyInput);
         payload = { ...payload, label: selectedBusItem.label, quantity: qty, total_price: selectedBusItem.price * qty };
       }
 
-      const { error } = await supabase.from('luggages').insert([payload]);
-      if (error) throw error;
-      
-      toast.success("Bagage enregistré sur le billet");
-      handleValidate(result.booking.bookingNumber); // Refresh
+      await supabase.from('luggages').insert([payload]);
+      handleValidate(result.booking.bookingNumber);
       setWeightInput('');
-    } catch (e) {
-      toast.error("Erreur lors de l'enregistrement.");
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * LOGIQUE DE CALCULS FINAUX
-   */
-  const isAnyPassengerBoarded = result?.booking?.passengers.some(p => p.boarded) || false;
+  const handleBoardPassenger = async (passengerId: string) => {
+    setBoardingId(passengerId);
+    try {
+      await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
+      handleValidate(result?.booking?.bookingNumber);
+      toast.success("Passager à bord");
+    } finally {
+      setBoardingId(null);
+    }
+  };
+
+  // Logique pagination passagers
+  const paginatedPassengers = useMemo(() => {
+    if (!result?.booking) return [];
+    const start = (currentPage - 1) * itemsPerPage;
+    return result.booking.passengers.slice(start, start + itemsPerPage);
+  }, [result, currentPage]);
+
+  const totalPages = Math.ceil((result?.booking?.passengers.length || 0) / itemsPerPage);
+
   const luggageTotal = result?.booking?.luggages?.reduce((sum, l) => sum + Number(l.total_price || 0), 0) || 0;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 pb-20 text-left space-y-8">
+    <div className="max-w-2xl mx-auto p-4 pb-20 text-left space-y-6">
       
-      {/* HEADER PROFESSIONNEL */}
-      <header className="flex items-center gap-4 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm w-full">
-        <div className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20">
-          <Ticket className="h-6 w-6 text-white" />
+      <header className="flex items-center gap-4 bg-white p-5 rounded-3xl border-2 border-slate-50 shadow-sm w-full">
+        <div className="p-2.5 bg-primary rounded-xl shadow-lg shadow-primary/10">
+          <Ticket className="h-5 w-5 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-black italic tracking-tight text-slate-900 uppercase">Guichet de Contrôle</h1>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Validation & Gestion des départs</p>
+          <h1 className="text-xl font-black italic tracking-tight text-slate-900 uppercase leading-none">Guichet de Contrôle</h1>
+          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Validation & Départs</p>
         </div>
       </header>
 
-      {/* ZONE DE RECHERCHE DYNAMIQUE */}
-      <div className="bg-card border-2 border-primary/10 rounded-[2rem] p-6 shadow-sm">
-        <Label className="text-[10px] font-black uppercase text-primary ml-2 mb-2 block">Scanner ou saisir le numéro de billet</Label>
+      <div className="bg-card border-2 border-primary/10 rounded-3xl p-5 shadow-sm">
         <div className="flex gap-2">
           <Input 
             value={qrInput} 
             onChange={e => setQrInput(e.target.value)} 
-            placeholder="Ex: GAB-XXXXXX" 
-            className="h-14 rounded-2xl border-2 font-bold text-lg px-6 focus:border-primary transition-all"
+            placeholder="Numéro de billet..." 
+            className="h-12 rounded-xl border-2 font-bold px-5"
             onKeyDown={e => e.key === 'Enter' && handleValidate()} 
           />
-          <Button onClick={() => handleValidate()} disabled={loading} className="h-14 px-8 rounded-2xl shadow-lg active:scale-95 transition-transform">
-            {loading ? <RefreshCw className="animate-spin h-5 w-5" /> : <Search className="h-6 w-6" />}
+          <Button onClick={() => handleValidate()} disabled={loading} className="h-12 w-12 rounded-xl shadow-lg">
+            {loading ? <RefreshCw className="animate-spin h-5 w-5" /> : <Search className="h-5 w-5" />}
           </Button>
         </div>
       </div>
 
       {result && result.booking && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           
-          {/* CARTE RÉSULTAT PRINCIPALE */}
-          <div className={`border-2 rounded-[2.5rem] p-8 shadow-xl transition-all ${result.valid ? 'border-emerald-500 bg-emerald-50/20 shadow-emerald-100/50' : 'border-amber-500 bg-amber-50/20 shadow-amber-100/50'}`}>
+          <div className={`border-2 rounded-[2rem] p-6 shadow-xl transition-all ${result.valid ? 'border-emerald-500 bg-emerald-50/10' : 'border-amber-500 bg-amber-50/10'}`}>
             
-            {/* Statut du billet */}
-            <div className="flex items-center justify-between mb-8 pb-6 border-b border-dashed border-slate-200">
-              <div className="flex items-center gap-4">
-                {result.valid ? <CheckCircle className="h-10 w-10 text-emerald-600" /> : <AlertCircle className="h-10 w-10 text-amber-600" />}
-                <div>
-                  <span className="text-2xl font-black uppercase tracking-tighter block leading-none">{result.message}</span>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Vérification système OK</p>
-                </div>
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-dashed border-slate-200">
+              <div className="flex items-center gap-3">
+                {result.valid ? <CheckCircle className="h-8 w-8 text-emerald-600" /> : <AlertCircle className="h-8 w-8 text-amber-600" />}
+                <span className="text-lg font-black uppercase tracking-tighter">{result.message}</span>
               </div>
-              <Badge className={`rounded-full px-4 py-1 font-black text-[10px] uppercase border-2 ${result.valid ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+              <Badge className={`rounded-full px-3 py-0.5 font-black text-[9px] uppercase border-2 ${result.valid ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
                 {result.booking.rawStatus}
               </Badge>
             </div>
 
-            {/* Infos Passager */}
-            <div className="grid grid-cols-2 gap-8 text-sm mb-10">
-              <InfoField label="Nom du Voyageur" value={result.booking.passengerName} />
-              <InfoField label="Référence Billet" value={result.booking.bookingNumber} />
-              <InfoField label="Itinéraire" value={`${result.booking.departureCity} → ${result.booking.arrivalCity}`} />
-              <InfoField label="Siège(s) attribué(s)" value={result.booking.seatNumber} />
+            <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+              <InfoField label="Voyageur" value={result.booking.passengerName} />
+              <InfoField label="Référence" value={result.booking.bookingNumber} />
+              <InfoField label="Trajet" value={`${result.booking.departureCity} → ${result.booking.arrivalCity}`} />
+              <InfoField label="Sièges" value={result.booking.seatNumber} />
             </div>
 
-            {/* SECTION 1 : GESTION DES BAGAGES (Calcul dynamique) */}
-            <div className="bg-white/60 p-6 rounded-[2rem] border-2 border-primary/5 shadow-inner mb-8 relative overflow-hidden">
-               <h3 className="text-xs font-black uppercase mb-4 flex items-center gap-2 text-slate-500">
-                 <Package className="h-4 w-4 text-primary" /> Enregistrement des Bagages
+            {/* SECTION BAGAGES - COMPACTE */}
+            <div className="bg-white/60 p-5 rounded-3xl border-2 border-primary/5 shadow-inner mb-6">
+               <h3 className="text-[10px] font-black uppercase mb-3 flex items-center gap-2 text-slate-400">
+                 <Package className="h-3.5 w-3.5 text-primary" /> Enregistrement Bagages
                </h3>
                
-               {/* Affichage des bagages déjà présents */}
                {result.booking.luggages.length > 0 && (
-                 <div className="space-y-2 mb-6">
+                 <div className="space-y-1.5 mb-4">
                     {result.booking.luggages.map(lug => (
-                      <div key={lug.id} className="flex justify-between items-center bg-white p-3 rounded-xl border-2 border-slate-50 text-xs font-bold shadow-sm">
-                         <span className="text-slate-700">{lug.quantity}x {lug.label}</span>
-                         <span className="text-primary font-black">{lug.total_price.toLocaleString()} FCFA</span>
+                      <div key={lug.id} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-50 text-[11px] font-bold shadow-xs">
+                         <span className="text-slate-600">{lug.quantity}x {lug.label}</span>
+                         <span className="text-primary font-black">{lug.total_price.toLocaleString()} F</span>
                       </div>
                     ))}
-                    <div className="flex justify-between p-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-tighter">
-                      <span>Total à payer (Suppléments)</span>
+                    <div className="flex justify-between p-2.5 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase">
+                      <span>Total Suppléments</span>
                       <span>{luggageTotal.toLocaleString()} FCFA</span>
                     </div>
                  </div>
                )}
 
-               {/* Verrouillage si déjà à bord */}
-               {isAnyPassengerBoarded ? (
-                 <div className="flex items-center gap-3 p-4 bg-slate-100 rounded-2xl text-slate-500 font-bold text-xs italic border border-slate-200">
-                    <Lock className="h-4 w-4" /> Modification impossible : Le passager est déjà en voyage.
-                 </div>
-               ) : (
-                 <div className="space-y-4">
+               {!result.booking.passengers.some(p => p.boarded) ? (
+                 <div className="space-y-3">
                     {result.booking.tripType === 'TRAIN' ? (
-                      /* Mode TRAIN : Pesée au KG */
-                      <div className="space-y-3">
-                         <Label className="text-[10px] font-black uppercase ml-1">Saisie du poids total (Poids gratuit : {result.booking.freeWeight}kg)</Label>
-                         <div className="flex gap-2">
-                           <Input type="number" placeholder="Poids en KG" value={weightInput} onChange={e => setWeightInput(e.target.value)} className="h-12 rounded-xl border-2 font-bold" />
-                           <Button onClick={handleSaveLuggage} className="h-12 px-6 font-black uppercase text-xs rounded-xl shadow-lg"><Calculator className="mr-2 h-4 w-4"/> Calculer</Button>
-                         </div>
+                      <div className="flex gap-2">
+                        <Input type="number" placeholder="Poids KG" value={weightInput} onChange={e => setWeightInput(e.target.value)} className="h-10 rounded-lg border-2" />
+                        <Button onClick={handleSaveLuggage} className="h-10 px-4 font-black uppercase text-[10px]">Calculer</Button>
                       </div>
                     ) : (
-                      /* Mode BUS : Sélection par article */
-                      <div className="space-y-3">
-                        <Label className="text-[10px] font-black uppercase ml-1">Type de bagage / colis</Label>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <select 
-                            className="flex-1 h-12 rounded-xl border-2 bg-white px-4 text-sm font-bold shadow-sm focus:border-primary outline-none transition-all"
-                            onChange={(e) => setSelectedBusItem(JSON.parse(e.target.value))}
-                          >
-                            {agencyRates.map((item, i) => (
-                              <option key={i} value={JSON.stringify(item)}>{item.label} ({item.price} F)</option>
-                            ))}
-                          </select>
-                          <div className="flex gap-2">
-                            <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-20 h-12 rounded-xl border-2 font-black text-center" />
-                            <Button onClick={handleSaveLuggage} className="flex-1 h-12 font-black uppercase text-xs rounded-xl shadow-lg"><Plus className="mr-2 h-4 w-4" /> Ajouter</Button>
-                          </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <select 
+                          className="flex-1 h-10 rounded-lg border-2 bg-white px-3 text-xs font-bold"
+                          onChange={(e) => setSelectedBusItem(JSON.parse(e.target.value))}
+                        >
+                          {agencyRates.map((item, i) => (
+                            <option key={i} value={JSON.stringify(item)}>{item.label} ({item.price} F)</option>
+                          ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-10 rounded-lg border-2 font-black text-center" />
+                          <Button onClick={handleSaveLuggage} className="flex-1 h-10 font-black uppercase text-[10px]">Ajouter</Button>
                         </div>
+                      </div>
+                    )}
+                 </div>
+               ) : (
+                 <p className="text-[10px] text-slate-400 italic font-bold flex items-center gap-1.5"><Lock className="h-3 w-3" /> Passager à bord, bagages verrouillés.</p>
+               )}
+            </div>
+
+            {/* SECTION EMBARQUEMENT - AVEC PAGINATION */}
+            <div className="pt-6 border-t-2 border-dashed border-slate-100">
+               <h3 className="text-[10px] font-black uppercase mb-4 flex items-center gap-2 text-slate-400">
+                 <Users className="h-3.5 w-3.5 text-primary" /> Passagers ({result.booking.passengers.length})
+               </h3>
+               
+               {!result.valid ? (
+                 <div className="bg-amber-100/50 p-4 rounded-2xl border-2 border-amber-200 text-amber-800 text-[11px] font-bold text-center uppercase tracking-tighter">
+                   Embarquement refusé : Paiement requis à la caisse.
+                 </div>
+               ) : (
+                 <div className="space-y-2">
+                    {paginatedPassengers.map(p => (
+                      <div key={p.id} className="flex items-center justify-between bg-white border border-slate-100 p-3 rounded-2xl shadow-xs group">
+                        <div>
+                          <p className="font-bold text-xs text-slate-800">{p.firstName} {p.lastName}</p>
+                          <Badge variant="outline" className="h-4 font-black text-[8px] uppercase tracking-tighter border-primary/20 text-primary">Siège {p.seatNumber || "—"}</Badge>
+                        </div>
+                        {p.boarded ? (
+                          <span className="text-emerald-600 font-black text-[9px] uppercase flex items-center gap-1 px-3 py-1 bg-emerald-50 rounded-lg">À Bord</span>
+                        ) : (
+                          <Button 
+                            onClick={() => handleBoardPassenger(p.id)} 
+                            disabled={boardingId === p.id || !canBoardPassengers} 
+                            className="h-8 px-4 font-black uppercase text-[9px] rounded-lg"
+                          >
+                             {boardingId === p.id ? <RefreshCw className="animate-spin h-3 w-3"/> : "Valider"}
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-3 pt-4">
+                        <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="h-7 w-7 rounded-lg"><ChevronLeft size={14}/></Button>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{currentPage} / {totalPages}</span>
+                        <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="h-7 w-7 rounded-lg"><ChevronRight size={14}/></Button>
                       </div>
                     )}
                  </div>
                )}
             </div>
-
-            {/* SECTION 2 : EMBARQUEMENT (Verrouillé si non payé) */}
-            <div className="mt-8 pt-8 border-t-2 border-dashed border-slate-200">
-               <h3 className="text-xs font-black uppercase mb-4 flex items-center gap-2 text-slate-500">
-                 <Users className="h-4 w-4 text-primary" /> Contrôle de la montée (Quai)
-               </h3>
-               
-               {!result.valid ? (
-                 <div className="bg-amber-100/50 p-6 rounded-[2rem] border-2 border-amber-200 flex items-center gap-4 text-amber-800 text-sm font-bold">
-                   <div className="p-3 bg-amber-200 rounded-2xl"><CreditCard className="h-6 w-6" /></div>
-                   <p>EMBARQUEMENT REFUSÉ : Veuillez diriger le voyageur vers la caisse pour régler son billet.</p>
-                 </div>
-               ) : (
-                 <div className="grid gap-3">
-                    {result.booking.passengers.map(p => (
-                      <div key={p.id} className="flex items-center justify-between bg-white border-2 border-slate-50 p-5 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all group">
-                        <div>
-                          <p className="font-bold text-slate-800">{p.firstName} {p.lastName}</p>
-                          <Badge variant="outline" className="mt-1 font-black text-[9px] uppercase tracking-widest border-primary/20 text-primary">Siège {p.seatNumber || "Libre"}</Badge>
-                        </div>
-                        {p.boarded ? (
-                          <div className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase bg-emerald-50 px-4 py-2 rounded-xl border-2 border-emerald-100 shadow-inner">
-                            <CheckCircle className="h-4 w-4"/> À Bord
-                          </div>
-                        ) : (
-                          <Button 
-                            onClick={() => handleBoardPassenger(p.id)} 
-                            disabled={boardingId === p.id || !canBoardPassengers} 
-                            className="h-10 px-6 font-black uppercase text-[10px] rounded-xl shadow-lg active:scale-95"
-                          >
-                             {boardingId === p.id ? <RefreshCw className="animate-spin h-4 w-4"/> : <UserCheck className="mr-2 h-4 w-4" />}
-                             Valider montée
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                 </div>
-               )}
-            </div>
           </div>
 
-          {/* SECTION 3 : CAISSE (Actions financières) */}
+          {/* SECTION CAISSE */}
           {!result.valid && canCollectMoney && (
-            <div className="bg-emerald-600 p-8 rounded-[3rem] shadow-2xl shadow-emerald-200/50 text-white flex flex-col sm:flex-row items-center justify-between gap-6 animate-pulse hover:animate-none transition-all">
-              <div className="text-center sm:text-left">
-                <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Caisse Agence</p>
-                <h4 className="text-xl font-black uppercase italic leading-tight">Encaisser le paiement total</h4>
+            <div className="bg-emerald-600 p-6 rounded-[2rem] shadow-xl text-white flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Caisse</p>
+                <h4 className="text-sm font-black uppercase italic">Encaisser le billet</h4>
               </div>
               <Button 
                 onClick={() => supabase.from('bookings').update({status:'PAYE'}).eq('id', result.booking?.id).then(()=>handleValidate(result.booking?.bookingNumber))} 
-                className="w-full sm:w-auto h-14 px-10 bg-white text-emerald-700 hover:bg-slate-50 font-black text-lg rounded-2xl shadow-xl active:scale-95 transition-all"
+                className="bg-white text-emerald-700 hover:bg-slate-50 font-black text-xs h-10 px-6 rounded-xl shadow-lg"
               >
                 VALIDER CASH
               </Button>
@@ -391,14 +374,11 @@ export default function AgencyValidate() {
   );
 }
 
-/**
- * COMPOSANT : CHAMP D'INFORMATION
- */
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="space-y-1">
-      <div className="text-[10px] uppercase font-black text-slate-400 tracking-widest">{label}</div>
-      <div className="font-bold text-slate-900 text-base leading-tight truncate">{value || '—'}</div>
+    <div className="space-y-0.5">
+      <div className="text-[9px] uppercase font-black text-slate-400 tracking-tighter leading-none">{label}</div>
+      <div className="font-bold text-slate-900 text-xs truncate leading-tight">{value || '—'}</div>
     </div>
   );
 }

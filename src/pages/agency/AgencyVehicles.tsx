@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,13 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Pencil, Trash2, Bus, Train } from 'lucide-react';
+import { Plus, Pencil, Trash2, Bus, Train, Ship, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
+/**
+ * TYPES DE DONNÉES
+ */
 type Vehicle = {
   id: string;
   vehicleNumber: string;
-  vehicleType: string;
+  vehicleType: string; // Label UI: Train, Bus, Bateau...
   totalSeats: number;
   rows: number;
   seatsPerRow: number;
@@ -24,43 +27,45 @@ type Vehicle = {
 
 export default function AgencyVehicles() {
   const { user } = useAuth();
+  
+  // États de données
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  // États du formulaire
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [vehicleType, setVehicleType] = useState('Bus');
   const [totalSeats, setTotalSeats] = useState('30');
   const [rows, setRows] = useState('8');
   const [seatsPerRow, setSeatsPerRow] = useState('4');
 
+  /**
+   * CHARGEMENT DE LA FLOTTE
+   */
   const loadData = async () => {
-    if (!user) return;
+    if (!user?.companyId) return;
     setLoading(true);
     try {
-      const companyId = user.companyId || null;
-      if (!companyId) {
-        setError("Ce compte agent n'est rattaché à aucune compagnie de transport.");
-        setLoading(false);
-        return;
-      }
-
-      // Lecture de la flotte de la compagnie
-      const { data, error: dbError } = await supabase
+      const { data, error } = await supabase
         .from('vehicles')
         .select('*')
-        .eq('company_id', companyId)
+        .eq('company_id', user.companyId)
         .order('name', { ascending: true });
 
-      if (dbError) throw new Error(dbError.message);
+      if (error) throw error;
 
-      // Mappage PostgreSQL snake_case vers UI camelCase
+      // Mappage PostgreSQL (BOAT, TRAIN, BUS...) vers Labels UI
       const formatted: Vehicle[] = (data || []).map(v => {
         let typeLabel = 'Bus';
         if (v.type === 'TRAIN') typeLabel = 'Train';
+        else if (v.type === 'BOAT') typeLabel = 'Bateau'; // SUPPORT MARITIME
         else if (v.type === 'COASTER') typeLabel = 'Coaster';
         else if (v.type === 'MINIBUS') typeLabel = 'MiniBus';
 
@@ -76,13 +81,22 @@ export default function AgencyVehicles() {
 
       setVehicles(formatted);
     } catch (e: any) { 
-      toast.error(e.message || 'Erreur réseau'); 
+      toast.error('Erreur lors du chargement de la flotte'); 
     } finally { 
       setLoading(false); 
     }
   };
 
   useEffect(() => { loadData(); }, [user]);
+
+  /**
+   * LOGIQUE DE PAGINATION
+   */
+  const totalPages = Math.ceil(vehicles.length / itemsPerPage);
+  const currentVehicles = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return vehicles.slice(start, start + itemsPerPage);
+  }, [vehicles, currentPage]);
 
   const resetForm = () => {
     setVehicleNumber(''); setVehicleType('Bus'); setTotalSeats('30'); setRows('8'); setSeatsPerRow('4'); setEditId(null);
@@ -98,15 +112,19 @@ export default function AgencyVehicles() {
     setShowForm(true);
   };
 
+  /**
+   * SAUVEGARDE (CREATE / UPDATE)
+   */
   const handleSave = async () => {
-    if (!user?.companyId) return;
+    if (!user?.companyId || !vehicleNumber) return;
     setSaving(true);
     try {
-      // Traduction des types UI vers Enums PostgreSQL
+      // Traduction inverse : UI vers Enums DB
       let dbType = 'BUS';
       if (vehicleType === 'Train') dbType = 'TRAIN';
-      else if (vehicleType === 'Coaster') dbType = 'COASTER';
-      else if (vehicleType === 'MiniBus') dbType = 'MINIBUS';
+      if (vehicleType === 'Bateau') dbType = 'BOAT';
+      if (vehicleType === 'Coaster') dbType = 'COASTER';
+      if (vehicleType === 'MiniBus') dbType = 'MINIBUS';
 
       const payload = {
         name: vehicleNumber.trim(),
@@ -118,125 +136,163 @@ export default function AgencyVehicles() {
       };
 
       if (editId) {
-        // Mise à jour du véhicule existant
-        const { error } = await supabase.from('vehicles').update(payload).eq('id', editId);
-        if (error) throw new Error(error.message);
-        toast.success('Véhicule mis à jour avec succès !');
+        await supabase.from('vehicles').update(payload).eq('id', editId);
+        toast.success('Matériel mis à jour');
       } else {
-        // Création d'un nouveau véhicule
-        const { error } = await supabase.from('vehicles').insert([payload]);
-        if (error) throw new Error(error.message);
-        toast.success('Véhicule ajouté à votre parc.');
+        await supabase.from('vehicles').insert([payload]);
+        toast.success('Nouveau matériel ajouté à la flotte');
       }
       setShowForm(false); resetForm(); loadData();
     } catch (e: any) { 
-      toast.error(e.message || 'Erreur d’enregistrement'); 
+      toast.error('Erreur lors de l’enregistrement'); 
     } finally { 
       setSaving(false); 
     }
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      // Sécurité d'intégrité : Empêche la suppression s'il y a des départs programmés avec ce véhicule
-      const { count } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact', head: true })
-        .eq('vehicle_id', id);
+    // Sécurité : On vérifie si le véhicule est utilisé avant de supprimer
+    const { count } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('vehicle_id', id);
+    if (count && count > 0) {
+      toast.error("Suppression impossible : Ce véhicule est affecté à des voyages planifiés.");
+      return;
+    }
 
-      if (count && count > 0) {
-        toast.error("Impossible de supprimer ce véhicule. Il est actuellement affecté à un départ planifié.");
-        return;
-      }
-
-      const { error } = await supabase.from('vehicles').delete().eq('id', id);
-      if (error) throw new Error(error.message);
-
+    const { error } = await supabase.from('vehicles').delete().eq('id', id);
+    if (!error) {
       setVehicles(prev => prev.filter(v => v.id !== id));
-      toast.success('Véhicule supprimé de la flotte.');
-    } catch (e: any) { 
-      toast.error(e.message || 'Erreur lors de la suppression'); 
+      toast.success('Véhicule retiré du parc');
     }
   };
 
-  if (loading) return <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>;
-  if (error) return <div className="text-destructive p-8 text-left">{error}</div>;
+  if (loading) return <div className="max-w-6xl mx-auto p-8 space-y-4"><Skeleton className="h-12 w-48" /><Skeleton className="h-64 w-full rounded-[2rem]" /></div>;
 
   return (
-    <div className="text-foreground text-left">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Gestion des véhicules</h1>
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2"><Plus className="h-4 w-4" /> Ajouter</Button>
+    <div className="max-w-6xl mx-auto p-4 text-left">
+      
+      {/* HEADER PROFESSIONNEL */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-black italic text-primary tracking-tighter uppercase">Gestion de la Flotte</h1>
+          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Inventaire du matériel de transport</p>
+        </div>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-12 px-6 shadow-lg shadow-primary/20 transition-all active:scale-95">
+          <Plus size={20} /> ENREGISTRER UN MATÉRIEL
+        </Button>
       </div>
 
       {vehicles.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Bus className="h-12 w-12 mx-auto mb-4" />
-          <p>Aucun véhicule enregistré</p>
-          <Button variant="outline" className="mt-4" onClick={() => { resetForm(); setShowForm(true); }}>Ajouter un véhicule</Button>
+        <div className="p-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
+          <Bus className="h-12 w-12 mx-auto mb-4 text-slate-200" />
+          <p className="text-slate-400 font-bold uppercase text-xs tracking-widest mb-4">Aucun véhicule enregistré</p>
+          <Button variant="outline" onClick={() => setShowForm(true)} className="rounded-xl border-2">Ajouter mon premier véhicule</Button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {vehicles.map(v => {
-            const Icon = v.vehicleType === 'Train' ? Train : Bus;
-            return (
-              <div key={v.id} className="border rounded-xl bg-card p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
-                    <Icon className="h-5 w-5 text-accent-foreground" />
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {currentVehicles.map(v => (
+              <div key={v.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all group relative overflow-hidden">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${
+                    v.vehicleType === 'Train' ? 'bg-slate-900' : 
+                    v.vehicleType === 'Bateau' ? 'bg-blue-600' : 
+                    'bg-primary'
+                  }`}>
+                    {v.vehicleType === 'Train' ? <Train size={24} /> : v.vehicleType === 'Bateau' ? <Ship size={24} /> : <Bus size={24} />}
                   </div>
                   <div>
-                    <div className="font-semibold">{v.vehicleNumber}</div>
-                    <div className="text-xs text-muted-foreground">{v.vehicleType} • {v.totalSeats} places</div>
+                    <div className="font-black text-xl text-slate-800 tracking-tight">{v.vehicleNumber}</div>
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{v.vehicleType} • {v.totalSeats} Places</div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 font-semibold" onClick={() => openEdit(v)}><Pencil className="h-3 w-3 mr-1" /> Modifier</Button>
+                
+                <div className="flex gap-2 relative z-10">
+                  <Button variant="outline" size="sm" className="flex-1 font-black rounded-xl border-2 hover:bg-slate-50 gap-2 h-10" onClick={() => openEdit(v)}>
+                    <Pencil size={14} /> MODIFIER
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" className="rounded-xl border-2 text-red-500 hover:bg-red-50 h-10"><Trash2 size={16} /></Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader className="text-left">
-                        <AlertDialogTitle>Supprimer {v.vehicleNumber} ?</AlertDialogTitle>
-                        <AlertDialogDescription>Cette action est irréversible et supprimera le matériel de votre parc de flotte.</AlertDialogDescription>
+                    <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="font-black italic text-2xl uppercase">Retirer de la flotte ?</AlertDialogTitle>
+                        <AlertDialogDescription className="font-medium text-slate-600">
+                          Voulez-vous vraiment supprimer le véhicule <strong>{v.vehicleNumber}</strong> de votre inventaire ?
+                        </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(v.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                        <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(v.id)} className="bg-red-600 rounded-xl font-bold">OUI, SUPPRIMER</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+
+          {/* PAGINATION UNIFIÉE */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-4 mt-12 bg-slate-100 p-2 rounded-2xl w-fit mx-auto border-2 border-white shadow-sm">
+              <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10"><ChevronLeft /></Button>
+              <div className="flex items-center gap-1 font-black text-xs uppercase tracking-widest text-slate-400 px-2">
+                <span className="text-primary">{currentPage}</span>
+                <span>/</span>
+                <span>{totalPages}</span>
+              </div>
+              <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10"><ChevronRight /></Button>
+            </div>
+          )}
+        </>
       )}
 
+      {/* DIALOG FORMULAIRE STYLE SaaS */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent>
-          <DialogHeader><DialogTitle className="text-left">{editId ? 'Modifier le véhicule' : 'Nouveau véhicule'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 text-left">
-            <div><Label>Numéro / Immatriculation</Label><Input value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} className="mt-1" /></div>
-            <div>
-              <Label>Type</Label>
-              <Select value={vehicleType} onValueChange={setVehicleType}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {['Train', 'Bus', 'Coaster', 'MiniBus'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
+        <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-left">
+                {editId ? 'Modifier l’appareil' : 'Nouveau Matériel'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 mt-4">
+            <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Numéro d’immatriculation / Nom du navire</Label>
+                <Input value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-lg px-5 shadow-inner" placeholder="Ex: 210-G1 / NAV-1" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><Label>Places totales</Label><Input type="number" value={totalSeats} onChange={e => setTotalSeats(e.target.value)} className="mt-1" /></div>
-              <div><Label>Rangées</Label><Input type="number" value={rows} onChange={e => setRows(e.target.value)} className="mt-1" /></div>
-              <div><Label>Sièges/rangée</Label><Input type="number" value={seatsPerRow} onChange={e => setSeatsPerRow(e.target.value)} className="mt-1" /></div>
+
+            <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Type de transport</Label>
+                <Select value={vehicleType} onValueChange={setVehicleType}>
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold px-5"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                        {['Train', 'Bus', 'Bateau', 'Coaster', 'MiniBus'].map(t => <SelectItem key={t} value={t} className="font-bold">{t}</SelectItem>)}
+                    </SelectContent>
+                </Select>
             </div>
+
+            <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Total Places</Label>
+                    <Input type="number" value={totalSeats} onChange={e => setTotalSeats(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Nb de Rangs</Label>
+                    <Input type="number" value={rows} onChange={e => setRows(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Sièges/Rang</Label>
+                    <Input type="number" value={seatsPerRow} onChange={e => setSeatsPerRow(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
+                </div>
+            </div>
+
+            <Button onClick={handleSave} disabled={saving || !vehicleNumber} className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 uppercase tracking-widest mt-4 transition-all active:scale-95">
+                {saving ? <RefreshCw className="animate-spin mr-2 h-6 w-6" /> : <Save className="mr-2 h-6 w-6" />}
+                {editId ? 'METTRE À JOUR LA FLOTTE' : 'AJOUTER AU PARC'}
+            </Button>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Annuler</Button>
-            <Button onClick={handleSave} disabled={saving || !vehicleNumber}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button>
+            <Button variant="ghost" onClick={() => setShowForm(false)} className="w-full text-xs font-bold text-muted-foreground uppercase">Fermer la fenêtre</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
