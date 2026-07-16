@@ -90,7 +90,7 @@ export default function AgencyParcels() {
 
       let query = supabase
         .from('parcels')
-        .select('*, from:cities!from_id(name), to:cities!to_id(name), trip:trips(type)')
+        .select('*, from:cities!from_id(name), to:cities!to_id(name), trip:trips!trip_id(type)')
         .eq('company_id', user.companyId);
 
       if (statusFilter !== 'all') {
