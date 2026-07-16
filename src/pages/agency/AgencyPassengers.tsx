@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, 
+  ArrowRight, // <--- CORRECTION : Ajouté ici
   Users, 
   AlertCircle, 
   UserCheck, 
@@ -34,7 +35,7 @@ type Passenger = {
   passengerPhone: string;
   seatNumber: string;
   travelClass: string;
-  paymentMethod: string; // NOUVEAU
+  paymentMethod: string;
   status: string;
   paymentStatus: string;
   amount: number;
@@ -65,7 +66,7 @@ export default function AgencyPassengers() {
   const userRole = user?.role?.toUpperCase();
   const isAgencyChief = userRole === 'AGENT' || userRole === 'ADMIN';
 
-  // --- PAGINATION ---
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
@@ -107,7 +108,7 @@ export default function AgencyPassengers() {
             passengerPhone: b.contact_phone,
             seatNumber: p.seat_number || '—',
             travelClass: b.travel_class || 'Éco',
-            paymentMethod: b.payment_method === 'AGENCE' ? 'Cash' : b.payment_method.replace('_', ' '), // NOUVEAU
+            paymentMethod: b.payment_method === 'AGENCE' ? 'Cash' : b.payment_method.replace('_', ' '),
             status: b.status === 'PAYE' ? 'Confirmé' : 'En attente',
             paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
             amount: Math.round(b.total_amount / (b.passengers?.length || 1)),
@@ -158,7 +159,6 @@ export default function AgencyPassengers() {
     }
   };
 
-  // Calculs statistiques
   const stats = useMemo(() => {
     if (!data) return { boarded: 0, total: 0 };
     return {
@@ -167,7 +167,6 @@ export default function AgencyPassengers() {
     };
   }, [data]);
 
-  // Calcul pagination
   const totalPages = Math.ceil((data?.passengers.length || 0) / itemsPerPage);
   const currentPassengers = useMemo(() => {
     if (!data) return [];
@@ -183,7 +182,7 @@ export default function AgencyPassengers() {
       {/* HEADER SECTION - WEB */}
       <div className="print:hidden">
         <Link to="/agency/departures" className="inline-flex items-center gap-1 text-xs font-bold uppercase text-muted-foreground hover:text-primary mb-4 transition-colors">
-          <ArrowLeft className="h-3 w-3" /> Retour aux départs
+          <ArrowLeft className="h-3 w-3" /> Retour
         </Link>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8">
@@ -206,7 +205,6 @@ export default function AgencyPassengers() {
           </div>
 
           <div className="flex items-center gap-3">
-             {/* STATS RAPIDE */}
              <div className="bg-white border-2 border-slate-100 rounded-2xl p-3 flex items-center gap-4 shadow-sm">
                 <div className="text-center">
                   <p className="text-[8px] font-black text-slate-400 uppercase">Embarqués</p>
@@ -220,7 +218,7 @@ export default function AgencyPassengers() {
              </div>
              
              {isAgencyChief && (
-              <Button onClick={() => window.print()} className="gap-2 font-black rounded-2xl shadow-lg h-14 px-8 border-none active:scale-95 transition-all">
+              <Button onClick={() => window.print()} className="gap-2 font-black rounded-xl shadow-lg h-14 px-8 border-none active:scale-95 transition-all">
                 <Printer size={20} /> IMPRIMER
               </Button>
             )}
