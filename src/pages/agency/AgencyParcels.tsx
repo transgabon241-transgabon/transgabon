@@ -26,7 +26,6 @@ import {
   Ship,
   Bus,
   Train,
-  Info,
   X
 } from 'lucide-react'; 
 import { toast } from 'sonner';
@@ -142,6 +141,38 @@ export default function AgencyParcels() {
 
   useEffect(() => { loadData(); }, [user, statusFilter]);
 
+  // FONCTION DE MISE À JOUR DU STATUT
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    try {
+      const dbStatusMap: Record<string, string> = {
+        'Pris en charge': 'EN_ATTENTE_DEPART',
+        'En transit': 'EN_COURS_DE_TRANSPORT',
+        'Arrivé': 'ARRIVE_A_DESTINATION',
+        'Livré': 'LIVRE',
+        'Retourné': 'RETOURNE',
+      };
+
+      const { error } = await supabase
+        .from('parcels')
+        .update({ status: dbStatusMap[newStatus] })
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success(`Colis marqué comme : ${newStatus}`);
+      loadData(); // Recharger la liste
+    } catch (e) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('parcels').delete().eq('id', id);
+    if (!error) {
+      setParcels(prev => prev.filter(p => p.id !== id));
+      toast.success('Supprimé');
+    }
+  };
+
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
     return parcels.filter(p => 
@@ -159,7 +190,6 @@ export default function AgencyParcels() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-6">
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-5 rounded-3xl border shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-primary rounded-xl text-white shadow-lg shadow-primary/20">
@@ -172,7 +202,6 @@ export default function AgencyParcels() {
         </Button>
       </div>
 
-      {/* FILTRES */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-3xl border-2 border-slate-50 shadow-sm">
         <div className="md:col-span-3 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -193,14 +222,18 @@ export default function AgencyParcels() {
         </Select>
       </div>
 
-      {/* LISTE - Note: Suppression de overflow-hidden ici */}
       <div className="grid gap-3 relative">
         {paginatedParcels.map(p => (
-          <ParcelCard key={p.id} parcel={p} tariffs={tariffs} onRefresh={loadData} />
+          <ParcelCard 
+            key={p.id} 
+            parcel={p} 
+            tariffs={tariffs} 
+            onRefresh={loadData} 
+            onUpdateStatus={handleUpdateStatus} // PASSAGE DE LA FONCTION
+          />
         ))}
       </div>
 
-      {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-8 bg-white p-2 rounded-2xl border-2 border-slate-50 w-fit mx-auto shadow-sm">
           <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-9 w-9"><ChevronLeft size={18} /></Button>
@@ -212,7 +245,7 @@ export default function AgencyParcels() {
   );
 }
 
-function ParcelCard({ parcel: p, tariffs, onRefresh }: any) {
+function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
   const [pricingMode, setPricingMode] = useState(false);
   const [selectedTariff, setSelectedTariff] = useState<Tariff | null>(null);
   const [weight, setWeight] = useState(p.weightKg.toString());
@@ -231,14 +264,21 @@ function ParcelCard({ parcel: p, tariffs, onRefresh }: any) {
     } catch (e) { toast.error("Erreur"); }
   };
 
+  // LOGIQUE DU PROCHAIN STATUT
+  const getNextStatus = (current: string) => {
+    if (current === 'Pris en charge') return 'En transit';
+    if (current === 'En transit') return 'Arrivé';
+    if (current === 'Arrivé') return 'Livré';
+    return null;
+  };
+
+  const nextStatus = getNextStatus(p.status);
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : Bus;
 
   return (
-    /* LE FIX : On retire overflow-hidden pour que le modal absolu puisse sortir */
     <div className="bg-white border-2 border-slate-100 rounded-[1.5rem] p-4 hover:border-primary/20 transition-all group relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         
-        {/* Identité */}
         <div className="flex items-center gap-4 flex-1">
           <div className={`h-11 w-11 rounded-xl flex items-center justify-center text-white shadow-md ${p.transportType === 'BOAT' ? 'bg-blue-600' : 'bg-primary'}`}>
              <TransportIcon size={20} />
@@ -252,14 +292,12 @@ function ParcelCard({ parcel: p, tariffs, onRefresh }: any) {
           </div>
         </div>
 
-        {/* Itinéraire */}
         <div className="flex items-center gap-3 text-xs font-bold text-slate-400 px-4 md:border-x border-dashed">
            <span>{p.departureCity}</span>
            <ArrowRight size={14} className="text-primary/30" />
            <span>{p.arrivalCity}</span>
         </div>
 
-        {/* Prix/Poids */}
         <div className="flex items-center gap-6 px-4">
            <div className="text-right">
               <p className="text-[8px] font-black text-slate-300 uppercase">Poids</p>
@@ -271,7 +309,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh }: any) {
            </div>
         </div>
 
-        {/* Actions - Note: z-50 sur le formulaire pour passer devant tout */}
         <div className="flex items-center gap-2 shrink-0">
           {p.status === 'En attente' && (
             <div className="relative">
@@ -285,9 +322,8 @@ function ParcelCard({ parcel: p, tariffs, onRefresh }: any) {
                       <h4 className="text-[10px] font-black uppercase text-slate-800 flex items-center gap-2"><Calculator size={14}/> Guichet Pesée</h4>
                       <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-6 w-6 rounded-full"><X size={14}/></Button>
                    </div>
-                   
                    <div className="space-y-4">
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 text-left">
                         <Label className="text-[9px] font-black text-slate-400 uppercase ml-1">Grille tarifaire</Label>
                         <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
                             <SelectTrigger className="h-10 rounded-xl font-bold text-xs bg-slate-50 border-none"><SelectValue placeholder="Choisir..." /></SelectTrigger>
@@ -296,8 +332,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh }: any) {
                             </SelectContent>
                         </Select>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-3 text-left">
                          <div className="space-y-1.5">
                             <Label className="text-[9px] font-black text-slate-400 uppercase ml-1">Poids (KG)</Label>
                             <Input type="number" value={weight} onChange={e => setWeight(e.target.value)} className="h-10 rounded-xl font-black text-center bg-slate-50 border-none" />
@@ -307,7 +342,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh }: any) {
                             <div className="h-10 flex items-center justify-center font-black text-primary bg-primary/5 rounded-xl border border-primary/10 text-xs">{calculatedPrice.toLocaleString()} F</div>
                          </div>
                       </div>
-
                       <Button onClick={handleFinalize} className="w-full h-11 font-black text-xs rounded-xl shadow-lg mt-2">VALIDER LE PRIX</Button>
                    </div>
                 </div>
@@ -315,17 +349,32 @@ function ParcelCard({ parcel: p, tariffs, onRefresh }: any) {
             </div>
           )}
 
-          {/* Bouton de statut rapide */}
-          {p.status !== 'En attente' && p.status !== 'Livré' && (
-            <Button variant="outline" size="sm" onClick={() => onRefresh()} className="h-9 font-black border-2 rounded-xl text-[9px] uppercase tracking-widest px-4">
-               Mise à jour
+          {/* BOUTON DE MISE À JOUR RÉEL */}
+          {nextStatus && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => onUpdateStatus(p.id, nextStatus)} 
+              className="h-9 font-black border-2 rounded-xl text-[9px] uppercase tracking-widest px-4 hover:bg-primary hover:text-white transition-all"
+            >
+               Passer à : {nextStatus}
             </Button>
           )}
 
-          {/* Suppression discrète */}
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-200 hover:text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
-             <Trash2 size={16} />
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-200 hover:text-red-600 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
+                <Trash2 size={16} />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+              <AlertDialogHeader><AlertDialogTitle className="font-black italic uppercase">Supprimer l'envoi ?</AlertDialogTitle></AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl font-bold">RETOUR</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { supabase.from('parcels').delete().eq('id', p.id).then(()=>onRefresh()) }} className="bg-red-600 rounded-xl font-bold text-white">SUPPRIMER</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </div>
