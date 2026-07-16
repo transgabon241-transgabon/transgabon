@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { Clock, MapPin, Users, Train, Bus, Ship, ArrowRight } from 'lucide-react'; // Ajout de Ship
+import { Clock, MapPin, Users, Train, Bus, Ship, ArrowRight, Hash } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ type Trip = {
   companyName: string;
   transportType: string;
   vehicleNumber: string;
+  registration: string; // NOUVEAU : Immatriculation
   departureTime: string;
   arrivalTime: string;
   price: number;
@@ -40,16 +41,16 @@ export default function SearchResultsPage() {
         const { data: toCity } = await supabase.from('cities').select('id').eq('name', to).single();
 
         if (fromCity && toCity) {
+          // JOINTURE AVEC VEHICLES POUR RÉCUPÉRER L'IMMATRICULATION
           const { data, error } = await supabase
             .from('trips')
-            .select('*, company:companies(name)')
+            .select('*, company:companies(name), vehicle:vehicles(registration)')
             .eq('from_id', fromCity.id)
             .eq('to_id', toCity.id)
             .eq('departure_date', date);
 
           if (data && !error) {
             const formatted: Trip[] = data.map(t => {
-              // LOGIQUE DE MAPPAGE DU TYPE DE TRANSPORT
               let typeLabel = 'Bus';
               if (t.type === 'TRAIN') typeLabel = 'Train';
               if (t.type === 'BOAT') typeLabel = 'Bateau';
@@ -59,6 +60,7 @@ export default function SearchResultsPage() {
                 companyName: (t.company as any)?.name || 'Opérateur',
                 transportType: typeLabel,
                 vehicleNumber: t.vehicle_number,
+                registration: t.vehicle?.registration || '—', // MAPPAGE DE L'IMMATRICULATION
                 departureTime: t.departure_time,
                 arrivalTime: t.arrival_time,
                 price: t.price,
@@ -89,7 +91,6 @@ export default function SearchResultsPage() {
 
   const formattedDate = date ? new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
-  // FONCTION POUR RÉCUPÉRER LA BONNE ICÔNE
   const getTransportIcon = (type: string) => {
     if (type === 'Train') return Train;
     if (type === 'Bateau') return Ship;
@@ -151,8 +152,8 @@ export default function SearchResultsPage() {
               <div key={trip.departureId} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 md:p-8 hover:shadow-2xl hover:border-primary/20 transition-all duration-300 group">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
                   
-                  {/* Compagnie & Type */}
-                  <div className="flex items-center gap-5 min-w-[200px]">
+                  {/* Compagnie & Type & Immatriculation */}
+                  <div className="flex items-center gap-5 min-w-[240px]">
                     <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform ${
                         trip.transportType === 'Bateau' ? 'bg-blue-600 text-white' : 
                         trip.transportType === 'Train' ? 'bg-slate-900 text-white' : 'bg-primary text-white'
@@ -160,12 +161,16 @@ export default function SearchResultsPage() {
                       <Icon className="h-8 w-8" />
                     </div>
                     <div>
-                      <div className="font-black text-xl text-slate-900 leading-none mb-2">{trip.companyName}</div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-tighter rounded-md px-2">
+                      <div className="font-black text-xl text-slate-900 leading-none mb-3">{trip.companyName}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-tighter rounded-md px-2 h-5">
                             {trip.transportType}
                         </Badge>
                         <span className="text-xs font-bold text-slate-400">N° {trip.vehicleNumber}</span>
+                        {/* AFFICHAGE DE L'IMMATRICULATION ICI */}
+                        <span className="flex items-center gap-1 text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 uppercase italic">
+                           <Hash size={10} /> {trip.registration}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -188,22 +193,22 @@ export default function SearchResultsPage() {
                   {/* Prix & Action */}
                   <div className="flex items-center justify-between lg:justify-end gap-6">
                     <div className="text-right">
-                      <div className="text-3xl font-black text-primary tracking-tighter">
+                      <div className="text-3xl font-black text-primary tracking-tighter leading-none">
                         {trip.price.toLocaleString()} 
-                        <span className="text-xs ml-1 font-bold text-slate-400">FCFA</span>
+                        <span className="text-[10px] ml-1 font-black text-slate-400">FCFA</span>
                       </div>
-                      <div className="flex items-center justify-end gap-1 text-[10px] font-black text-emerald-600 uppercase mt-1">
+                      <div className="flex items-center justify-end gap-1 text-[10px] font-black text-emerald-600 uppercase mt-2 tracking-tighter">
                         <Users className="h-3 w-3" />
-                        {trip.availableSeats} places restantes
+                        {trip.availableSeats} places libres
                       </div>
                     </div>
                     <Button
                       size="lg"
-                      className="rounded-2xl font-black h-14 px-8 shadow-xl shadow-primary/20 active:scale-95 transition-all"
+                      className="rounded-2xl font-black h-14 px-8 shadow-xl shadow-primary/20 active:scale-95 transition-all uppercase tracking-widest"
                       onClick={() => navigate(`/seats/${trip.departureId}?from=${from}&to=${to}`)}
                       disabled={trip.availableSeats <= 0}
                     >
-                      {trip.availableSeats > 0 ? 'RÉSERVER' : 'COMPLET'}
+                      {trip.availableSeats > 0 ? 'Réserver' : 'Complet'}
                     </Button>
                   </div>
                 </div>

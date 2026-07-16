@@ -16,8 +16,13 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Printer // Ajout de l'icône
+  Printer,
+  Hash, // Ajout icône immatriculation
+  Ship,
+  Bus,
+  Train
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 type Passenger = {
   id: string;
@@ -25,6 +30,7 @@ type Passenger = {
   passengerName: string;
   passengerPhone: string;
   seatNumber: string;
+  travelClass: string; // NOUVEAU
   status: string;
   paymentStatus: string;
   amount: number;
@@ -32,12 +38,14 @@ type Passenger = {
 };
 
 type Data = {
-  companyName: string; // Ajouté pour l'entête
+  companyName: string;
   departureCode: string;
+  vehicleRegistration: string; // NOUVEAU
   departureCity: string;
   arrivalCity: string;
   departureDate: string;
   departureTime: string;
+  transportType: string; // NOUVEAU
   passengers: Passenger[];
 };
 
@@ -50,23 +58,21 @@ export default function AgencyPassengers() {
   const [unauthorizedError, setUnauthorizedError] = useState<string | null>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
-  // --- LOGIQUE DE SÉCURITÉ ---
   const userRole = user?.role?.toUpperCase();
   const isAgencyChief = userRole === 'AGENT' || userRole === 'ADMIN';
 
-  // --- ÉTATS POUR LA PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
   const loadPassengersData = async () => {
     if (!departureId || !user) return;
     setLoading(true);
-    setUnauthorizedError(null);
 
     try {
+      // MISE À JOUR QUERY : Jointure avec vehicles pour la registration
       const { data: trip, error: tripError } = await supabase
         .from('trips')
-        .select('*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)')
+        .select('*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)')
         .eq('id', departureId)
         .single();
 
@@ -99,6 +105,7 @@ export default function AgencyPassengers() {
             passengerName: `${p.first_name} ${p.last_name}`,
             passengerPhone: b.contact_phone,
             seatNumber: p.seat_number || '—',
+            travelClass: b.travel_class || 'Éco', // RÉCUPÉRATION DE LA CLASSE
             status: b.status === 'PAYE' ? 'Confirmé' : 'En attente',
             paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
             amount: Math.round(b.total_amount / (b.passengers?.length || 1)),
@@ -110,10 +117,12 @@ export default function AgencyPassengers() {
       setData({
         companyName: trip.company.name,
         departureCode: trip.vehicle_number,
+        vehicleRegistration: trip.vehicle?.registration || '—',
         departureCity: trip.from.name,
         arrivalCity: trip.to.name,
         departureDate: trip.departure_date,
         departureTime: trip.departure_time,
+        transportType: trip.type,
         passengers: passengersList
       });
       setCurrentPage(1);
@@ -134,131 +143,112 @@ export default function AgencyPassengers() {
     return data.passengers.slice(start, start + itemsPerPage);
   }, [data, currentPage]);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleBoardPassenger = async (passengerId: string) => {
-    setBoardingId(passengerId);
-    try {
-      await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
-      setData(prev => {
-        if (!prev) return prev;
-        return { ...prev, passengers: prev.passengers.map(p => p.id === passengerId ? { ...p, boarded: true } : p) };
-      });
-      toast.success("Embarqué !");
-    } finally {
-      setBoardingId(null);
-    }
-  };
-
   if (loading) return <div className="p-8"><Skeleton className="h-64 w-full rounded-3xl" /></div>;
-  if (unauthorizedError) return <div className="p-20 text-center font-bold text-red-500">{unauthorizedError}</div>;
   if (!data) return null;
 
   return (
     <div className="text-foreground text-left p-4">
-      {/* HEADER SECTION - CACHÉ À L'IMPRESSION */}
+      {/* HEADER SECTION - WEB */}
       <div className="print:hidden">
-        <Link to="/agency/departures" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-          <ArrowLeft className="h-4 w-4" /> Retour aux départs
+        <Link to="/agency/departures" className="inline-flex items-center gap-1 text-xs font-bold uppercase text-muted-foreground hover:text-primary mb-4 transition-colors">
+          <ArrowLeft className="h-3 w-3" /> Retour aux départs
         </Link>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Users className="h-6 w-6 text-primary" />
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-2xl shadow-lg ${data.transportType === 'BOAT' ? 'bg-blue-600' : 'bg-primary'} text-white`}>
+              {data.transportType === 'BOAT' ? <Ship size={24}/> : <Users size={24} />}
             </div>
             <div>
-              <h1 className="text-2xl font-black italic">Manifeste Passagers</h1>
-              <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">
-                {data.departureCode} • {data.departureCity} → {data.arrivalCity}
-              </p>
+              <h1 className="text-2xl font-black italic uppercase tracking-tighter">Manifeste Passagers</h1>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-xs font-bold text-muted-foreground uppercase">{data.departureCity} → {data.arrivalCity}</span>
+                <span className="h-1 w-1 rounded-full bg-slate-300"></span>
+                <span className="flex items-center gap-1 text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 uppercase">
+                  <Hash size={10} /> {data.vehicleRegistration}
+                </span>
+              </div>
             </div>
           </div>
           
-          {/* BOUTON D'IMPRESSION RÉSERVÉ AU CHEF D'AGENCE / ADMIN */}
           {isAgencyChief && (
-            <Button onClick={handlePrint} className="gap-2 font-black rounded-xl shadow-lg h-11 px-6">
-              <Printer className="h-4 w-4" /> IMPRIMER (PDF)
+            <Button onClick={() => window.print()} className="gap-2 font-black rounded-xl shadow-lg h-11 px-6">
+              <Printer className="h-4 w-4" /> IMPRIMER LE MANIFESTE
             </Button>
           )}
         </div>
       </div>
 
-      {/* --- VERSION IMPRIMABLE (Visible uniquement sur papier/PDF) --- */}
-      <div className="hidden print:block mb-8 border-b-4 border-primary pb-4">
+      {/* --- VERSION IMPRIMABLE (PAPIER/PDF) --- */}
+      <div className="hidden print:block mb-8 border-b-4 border-slate-900 pb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-black uppercase text-primary">{data.companyName}</h1>
-            <p className="text-sm font-bold text-slate-500 tracking-widest">MANIFESTE DE DÉPART OFFICIEL</p>
+            <h1 className="text-3xl font-black uppercase text-slate-900 leading-none">{data.companyName}</h1>
+            <p className="text-sm font-bold text-slate-500 tracking-[0.3em] mt-2">MANIFESTE D'EMBARQUEMENT</p>
           </div>
-          <div className="text-right">
-             <p className="text-xs font-bold uppercase">Date: {new Date(data.departureDate).toLocaleDateString('fr-FR')}</p>
-             <p className="text-xs font-bold uppercase">Heure: {data.departureTime}</p>
-             <p className="text-xs font-bold uppercase text-primary">N° Voyage: {data.departureCode}</p>
+          <div className="text-right space-y-1">
+             <p className="text-xs font-black uppercase bg-slate-900 text-white px-3 py-1 rounded">N° VOYAGE : {data.departureCode}</p>
+             <p className="text-xs font-bold uppercase">Date : {new Date(data.departureDate).toLocaleDateString('fr-FR')}</p>
+             <p className="text-xs font-bold uppercase text-primary">Matériel : {data.vehicleRegistration}</p>
           </div>
         </div>
-        <div className="mt-4 text-center p-2 bg-slate-100 rounded-lg font-black text-sm uppercase">
+        <div className="mt-6 text-center p-3 bg-slate-100 rounded-xl font-black text-lg uppercase tracking-widest border-2 border-slate-200">
           {data.departureCity} ➔ {data.arrivalCity}
         </div>
       </div>
 
-      <div className="border-2 rounded-3xl overflow-hidden bg-card shadow-sm print:border-none print:shadow-none">
+      {/* TABLEAU DES PASSAGERS */}
+      <div className="border-2 rounded-[2rem] overflow-hidden bg-card shadow-sm print:border-slate-900 print:rounded-none">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50 border-b-2 print:bg-slate-50">
+          <thead className="bg-slate-50 border-b-2 print:bg-slate-100">
             <tr>
               <th className="text-left p-4 font-black uppercase text-[10px]">#</th>
-              <th className="text-left p-4 font-black uppercase text-[10px]">N° Billet</th>
               <th className="text-left p-4 font-black uppercase text-[10px]">Passager</th>
-              <th className="text-left p-4 font-black uppercase text-[10px]">Téléphone</th>
+              <th className="text-left p-4 font-black uppercase text-[10px] hidden md:table-cell">Téléphone</th>
               <th className="text-left p-4 font-black uppercase text-[10px]">Siège</th>
-              <th className="text-left p-4 font-black uppercase text-[10px] print:hidden">Embarquement</th>
-              {/* Colonne signature pour le papier */}
-              <th className="hidden print:table-cell text-left p-4 font-black uppercase text-[10px]">Signature</th>
-              <th className="text-right p-4 font-black uppercase text-[10px] print:hidden">Montant</th>
+              <th className="text-left p-4 font-black uppercase text-[10px]">Classe</th> {/* NOUVEAU */}
+              <th className="text-left p-4 font-black uppercase text-[10px] print:hidden text-center">Statut</th>
+              <th className="hidden print:table-cell text-left p-4 font-black uppercase text-[10px] border-l-2">Émargement</th>
             </tr>
           </thead>
-          <tbody className="divide-y-2 divide-border">
-            {/* À l'impression, on peut vouloir imprimer TOUT le monde, pas juste la page actuelle */}
-            {/* Si c'est le cas, remplace currentPassengers par data.passengers ici */}
+          <tbody className="divide-y-2 divide-slate-50 print:divide-slate-200">
             {(window.matchMedia('print').matches ? data.passengers : currentPassengers).map((p, i) => (
               <tr key={p.id} className="hover:bg-muted/10 transition-colors print:break-inside-avoid">
                 <td className="p-4 text-muted-foreground font-bold">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
-                <td className="p-4 font-mono text-xs font-black text-primary uppercase">{p.bookingNumber}</td>
-                <td className="p-4 font-bold text-slate-800">{p.passengerName}</td>
-                <td className="p-4 font-medium text-slate-500">{p.passengerPhone}</td>
+                <td className="p-4 font-bold text-slate-800 uppercase text-xs">{p.passengerName}</td>
+                <td className="p-4 font-medium text-slate-500 hidden md:table-cell">{p.passengerPhone}</td>
                 <td className="p-4">
-                  <Badge variant="secondary" className="font-black rounded-lg">{p.seatNumber}</Badge>
+                  <Badge className="font-black rounded-lg bg-slate-100 text-slate-700 border-none shadow-none">{p.seatNumber}</Badge>
+                </td>
+                <td className="p-4">
+                  <span className={`text-[10px] font-black uppercase tracking-tighter ${p.travelClass === 'VIP' ? 'text-amber-600' : p.travelClass === 'Business' ? 'text-blue-600' : 'text-slate-500'}`}>
+                    {p.travelClass}
+                  </span>
                 </td>
                 
-                {/* INTERFACE WEB : BOUTONS */}
+                {/* WEB VIEW */}
                 <td className="p-4 text-center print:hidden">
                   {p.boarded ? (
-                    <span className="text-emerald-600 font-black text-[10px] uppercase flex items-center justify-center gap-1">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> À BORD
+                    <span className="text-emerald-600 font-black text-[9px] uppercase flex items-center justify-center gap-1 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                      <CheckCircle2 size={12} /> À BORD
                     </span>
                   ) : (
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 text-[10px] font-black border-2 gap-1 uppercase"
+                      className="h-8 text-[9px] font-black border-2 gap-1 uppercase rounded-lg hover:bg-primary/5 transition-all"
                       onClick={() => handleBoardPassenger(p.id)}
                       disabled={boardingId === p.id}
                     >
-                      {boardingId === p.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
-                      Embarquer
+                      {boardingId === p.id ? <RefreshCw size={12} className="animate-spin" /> : <UserCheck size={12} />}
+                      Valider
                     </Button>
                   )}
                 </td>
 
-                {/* VERSION PAPIER : CASE VIDE POUR SIGNATURE */}
-                <td className="hidden print:table-cell p-4 border-l">
-                   <div className="h-6 w-24 border-b border-slate-300"></div>
-                </td>
-
-                <td className="p-4 text-right font-black text-slate-700 print:hidden">
-                  {p.amount.toLocaleString()} <span className="text-[9px] text-muted-foreground">F</span>
+                {/* PRINT VIEW */}
+                <td className="hidden print:table-cell p-4 border-l-2">
+                   <div className="h-6 w-32 border-b border-slate-300"></div>
                 </td>
               </tr>
             ))}
@@ -266,37 +256,37 @@ export default function AgencyPassengers() {
         </table>
       </div>
 
-      {/* --- PAGINATION (CACHÉE À L'IMPRESSION) --- */}
+      {/* PAGINATION WEB */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-8 print:hidden">
-          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border-2">
-            <ChevronLeft className="h-5 w-5" />
+          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border-2 shadow-sm">
+            <ChevronLeft size={18} />
           </Button>
           <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Page {currentPage} / {totalPages}</span>
-          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border-2">
-            <ChevronRight className="h-5 w-5" />
+          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border-2 shadow-sm">
+            <ChevronRight size={18} />
           </Button>
         </div>
       )}
 
       {/* FOOTER MANIFESTE (PAPIER) */}
-      <div className="hidden print:flex justify-between mt-12 px-4 border-t pt-4">
+      <div className="hidden print:grid grid-cols-2 mt-12 px-4 gap-20">
         <div className="text-center">
-          <p className="text-[10px] font-black uppercase text-slate-400">Signature Chauffeur / Pilote</p>
-          <div className="mt-8 h-12 w-48 border border-dashed border-slate-200 rounded-lg"></div>
+          <p className="text-[10px] font-black uppercase text-slate-500 mb-8">Visa du Chef de Bord / Chauffeur</p>
+          <div className="h-20 w-full border-2 border-slate-200 rounded-2xl"></div>
         </div>
         <div className="text-center">
-          <p className="text-[10px] font-black uppercase text-slate-400">Cachet & Signature Agence</p>
-          <div className="mt-8 h-12 w-48 border border-dashed border-slate-200 rounded-lg"></div>
+          <p className="text-[10px] font-black uppercase text-slate-500 mb-8">Cachet et Signature de l'Agence</p>
+          <div className="h-20 w-full border-2 border-slate-200 rounded-2xl"></div>
         </div>
       </div>
 
-      <div className="mt-6 p-6 bg-slate-50 rounded-3xl border-2 border-dashed flex flex-col sm:flex-row justify-between items-center gap-4 print:bg-white print:border-none">
-        <div className="text-xs font-bold text-slate-500 italic">
-          * Manifeste généré le {new Date().toLocaleString('fr-FR')}
+      <div className="mt-8 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 print:bg-white print:border-none print:mt-4">
+        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          Manifeste édité par Gabon Mobilité le {new Date().toLocaleString('fr-FR')}
         </div>
-        <div className="text-lg font-black text-primary bg-white px-6 py-2 rounded-2xl shadow-sm border-2">
-          Total : {data.passengers.length} passager(s)
+        <div className="text-xl font-black text-primary uppercase tracking-tighter">
+          Total : {data.passengers.length} passagers
         </div>
       </div>
     </div>

@@ -11,12 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Save, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Save, RefreshCw, Hash } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Departure = {
   id: string;
   departureCode: string;
+  registration: string; // NOUVEAU
   departureCity: string;
   arrivalCity: string;
   departureDate: string;
@@ -76,15 +77,17 @@ export default function AgencyDepartures() {
     if (!user?.companyId) return;
     setLoading(true);
     try {
+      // RÉCUPÉRATION AVEC JOINTURE VEHICLE POUR L'IMMATRICULATION
       const { data: tripsData } = await supabase
         .from('trips')
-        .select('*, from:cities!from_id(name), to:cities!to_id(name)')
+        .select('*, from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)')
         .eq('company_id', user.companyId)
         .order('departure_date', { ascending: true });
 
       const formattedDeps: Departure[] = (tripsData || []).map(t => ({
         id: t.id,
         departureCode: t.vehicle_number,
+        registration: t.vehicle?.registration || 'Non spécifiée', // MAPPAGE DE L'IMMATRICULATION
         departureCity: t.from.name,
         arrivalCity: t.to.name,
         departureDate: t.departure_date,
@@ -229,9 +232,18 @@ export default function AgencyDepartures() {
                     {dep.departureCity} <ArrowRight size={16} className="text-primary opacity-30" /> {dep.arrivalCity}
                     <StatusBadge status={dep.status} />
                   </div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase mt-1">
-                    {dep.departureCode} • {new Date(dep.departureDate + 'T00:00:00').toLocaleDateString('fr-FR')} • {dep.departureTime}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <p className="text-xs font-bold text-muted-foreground uppercase">
+                      {dep.departureCode} 
+                    </p>
+                    <span className="text-primary font-black px-2 py-0.5 bg-primary/5 rounded border border-primary/10 text-[10px] flex items-center gap-1 uppercase">
+                       <Hash size={10} /> {dep.registration}
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <p className="text-xs font-bold text-muted-foreground">
+                      {new Date(dep.departureDate + 'T00:00:00').toLocaleDateString('fr-FR')} • {dep.departureTime}
+                    </p>
+                  </div>
                 </div>
               </div>
               

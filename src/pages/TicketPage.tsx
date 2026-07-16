@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, CheckCircle, Printer, AlertCircle, RefreshCw, Ship, Train, Bus } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Printer, AlertCircle, RefreshCw, Ship, Train, Bus, Hash } from 'lucide-react';
 
 type MappedBooking = {
   id: string;
@@ -19,7 +19,8 @@ type MappedBooking = {
   companyName: string;
   transportType: string;
   transportTypeCode: string; // BUS, TRAIN, BOAT
-  travelClass: string; // NOUVEAU
+  registration: string; // NOUVEAU
+  travelClass: string;
   departureDate: string;
   departureTime: string;
   seatNumber: string;
@@ -48,9 +49,10 @@ export default function TicketPage() {
 
     const loadTicketDetails = async () => {
       try {
+        // MISE À JOUR DE LA REQUÊTE : Ajout de la jointure vehicle:vehicles(registration)
         const { data: b, error } = await supabase
           .from('bookings')
-          .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)), passengers(*)')
+          .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)), passengers(*)')
           .eq('id', bookingId)
           .single();
 
@@ -74,7 +76,6 @@ export default function TicketPage() {
             class: b.travel_class
           });
 
-          // Traduction du type de transport
           const typeLabels: Record<string, string> = {
             BUS: 'Autocar',
             TRAIN: 'Train',
@@ -92,7 +93,8 @@ export default function TicketPage() {
             companyName: b.trip.company.name,
             transportType: typeLabels[b.trip.type] || b.trip.type,
             transportTypeCode: b.trip.type,
-            travelClass: b.travel_class || 'Économique', // Valeur par défaut
+            registration: b.trip.vehicle?.registration || '—', // MAPPAGE DE L'IMMATRICULATION
+            travelClass: b.travel_class || 'Économique',
             departureDate: b.trip.departure_date,
             departureTime: b.trip.departure_time,
             seatNumber,
@@ -115,34 +117,26 @@ export default function TicketPage() {
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
       <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Authentification...</p>
+      <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Chargement sécurisé...</p>
     </div>
   );
 
   if (!user) return <div className="min-h-screen bg-background" />;
   if (loading) return <div className="max-w-lg mx-auto p-8"><Skeleton className="h-[400px] w-full rounded-[2.5rem]" /></div>;
 
-  if (!booking) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center max-w-sm space-y-4">
-        <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
-        <h3 className="font-black text-xl italic">Billet introuvable</h3>
-        <Link to="/dashboard"><Button className="w-full rounded-2xl font-black">MES VOYAGES</Button></Link>
-      </div>
-    );
-  }
+  if (!booking) return <div className="p-20 text-center font-bold text-red-500 uppercase">Billet introuvable</div>;
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(booking.qrCodeData)}`;
 
   return (
     <div className="container mx-auto px-4 py-10 max-w-lg">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-xs font-black uppercase text-muted-foreground hover:text-primary mb-6 print:hidden transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Retour aux voyages
+        <ArrowLeft className="h-4 w-4" /> Mes réservations
       </Link>
 
       <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] overflow-hidden shadow-2xl print:border-none print:shadow-none">
         
-        {/* Header du Billet */}
+        {/* Header dynamique selon le type de transport */}
         <div className={`p-8 text-white print:[print-color-adjust:exact] ${
           booking.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 
           booking.transportTypeCode === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'
@@ -150,39 +144,46 @@ export default function TicketPage() {
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Billet Électronique</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Titre de Transport</span>
             </div>
-            {booking.transportTypeCode === 'BOAT' && <Ship size={24} className="opacity-50" />}
-            {booking.transportTypeCode === 'TRAIN' && <Train size={24} className="opacity-50" />}
+            {booking.transportTypeCode === 'BOAT' ? <Ship size={24} className="opacity-50" /> : <Train size={24} className="opacity-50" />}
           </div>
           <h2 className="text-3xl font-black leading-none mb-1 tracking-tighter uppercase">{booking.departureCity} → {booking.arrivalCity}</h2>
           <p className="text-xs font-bold opacity-80 uppercase tracking-widest">{booking.companyName} • {booking.transportType}</p>
         </div>
 
-        {/* Zone QR Code */}
+        {/* QR Code */}
         <div className="p-8 flex flex-col items-center justify-center bg-white border-b-2 border-dashed border-slate-100">
           <div className="p-4 bg-slate-50 rounded-[2rem] border-2 border-slate-100 mb-4">
-            <img src={qrUrl} alt="QR Code Billet" className="h-44 w-44" />
+            <img src={qrUrl} alt="QR Code" className="h-44 w-44" />
           </div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Scanner à l'embarquement</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Présenter au contrôle</p>
         </div>
 
-        {/* Détails du Voyage */}
+        {/* Informations détaillées */}
         <div className="p-8 grid grid-cols-2 gap-y-6 gap-x-4 text-left">
-            <InfoField label="Réf. Billet" value={booking.bookingNumber} isMono />
-            <InfoField label="Passager" value={booking.passengerName} />
+            <InfoField label="Référence" value={booking.bookingNumber} isMono />
             
-            {/* AFFICHAGE DE LA CLASSE DE VOYAGE */}
-            <InfoField label="Classe / Confort">
-                <span className="bg-primary/5 text-primary px-2 py-0.5 rounded-md text-xs font-black uppercase tracking-tighter border border-primary/10">
+            {/* AFFICHAGE DE L'IMMATRICULATION */}
+            <InfoField label="Immatriculation">
+                <span className="flex items-center gap-1 font-mono text-xs font-black text-slate-900 uppercase">
+                    <Hash size={12} className="text-primary" /> {booking.registration}
+                </span>
+            </InfoField>
+
+            <InfoField label="Passager" value={booking.passengerName} />
+            <InfoField label="Siège" value={booking.seatNumber} />
+            
+            <InfoField label="Confort / Classe">
+                <span className="bg-primary/5 text-primary px-2 py-0.5 rounded-md text-[10px] font-black uppercase border border-primary/10">
                     {booking.travelClass}
                 </span>
             </InfoField>
 
-            <InfoField label="Siège" value={booking.seatNumber} />
             <InfoField label="Date" value={new Date(booking.departureDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} />
             <InfoField label="Heure" value={booking.departureTime} />
             <InfoField label="Montant" value={`${booking.amount.toLocaleString()} FCFA`} />
+            
             <InfoField label="Paiement">
                <span className={`font-black uppercase text-[10px] ${booking.paymentStatus === 'Réglé' ? 'text-emerald-600' : 'text-amber-600'}`}>
                  {booking.paymentStatus}
@@ -190,20 +191,17 @@ export default function TicketPage() {
             </InfoField>
         </div>
 
-        {/* Footer Actions */}
         <div className="p-8 pt-0 print:hidden">
-          <Button onClick={() => window.print()} className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl active:scale-95 transition-transform">
-            <Printer className="h-5 w-5" /> IMPRIMER EN PDF
+          <Button onClick={() => window.print()} className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl hover:scale-[1.02] transition-transform">
+            <Printer className="h-5 w-5" /> IMPRIMER / PDF
           </Button>
         </div>
       </div>
       
-      <div className="mt-8 text-center space-y-2 opacity-50">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Document généré par Gabon Mobilité</p>
-        <p className="text-[8px] font-bold text-slate-400 max-w-[280px] mx-auto leading-relaxed">
-          Présentation obligatoire d'une pièce d'identité originale à l'embarquement. Billet non remboursable 2h avant le départ.
-        </p>
-      </div>
+      <p className="mt-8 text-center text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+        TransGabon-Connect • Plateforme Nationale de Transport<br/>
+        Pièce d'identité originale obligatoire. Billet personnel et incessible.
+      </p>
     </div>
   );
 }

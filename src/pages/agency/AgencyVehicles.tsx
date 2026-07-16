@@ -18,8 +18,8 @@ import { toast } from 'sonner';
  */
 type Vehicle = {
   id: string;
-  vehicleNumber: string; // Nom interne
-  registration: string;  // Plaque d'immatriculation
+  vehicleNumber: string; // Nom interne (ex: "Bus 01")
+  registration: string;  // Plaque d'immatriculation (ex: "RG-123-AA")
   vehicleType: string; 
   totalSeats: number;
   rows: number;
@@ -29,23 +29,28 @@ type Vehicle = {
 export default function AgencyVehicles() {
   const { user } = useAuth();
   
+  // États de données
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
   // États du formulaire
   const [vehicleNumber, setVehicleNumber] = useState('');
-  const [registration, setRegistration] = useState(''); // NOUVEAU
+  const [registration, setRegistration] = useState('');
   const [vehicleType, setVehicleType] = useState('Bus');
   const [totalSeats, setTotalSeats] = useState('30');
   const [rows, setRows] = useState('8');
   const [seatsPerRow, setSeatsPerRow] = useState('4');
 
+  /**
+   * CHARGEMENT DE LA FLOTTE
+   */
   const loadData = async () => {
     if (!user?.companyId) return;
     setLoading(true);
@@ -61,16 +66,16 @@ export default function AgencyVehicles() {
       const formatted: Vehicle[] = (data || []).map(v => ({
         id: v.id,
         vehicleNumber: v.name,
-        registration: v.registration || '—', // Mappage SQL
+        registration: v.registration || 'NON IMMATRICULÉ',
         vehicleType: v.type === 'TRAIN' ? 'Train' : v.type === 'BOAT' ? 'Bateau' : v.type === 'COASTER' ? 'Coaster' : v.type === 'MINIBUS' ? 'MiniBus' : 'Bus',
         totalSeats: v.capacity,
-        rows: v.rows ?? 12,
+        rows: v.rows ?? 10,
         seatsPerRow: v.seats_per_row ?? 4
       }));
 
       setVehicles(formatted);
     } catch (e: any) { 
-      toast.error('Erreur de chargement'); 
+      toast.error('Erreur de chargement de la flotte'); 
     } finally { 
       setLoading(false); 
     }
@@ -78,6 +83,9 @@ export default function AgencyVehicles() {
 
   useEffect(() => { loadData(); }, [user]);
 
+  /**
+   * LOGIQUE DE PAGINATION
+   */
   const totalPages = Math.ceil(vehicles.length / itemsPerPage);
   const currentVehicles = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -91,7 +99,7 @@ export default function AgencyVehicles() {
   const openEdit = (v: Vehicle) => {
     setEditId(v.id);
     setVehicleNumber(v.vehicleNumber);
-    setRegistration(v.registration);
+    setRegistration(v.registration === 'NON IMMATRICULÉ' ? '' : v.registration);
     setVehicleType(v.vehicleType);
     setTotalSeats(String(v.totalSeats));
     setRows(String(v.rows));
@@ -99,6 +107,9 @@ export default function AgencyVehicles() {
     setShowForm(true);
   };
 
+  /**
+   * SAUVEGARDE
+   */
   const handleSave = async () => {
     if (!user?.companyId || !vehicleNumber) return;
     setSaving(true);
@@ -111,7 +122,7 @@ export default function AgencyVehicles() {
 
       const payload = {
         name: vehicleNumber.trim(),
-        registration: registration.trim().toUpperCase(), // NOUVEAU
+        registration: registration.trim().toUpperCase(),
         type: dbType,
         capacity: Number(totalSeats),
         rows: Number(rows),
@@ -121,15 +132,15 @@ export default function AgencyVehicles() {
 
       if (editId) {
         await supabase.from('vehicles').update(payload).eq('id', editId);
-        toast.success('Informations mises à jour');
+        toast.success('Données mises à jour');
       } else {
         await supabase.from('vehicles').insert([payload]);
-        toast.success('Véhicule ajouté à la flotte');
+        toast.success('Véhicule ajouté au parc');
       }
       setShowForm(false); resetForm(); 
       setTimeout(() => loadData(), 300);
     } catch (e: any) { 
-      toast.error('Erreur enregistrement'); 
+      toast.error('Erreur lors de l’enregistrement'); 
     } finally { 
       setSaving(false); 
     }
@@ -138,27 +149,28 @@ export default function AgencyVehicles() {
   const handleDelete = async (id: string) => {
     const { count } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('vehicle_id', id);
     if (count && count > 0) {
-      toast.error("Suppression impossible : Véhicule en service.");
+      toast.error("Impossible : Ce véhicule est rattaché à des voyages existants.");
       return;
     }
     const { error } = await supabase.from('vehicles').delete().eq('id', id);
     if (!error) {
       setVehicles(prev => prev.filter(v => v.id !== id));
-      toast.success('Retiré de la flotte');
+      toast.success('Véhicule retiré');
     }
   };
 
-  if (loading) return <div className="max-w-6xl mx-auto p-8"><Skeleton className="h-64 w-full rounded-[2rem]" /></div>;
+  if (loading) return <div className="max-w-6xl mx-auto p-8 space-y-4"><Skeleton className="h-12 w-48" /><Skeleton className="h-64 w-full rounded-[2.5rem]" /></div>;
 
   return (
     <div className="max-w-6xl mx-auto p-4 text-left">
       
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-black italic text-primary tracking-tighter uppercase">Gestion de la Flotte</h1>
-          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Inventaire technique des véhicules</p>
+          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Inventaire technique des appareils</p>
         </div>
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-12 px-6 shadow-lg transition-all active:scale-95">
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-12 px-6 shadow-lg shadow-primary/20 transition-all active:scale-95">
           <Plus size={20} /> ENREGISTRER UN MATÉRIEL
         </Button>
       </div>
@@ -166,7 +178,7 @@ export default function AgencyVehicles() {
       {vehicles.length === 0 ? (
         <div className="p-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
           <Bus className="h-12 w-12 mx-auto mb-4 text-slate-200" />
-          <p className="text-slate-400 font-bold uppercase text-xs">Aucun véhicule enregistré</p>
+          <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">Aucun véhicule dans votre base</p>
         </div>
       ) : (
         <>
@@ -182,35 +194,37 @@ export default function AgencyVehicles() {
                     </div>
                     <div>
                       <div className="font-black text-lg text-slate-800 tracking-tight leading-tight">{v.vehicleNumber}</div>
-                      <div className="flex items-center gap-1.5 text-[9px] font-black text-primary uppercase bg-primary/5 px-2 py-0.5 rounded-md mt-1 w-fit">
+                      <div className="flex items-center gap-1.5 text-[9px] font-black text-primary uppercase bg-primary/5 px-2 py-0.5 rounded border border-primary/10 mt-1 w-fit shadow-sm">
                         <Hash size={10} /> {v.registration}
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between mb-6 px-1">
+                <div className="flex items-center justify-between mb-6 px-1 border-y border-dashed border-slate-100 py-4">
                    <div className="text-center flex-1">
-                     <p className="text-[10px] font-bold text-muted-foreground uppercase">Capacité</p>
-                     <p className="font-black text-slate-700">{v.totalSeats}</p>
+                     <p className="text-[9px] font-bold text-muted-foreground uppercase">Places</p>
+                     <p className="font-black text-slate-800">{v.totalSeats}</p>
                    </div>
                    <div className="w-px h-6 bg-slate-100" />
                    <div className="text-center flex-1">
-                     <p className="text-[10px] font-bold text-muted-foreground uppercase">Type</p>
-                     <p className="font-black text-slate-700">{v.vehicleType}</p>
+                     <p className="text-[9px] font-bold text-muted-foreground uppercase">Type</p>
+                     <p className="font-black text-slate-800 uppercase text-[10px]">{v.vehicleType}</p>
                    </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 font-black rounded-xl border-2 hover:bg-slate-50 h-10" onClick={() => openEdit(v)}>MODIFIER</Button>
+                  <Button variant="outline" size="sm" className="flex-1 font-black rounded-xl border-2 hover:bg-slate-50 h-11" onClick={() => openEdit(v)}>MODIFIER</Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="rounded-xl border-2 text-red-400 hover:text-red-600 h-10 px-3"><Trash2 size={16} /></Button>
+                      <Button variant="outline" size="sm" className="rounded-xl border-2 text-red-400 hover:text-red-600 h-11 px-4 transition-colors"><Trash2 size={18} /></Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl text-left">
                       <AlertDialogHeader>
                         <AlertDialogTitle className="font-black italic text-2xl uppercase">Supprimer ?</AlertDialogTitle>
-                        <AlertDialogDescription>Supprimer {v.vehicleNumber} ({v.registration}) de votre parc.</AlertDialogDescription>
+                        <AlertDialogDescription className="font-medium text-slate-600">
+                          Supprimer <strong>{v.vehicleNumber}</strong> ({v.registration}) de votre inventaire. Cette action est irréversible.
+                        </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
@@ -223,67 +237,70 @@ export default function AgencyVehicles() {
             ))}
           </div>
 
+          {/* PAGINATION */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-12 bg-slate-100 p-2 rounded-2xl w-fit mx-auto border-2 border-white shadow-sm">
+            <div className="flex justify-center items-center gap-4 mt-12 bg-white p-2 rounded-2xl w-fit mx-auto border-2 border-slate-50 shadow-sm">
               <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10"><ChevronLeft /></Button>
-              <span className="text-xs font-black uppercase text-slate-400">Page {currentPage} / {totalPages}</span>
+              <span className="text-xs font-black uppercase text-slate-400 px-4">Page {currentPage} / {totalPages}</span>
               <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10"><ChevronRight /></Button>
             </div>
           )}
         </>
       )}
 
-      {/* DIALOG FORMULAIRE */}
+      {/* DIALOG FORMULAIRE STYLE SaaS */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-left">
-                {editId ? 'Modifier les données' : 'Nouveau Matériel'}
+            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-left leading-none">
+                {editId ? 'Modifier l’Appareil' : 'Nouveau Matériel'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-5 mt-4">
+          
+          <div className="space-y-6 mt-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nom / Numéro interne</Label>
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Nom Interne</Label>
                     <Input value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold px-4 shadow-inner" placeholder="Ex: Bus 01, Alizé..." />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 text-left">
                     <Label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest text-primary">Immatriculation</Label>
                     <Input value={registration} onChange={e => setRegistration(e.target.value)} className="h-12 rounded-xl bg-primary/5 border-2 border-primary/10 font-black text-primary px-4 shadow-sm" placeholder="Ex: RG-210-AA" />
                 </div>
             </div>
 
-            <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Catégorie de transport</Label>
+            <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Type de transport</Label>
                 <Select value={vehicleType} onValueChange={setVehicleType}>
                     <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold px-5"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-xl border-none shadow-2xl">
-                        {['Train', 'Bus', 'Bateau', 'Coaster', 'MiniBus'].map(t => <SelectItem key={t} value={t} className="font-bold">{t}</SelectItem>)}
+                        {['Bus', 'Train', 'Bateau', 'Coaster', 'MiniBus'].map(t => <SelectItem key={t} value={t} className="font-bold">{t}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 text-center block">Places</Label>
-                    <Input type="number" value={totalSeats} onChange={e => setTotalSeats(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-center" />
+            <div className="grid grid-cols-3 gap-4 border-t border-dashed pt-4">
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 text-center block">Nb Places</Label>
+                    <Input type="number" value={totalSeats} onChange={e => setTotalSeats(e.target.value)} className="h-11 rounded-xl bg-slate-50 border-none font-bold text-center" />
                 </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 text-center block">Rangs</Label>
-                    <Input type="number" value={rows} onChange={e => setRows(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-center" />
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 text-center block">Nb Rangs</Label>
+                    <Input type="number" value={rows} onChange={e => setRows(e.target.value)} className="h-11 rounded-xl bg-slate-50 border-none font-bold text-center" />
                 </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 text-center block">Col / Rang</Label>
-                    <Input type="number" value={seatsPerRow} onChange={e => setSeatsPerRow(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-center" />
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 text-center block">Sièges/Rang</Label>
+                    <Input type="number" value={seatsPerRow} onChange={e => setSeatsPerRow(e.target.value)} className="h-11 rounded-xl bg-slate-50 border-none font-bold text-center" />
                 </div>
             </div>
 
-            <Button onClick={handleSave} disabled={saving || !vehicleNumber} className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 uppercase tracking-widest mt-4">
+            <Button onClick={handleSave} disabled={saving || !vehicleNumber} className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 uppercase tracking-widest mt-4 transition-all active:scale-95">
                 {saving ? <RefreshCw className="animate-spin mr-2 h-6 w-6" /> : <Save className="mr-2 h-6 w-6" />}
                 {editId ? 'METTRE À JOUR' : 'AJOUTER AU PARC'}
             </Button>
           </div>
-          <button onClick={() => setShowForm(false)} className="w-full mt-4 text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-slate-500">Fermer la fenêtre</button>
+          
+          <button onClick={() => setShowForm(false)} className="w-full mt-4 text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-slate-500 transition-colors">FERMER LA FENÊTRE</button>
         </DialogContent>
       </Dialog>
     </div>
