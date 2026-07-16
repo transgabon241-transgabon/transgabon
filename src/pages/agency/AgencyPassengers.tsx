@@ -345,7 +345,7 @@ export default function AgencyPassengers() {
 
       <div className="mt-10 p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 print:bg-white print:text-slate-900 print:border-t-2 print:border-slate-900 print:rounded-none">
         <div className="text-left space-y-1">
-          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em]">Certification Gabon Mobilité</p>
+          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em]">Certification TransGabon-Connect</p>
           <p className="text-xs font-medium opacity-60">Le présent manifeste certifie la liste des passagers autorisés à voyager.</p>
         </div>
         <div className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">

@@ -293,7 +293,7 @@ export default function AgencyPayments() {
       )}
 
       <footer className="text-center pb-10">
-        <p className="text-[9px] font-black uppercase text-slate-300 tracking-[0.3em]">Document Comptable Interne • Gabon Mobilité</p>
+        <p className="text-[9px] font-black uppercase text-slate-300 tracking-[0.3em]">Document Comptable Interne • TransGabon-Connect</p>
       </footer>
     </div>
   );
