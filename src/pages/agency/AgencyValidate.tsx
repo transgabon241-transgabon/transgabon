@@ -53,7 +53,7 @@ type AgencyLuggageType = {
 };
 
 type Result = {
-  valid: boolean;
+  valid: boolean; // Représente si le billet est PAYÉ
   message: string;
   booking?: {
     id: string;
@@ -83,11 +83,9 @@ export default function AgencyValidate() {
   const [result, setResult] = useState<Result | null>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
-  // Pagination pour les passagers
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
 
-  // États bagages
   const [agencyRates, setAgencyRates] = useState<AgencyLuggageType[]>([]);
   const [weightInput, setWeightInput] = useState<string>('');
   const [selectedBusItem, setSelectedBusItem] = useState<AgencyLuggageType | null>(null);
@@ -161,13 +159,20 @@ export default function AgencyValidate() {
   };
 
   /**
-   * LA FONCTION QUI MANQUAIT : handleBoardPassenger
+   * ACTION : EMBARQUER (SÉCURISÉE)
    */
   const handleBoardPassenger = async (passengerId: string) => {
-    if (!canBoardPassengers) {
-      toast.error("Vous n'avez pas les droits pour valider l'embarquement.");
+    // SÉCURITÉ : Vérifier si le billet est payé avant de traiter la montée
+    if (!result?.valid) {
+      toast.error("Action refusée : Le passager doit d'abord passer à la caisse.");
       return;
     }
+
+    if (!canBoardPassengers) {
+      toast.error("Droit d'embarquement insuffisant.");
+      return;
+    }
+
     setBoardingId(passengerId);
     try {
       const { error } = await supabase
@@ -177,11 +182,10 @@ export default function AgencyValidate() {
 
       if (error) throw error;
 
-      toast.success("Passager enregistré à bord !");
-      // Rafraîchir les données pour mettre à jour l'UI
+      toast.success("Passager validé à bord !");
       handleValidate(result?.booking?.bookingNumber);
     } catch (e) {
-      toast.error("Erreur lors de la validation.");
+      toast.error("Erreur technique lors de l'embarquement.");
     } finally {
       setBoardingId(null);
     }
@@ -219,7 +223,6 @@ export default function AgencyValidate() {
     }
   };
 
-  // Pagination passagers
   const paginatedPassengers = useMemo(() => {
     if (!result?.booking) return [];
     const start = (currentPage - 1) * itemsPerPage;
@@ -275,7 +278,7 @@ export default function AgencyValidate() {
             <div className="grid grid-cols-2 gap-y-5 gap-x-4 text-sm mb-6">
               <InfoField label="Voyageur" value={result.booking.passengerName} />
               <InfoField label="Référence" value={result.booking.bookingNumber} />
-              <InfoField label="Itinéraire" value={`${result.booking.departureCity} → ${result.booking.arrivalCity}`} />
+              <InfoField label="Trajet" value={`${result.booking.departureCity} → ${result.booking.arrivalCity}`} />
               <InfoField label="Sièges" value={result.booking.seatNumber} />
               
               <div className="col-span-2 flex items-center gap-2 pt-2 border-t border-slate-100">
@@ -338,15 +341,18 @@ export default function AgencyValidate() {
                )}
             </div>
 
-            {/* SECTION EMBARQUEMENT */}
+            {/* SECTION EMBARQUEMENT (AVEC BLOCAGE SI NON PAYÉ) */}
             <div className="pt-6 border-t-2 border-dashed border-slate-100">
                <h3 className="text-[10px] font-black uppercase mb-4 flex items-center gap-2 text-slate-400">
                  <Users className="h-3.5 w-3.5 text-primary" /> Passagers ({result.booking.passengers.length})
                </h3>
                
                {!result.valid ? (
-                 <div className="bg-amber-100/50 p-4 rounded-2xl border-2 border-amber-200 text-amber-800 text-[11px] font-bold text-center uppercase tracking-tighter">
-                   Embarquement refusé : Paiement requis à la caisse.
+                 /* BLOCAGE VISUEL : On affiche un message d'alerte à la place de la liste d'embarquement */
+                 <div className="bg-amber-100/50 p-6 rounded-[2rem] border-2 border-amber-200 flex flex-col items-center gap-3 text-amber-800 text-center">
+                   <div className="p-3 bg-amber-200 rounded-2xl"><CreditCard className="h-6 w-6" /></div>
+                   <p className="text-sm font-black uppercase tracking-tight">Embarquement bloqué</p>
+                   <p className="text-xs font-medium">Ce billet n'est pas encore réglé. Le passager doit d'abord payer à la caisse avant de pouvoir embarquer.</p>
                  </div>
                ) : (
                  <div className="space-y-2">
@@ -362,7 +368,7 @@ export default function AgencyValidate() {
                           <Button 
                             onClick={() => handleBoardPassenger(p.id)} 
                             disabled={boardingId === p.id || !canBoardPassengers} 
-                            className="h-8 px-4 font-black uppercase text-[9px] rounded-lg"
+                            className="h-8 px-4 font-black uppercase text-[9px] rounded-lg shadow-sm"
                           >
                              {boardingId === p.id ? <RefreshCw className="animate-spin h-3 w-3"/> : "Valider"}
                           </Button>
@@ -382,10 +388,19 @@ export default function AgencyValidate() {
             </div>
           </div>
 
+          {/* SECTION CAISSE (POUR ENCAISSER SI NON PAYÉ) */}
           {!result.valid && canCollectMoney && (
-            <div className="bg-emerald-600 p-6 rounded-[2rem] shadow-xl text-white flex items-center justify-between gap-4">
-              <div><p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none">Caisse</p><h4 className="text-sm font-black uppercase italic mt-1 leading-none">Encaisser le billet</h4></div>
-              <Button onClick={() => supabase.from('bookings').update({status:'PAYE'}).eq('id', result.booking?.id).then(()=>handleValidate(result.booking?.bookingNumber))} className="bg-white text-emerald-700 hover:bg-slate-50 font-black text-xs h-10 px-6 rounded-xl shadow-lg">VALIDER CASH</Button>
+            <div className="bg-emerald-600 p-6 rounded-[2rem] shadow-xl text-white flex items-center justify-between gap-4 animate-pulse">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none">Caisse agence</p>
+                <h4 className="text-sm font-black uppercase italic mt-1 leading-none">Encaisser le billet</h4>
+              </div>
+              <Button 
+                onClick={() => supabase.from('bookings').update({status:'PAYE'}).eq('id', result.booking?.id).then(()=>handleValidate(result.booking?.bookingNumber))} 
+                className="bg-white text-emerald-700 hover:bg-slate-50 font-black text-xs h-10 px-6 rounded-xl shadow-lg"
+              >
+                VALIDER CASH
+              </Button>
             </div>
           )}
         </div>
