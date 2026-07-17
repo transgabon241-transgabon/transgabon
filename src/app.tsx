@@ -30,6 +30,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import ParcelSettings from './pages/agency/ParcelSettings';
 import AgencyPayments from './pages/agency/AgencyPayments';
+import ResetPasswordPage from "./pages/ResetPasswordPage"
 
 
 export default function App() {
@@ -71,6 +72,7 @@ export default function App() {
         {/* Conditions d'utilisation */}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
       <Toaster />
     </BrowserRouter>

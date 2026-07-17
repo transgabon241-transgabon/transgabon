@@ -3,12 +3,12 @@
 import React, { useEffect, useState, ReactNode } from "react"
 import { supabase } from "./supabase"
 import { AuthContext, AuthUser } from "./auth-context"
-import { Chrome, RefreshCw, X, AlertCircle, Lock, UserPlus, Mail } from "lucide-react"
+import { RefreshCw, X, AlertCircle, Lock, Mail, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-// IMPORTATION DU LOGO (Ajustez l'extension si c'est .svg ou .jpg)
+// IMPORTATION DU LOGO
 import logo from "@/assets/logo.png"
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -38,41 +38,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data) {
         const r = (data.role || "VOYAGEUR").toUpperCase()
-        const roles: any = { ADMIN: "Administrateur", AGENT_AGENCE: "Agent", AGENCE_EMBARQUEMENT: "Agent Embarquement", SERVICE_COLIS: "Service Colis", CAISSIER: "Caissier" }
+        const roles: any = { 
+          ADMIN: "Administrateur", 
+          AGENT_AGENCE: "Agent", 
+          AGENCE_EMBARQUEMENT: "Agent Embarquement", 
+          SERVICE_COLIS: "Service Colis", 
+          CAISSIER: "Caissier" 
+        }
         setUser({
-          id: data.id, email: data.email || supabaseUser.email,
-          firstName: data.firstName || "", lastName: data.lastName || "",
-          role: roles[r] || "Voyageur", phone: data.phone || "", companyId: data.agencyId || undefined
+          id: data.id, 
+          email: data.email || supabaseUser.email,
+          firstName: data.firstName || "", 
+          lastName: data.lastName || "",
+          role: roles[r] || "Voyageur", 
+          phone: data.phone || "", 
+          companyId: data.agencyId || undefined
         })
       } else {
+        // Cas où l'utilisateur existe dans Auth mais pas encore dans la table User
         const meta = supabaseUser.user_metadata;
-        const fullName = meta?.full_name || "";
-        const parts = fullName.split(" ");
-        const oauthFirstName = meta?.first_name || parts[0] || "";
-        const oauthLastName = meta?.last_name || parts.slice(1).join(" ") || "";
-
-        const { data: newUser, error: insertError } = await supabase
+        const { error: insertError } = await supabase
           .from("User")
           .insert([{
             id: supabaseUser.id,
             email: supabaseUser.email,
-            firstName: oauthFirstName,
-            lastName: oauthLastName,
+            firstName: meta?.first_name || "",
+            lastName: meta?.last_name || "",
             role: "VOYAGEUR",
-            passwordHash: "oauth_managed"
+            passwordHash: "auth"
           }])
-          .select()
-          .single()
 
-        if (!insertError) {
-          setUser({
-            id: supabaseUser.id,
-            email: supabaseUser.email,
-            firstName: oauthFirstName,
-            lastName: oauthLastName,
-            role: "Voyageur"
-          })
-        }
+        if (!insertError) fetchProfile(supabaseUser)
       }
     } catch (e) {
       console.error("Erreur Sync Profil:", e)
@@ -102,8 +98,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handlePasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault(); setFormSubmitting(true); setMessage(null)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setMessage({ type: "error", text: error.message }); setFormSubmitting(false); }
+    if (error) { 
+      setMessage({ type: "error", text: "Identifiants invalides ou erreur de connexion." }); 
+      setFormSubmitting(false); 
+    }
   }
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setMessage({ type: "error", text: "Veuillez saisir votre e-mail d'abord." });
+      return;
+    }
+    setFormSubmitting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) setMessage({ type: "error", text: error.message });
+    else setMessage({ type: "success", text: "Lien de réinitialisation envoyé par e-mail !" });
+    setFormSubmitting(false);
+  };
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault(); setFormSubmitting(true); setMessage(null)
@@ -111,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email, options: { emailRedirectTo: window.location.href } 
     })
     if (error) setMessage({ type: "error", text: error.message })
-    else setMessage({ type: "success", text: "Lien magique envoyé !" })
+    else setMessage({ type: "success", text: "Lien magique envoyé ! Vérifiez vos emails." })
     setFormSubmitting(false)
   }
 
@@ -128,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }])
       if (dbError) setMessage({ type: "error", text: dbError.message })
       else { 
-        setMessage({ type: "success", text: "Compte créé ! Connectez-vous." })
+        setMessage({ type: "success", text: "Compte créé ! Vérifiez vos emails pour valider." })
         setModalView("signin") 
       }
     }
@@ -145,25 +158,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {isModalOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-2xl relative text-left">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="absolute right-4 top-4 p-1 hover:bg-muted rounded-full transition-colors"><X className="h-5 w-5" /></button>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="absolute right-4 top-4 p-1 hover:bg-muted rounded-full transition-colors">
+              <X className="h-5 w-5" />
+            </button>
             
             <div className="text-center mb-6">
-                {/* AFFICHAGE DU LOGO */}
-                <img 
-                  src={logo} 
-                  alt="Gabon Mobilité" 
-                  className="h-16 w-auto mx-auto mb-4 object-contain" 
-                />
-                
-                <h3 className="text-xl font-extrabold text-center">
-                  {modalView === "signin" ? "Connexion" : "Créer un compte"}
-                </h3>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-                  Gabon Mobilité
-                </p>
+                <img src={logo} alt="Logo" className="h-16 w-auto mx-auto mb-4 object-contain" />
+                <h3 className="text-xl font-extrabold">{modalView === "signin" ? "Connexion" : "Créer un compte"}</h3>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Gabon Mobilité</p>
             </div>
 
-            {message && <div className={`p-3 rounded-xl text-xs mb-4 flex gap-2 ${message.type === "success" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}><AlertCircle className="h-4 w-4 shrink-0" />{message.text}</div>}
+            {message && (
+              <div className={`p-3 rounded-xl text-xs mb-4 flex gap-2 ${message.type === "success" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {message.text}
+              </div>
+            )}
 
             {modalView === "signin" ? (
               <div className="space-y-4">
@@ -172,18 +182,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     <Label>E-mail</Label>
                     <Input type="email" required placeholder="votre@email.ga" value={email} onChange={e => setEmail(e.target.value)} disabled={formLoading} />
                   </div>
+                  
                   {!useMagicLink && (
                     <div className="space-y-1">
-                      <Label>Mot de passe</Label>
+                      <div className="flex justify-between items-end">
+                        <Label>Mot de passe</Label>
+                        <button type="button" onClick={handleForgotPassword} className="text-[11px] text-primary hover:underline font-semibold mb-0.5">
+                          Oublié ?
+                        </button>
+                      </div>
                       <Input type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} disabled={formLoading} />
                     </div>
                   )}
+
                   <Button type="submit" className="w-full font-bold h-11" disabled={formLoading}>
                     {formLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : (useMagicLink ? <Mail className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />)}
                     {useMagicLink ? "Recevoir mon lien" : "Se connecter"}
                   </Button>
                 </form>
-                <button type="button" onClick={() => setUseMagicLink(!useMagicLink)} className="text-xs text-primary font-bold hover:underline w-full text-center">{useMagicLink ? "Connexion par mot de passe" : "Connexion par lien magique"}</button>
+
+                <button type="button" onClick={() => { setUseMagicLink(!useMagicLink); setMessage(null); }} className="text-xs text-muted-foreground font-medium hover:text-primary w-full text-center">
+                  {useMagicLink ? "Utiliser mon mot de passe" : "Se connecter sans mot de passe (Lien magique)"}
+                </button>
               </div>
             ) : (
               <form onSubmit={handleSignUp} className="space-y-3">
@@ -191,24 +211,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   <Input required placeholder="Prénom" value={firstName} onChange={e => setFirstName(e.target.value)} />
                   <Input required placeholder="Nom" value={lastName} onChange={e => setLastName(e.target.value)} />
                 </div>
-                <Input type="tel" required placeholder="Téléphone" value={phone} onChange={e => setPhone(e.target.value)} />
+                <Input type="tel" required placeholder="Téléphone (ex: 066...)" value={phone} onChange={e => setPhone(e.target.value)} />
                 <Input type="email" required placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} />
                 <Input type="password" required placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} />
-                <Button type="submit" className="w-full font-bold h-11 mt-2" disabled={formLoading}>Créer mon compte</Button>
+                <Button type="submit" className="w-full font-bold h-11 mt-2" disabled={formLoading}>
+                  <UserPlus className="h-4 w-4 mr-2" /> Créer mon compte
+                </Button>
               </form>
             )}
 
-            <div className="mt-4 text-center border-t pt-4">
-              <button type="button" onClick={() => { setModalView(modalView === "signin" ? "signup" : "signin"); setMessage(null); setUseMagicLink(false); }} className="text-xs text-primary font-bold hover:underline">
+            <div className="mt-6 text-center border-t pt-4">
+              <button 
+                type="button" 
+                onClick={() => { setModalView(modalView === "signin" ? "signup" : "signin"); setMessage(null); }} 
+                className="text-sm font-bold text-primary hover:underline"
+              >
                 {modalView === "signin" ? "Nouveau ? Créer un compte" : "Déjà membre ? Se connecter"}
               </button>
             </div>
-
-            <div className="relative my-6 text-center"><span className="absolute inset-0 flex items-center"><span className="w-full border-t" /></span><span className="relative bg-card px-2 text-[10px] uppercase text-muted-foreground font-bold block mx-auto w-fit">Ou</span></div>
-
-            <Button type="button" variant="outline" className="w-full h-11 font-bold" onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href, queryParams: { prompt: 'select_account' } } })}>
-              <Chrome className="h-4 w-4 mr-2 text-red-500" /> Google
-            </Button>
           </div>
         </div>
       )}
