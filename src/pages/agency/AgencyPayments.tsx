@@ -170,21 +170,21 @@ export default function AgencyPayments() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <SummaryCard 
           label="Recettes Jour" 
-          value={`${stats.totalToday.toLocaleString()} F`} 
+          value={`${stats.totalToday.toLocaleString()} F CFA`} 
           color="text-emerald-600" bg="bg-emerald-50" 
           icon={CalendarIcon} 
           sub="Aujourd'hui"
         />
         <SummaryCard 
           label="Recettes Mois" 
-          value={`${stats.totalMonth.toLocaleString()} F`} 
+          value={`${stats.totalMonth.toLocaleString()} F CFA`} 
           color="text-blue-600" bg="bg-blue-50" 
           icon={TrendingUp} 
           sub="Mois en cours"
         />
         <SummaryCard 
           label="Recettes Année" 
-          value={`${stats.totalYear.toLocaleString()} F`} 
+          value={`${stats.totalYear.toLocaleString()} F CFA`} 
           color="text-primary" bg="bg-primary/5" 
           icon={DollarSign} 
           sub="Cumul annuel"
