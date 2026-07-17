@@ -165,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             <div className="text-center mb-6">
                 <img src={logo} alt="Logo" className="h-16 w-auto mx-auto mb-4 object-contain" />
                 <h3 className="text-xl font-extrabold">{modalView === "signin" ? "Connexion" : "Créer un compte"}</h3>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Gabon Mobilité</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">TransGabon-Connect</p>
             </div>
 
             {message && (
