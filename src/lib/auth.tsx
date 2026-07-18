@@ -86,13 +86,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const handlePasswordSignIn = async (e: React.FormEvent) => {
-    e.preventDefault(); setFormSubmitting(true); setMessage(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    e.preventDefault(); 
+    setFormSubmitting(true); 
+    setMessage(null);
+
+    console.log("Tentative de connexion pour :", email.trim());
+
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email: email.trim(), // On enlève les espaces invisibles
+      password: password 
+    });
+
     if (error) { 
+      console.error("Erreur login:", error.message);
       setMessage({ type: "error", text: "Identifiants invalides ou erreur de connexion." }); 
       setFormSubmitting(false); 
+    } else {
+      // Si ça marche, le onAuthStateChange s'occupera du reste
+      setIsModalOpen(false);
     }
-  }
+  };
 
   const handleForgotPassword = async () => {
     if (!email) {
