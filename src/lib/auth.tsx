@@ -27,23 +27,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   // CETTE FONCTION NE FAIT PLUS QUE DE LA LECTURE
-  // 1. CORRECTION DE FETCHPROFILE
   const fetchProfile = async (supabaseUser: any) => {
-    if (!supabaseUser) { 
-      setUser(null); 
-      setIsLoading(false); 
-      setFormSubmitting(false); // Arrêter le spinner si déconnexion
-      return; 
-    }
+    if (!supabaseUser) { setUser(null); setIsLoading(false); return; }
     
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("User")
         .select("*")
         .eq("id", supabaseUser.id)
         .maybeSingle()
-
-      if (error) throw error;
 
       if (data) {
         const r = (data.role || "VOYAGEUR").toUpperCase()
@@ -64,39 +56,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           companyId: data.agencyId || undefined
         })
       } else {
-        // CAS CRITIQUE : Authentifié mais pas de profil dans la table User
-        console.error("Profil introuvable pour l'ID:", supabaseUser.id);
-        setMessage({ type: "error", text: "Compte actif mais profil non configuré. Contactez l'admin." });
+        // Si la ligne n'existe pas encore (attente du trigger), on ne fait rien
+        // L'utilisateur sera chargé au prochain rafraîchissement ou après confirmation mail
         setUser(null);
-        // On déconnecte l'utilisateur car il est dans un état "fantôme"
-        await supabase.auth.signOut();
       }
     } catch (e) {
       console.error("Erreur Sync Profil:", e)
-      setMessage({ type: "error", text: "Erreur de synchronisation du profil." });
     } finally {
-      setIsLoading(false);
-      setFormSubmitting(false); // ARRÊTE LE SPINNER DANS TOUS LES CAS
+      setIsLoading(false)
     }
   }
 
-  // 2. CORRECTION DE HANDLEPASSWORDSIGNIN
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) fetchProfile(session.user)
+      else setIsLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        fetchProfile(session.user)
+        setIsModalOpen(false) 
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setIsLoading(false)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
   const handlePasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault(); 
     setFormSubmitting(true); 
     setMessage(null);
 
+    console.log("Tentative de connexion pour :", email.trim());
+
     const { data, error } = await supabase.auth.signInWithPassword({ 
-      email: email.trim(), 
+      email: email.trim(), // On enlève les espaces invisibles
       password: password 
     });
 
     if (error) { 
       console.error("Erreur login:", error.message);
-      setMessage({ type: "error", text: "Identifiants invalides." }); 
-      setFormSubmitting(false); // Arrêter le spinner
-    } 
-    // Note: Si pas d'erreur, on ne fait rien, fetchProfile s'occupera d'arrêter le spinner
+      setMessage({ type: "error", text: "Identifiants invalides ou erreur de connexion." }); 
+      setFormSubmitting(false); 
+    } else {
+      // Si ça marche, le onAuthStateChange s'occupera du reste
+      setIsModalOpen(false);
+    }
   };
 
   const handleForgotPassword = async () => {
