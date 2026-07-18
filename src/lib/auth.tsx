@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [formLoading, setFormSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  // CETTE FONCTION NE FAIT PLUS QUE DE LA LECTURE
   const fetchProfile = async (supabaseUser: any) => {
     if (!supabaseUser) { setUser(null); setIsLoading(false); return; }
     
@@ -55,20 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           companyId: data.agencyId || undefined
         })
       } else {
-        // Cas où l'utilisateur existe dans Auth mais pas encore dans la table User
-        const meta = supabaseUser.user_metadata;
-        const { error: insertError } = await supabase
-          .from("User")
-          .insert([{
-            id: supabaseUser.id,
-            email: supabaseUser.email,
-            firstName: meta?.first_name || "",
-            lastName: meta?.last_name || "",
-            role: "VOYAGEUR",
-            passwordHash: "auth"
-          }])
-
-        if (!insertError) fetchProfile(supabaseUser)
+        // Si la ligne n'existe pas encore (attente du trigger), on ne fait rien
+        // L'utilisateur sera chargé au prochain rafraîchissement ou après confirmation mail
+        setUser(null);
       }
     } catch (e) {
       console.error("Erreur Sync Profil:", e)
@@ -130,21 +120,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault(); setFormSubmitting(true); setMessage(null)
-    const { data, error: authError } = await supabase.auth.signUp({ 
-        email, password, options: { emailRedirectTo: window.location.href } 
+
+    // 1. INSCRIPTION AUTH UNIQUEMENT
+    const { error: authError } = await supabase.auth.signUp({ 
+        email, 
+        password, 
+        options: { 
+          emailRedirectTo: window.location.origin,
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            phone: phone
+          }
+        } 
     })
-    if (authError) { setMessage({ type: "error", text: authError.message }); setFormSubmitting(false); return; }
-    
-    if (data?.user) {
-      const { error: dbError } = await supabase.from("User").insert([{
-        id: data.user.id, email, phone, firstName, lastName, role: "VOYAGEUR", passwordHash: "auth"
-      }])
-      if (dbError) setMessage({ type: "error", text: dbError.message })
-      else { 
-        setMessage({ type: "success", text: "Compte créé ! Vérifiez vos emails pour valider." })
-        setModalView("signin") 
-      }
+
+    if (authError) { 
+      setMessage({ type: "error", text: authError.message }); 
+      setFormSubmitting(false); 
+      return; 
     }
+    
+    // PLUS D'INSERTION MANUELLE ICI. LE TRIGGER S'EN OCCUPE.
+    setMessage({ 
+      type: "success", 
+      text: "Compte créé ! Vérifiez vos emails pour valider votre inscription." 
+    })
+    
     setFormSubmitting(false)
   }
 
