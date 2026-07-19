@@ -1,15 +1,14 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
-import { Search, Train, Bus, ArrowRightLeft, Calendar, MapPin, Ship } from 'lucide-react'; // Ajout de Ship
+import { useNavigate, Link } from 'react-router-dom'; // Ajout de Link
+import { supabase } from '@/lib/supabase';
+import { Search, Train, Bus, ArrowRightLeft, Calendar, MapPin, Ship, ShieldCheck, Mail } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 
-// IMPORTATION DE TON IMAGE
 import heroBg from '@/assets/hero-gabon.png';
 
 const FEATURES = [
@@ -20,12 +19,11 @@ const FEATURES = [
 
 const TRANSPORT_TYPES = [
   { icon: Train, label: 'Train (SETRAG)' },
-  { icon: Ship, label: 'Bateau (Maritime)' }, // NOUVEAU
+  { icon: Ship, label: 'Bateau (Maritime)' },
   { icon: Bus, label: 'Bus' },
   { icon: Bus, label: 'Coaster / MiniBus' },
 ];
 
-// Liste de secours si la base de données est inaccessible temporairement
 const GABON_CITIES_FALLBACK = [
   "Libreville", "Port-Gentil", "Franceville", "Oyem", "Moanda", 
   "Lambaréné", "Mouila", "Tchibanga", "Makokou", "Booué", "Ndjolé", "Lastoursville"
@@ -38,7 +36,6 @@ export default function HomePage() {
   const [date, setDate] = useState('');
   const [dbCities, setDbCities] = useState<string[]>([]);
 
-  // Charge dynamiquement les gares enregistrées dans PostgreSQL sur Supabase
   useEffect(() => {
     const fetchCities = async () => {
       try {
@@ -46,15 +43,11 @@ export default function HomePage() {
           .from('cities')
           .select('name')
           .order('name', { ascending: true });
-
-        if (data && !error) {
-          setDbCities(data.map(c => c.name));
-        }
+        if (data && !error) setDbCities(data.map(c => c.name));
       } catch (err) {
-        console.error("Erreur de récupération des gares :", err);
+        console.error("Erreur :", err);
       }
     };
-
     fetchCities();
   }, []);
 
@@ -73,20 +66,13 @@ export default function HomePage() {
 
   return (
     <div className="text-foreground">
-      {/* Hero avec Image à la place du vert */}
+      {/* Hero Section */}
       <section className="relative text-primary-foreground overflow-hidden">
-        {/* L'IMAGE DE FOND */}
         <div className="absolute inset-0 z-0">
-          <img 
-            src={heroBg} 
-            alt="Fond Gabon" 
-            className="w-full h-full object-cover"
-          />
-          {/* Le voile noir (Overlay) pour garder le texte lisible */}
+          <img src={heroBg} alt="Fond Gabon" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/50" />
         </div>
 
-        {/* CONTENU */}
         <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
           <div className="max-w-2xl mx-auto text-center mb-10">
             <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">
@@ -97,9 +83,9 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Search form */}
           <div className="max-w-3xl mx-auto bg-card text-foreground rounded-2xl p-6 shadow-lg">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-end mb-4 text-left">
+             {/* ... (Ton formulaire de recherche reste identique ici) ... */}
+             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-end mb-4 text-left">
               <div>
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 block">Départ</Label>
                 <Select value={from} onValueChange={setFrom}>
@@ -139,6 +125,20 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* --- SECTION TRANSPARENCE DES DONNÉES (EXIGENCE GOOGLE) --- */}
+      <section className="py-16 bg-slate-50 border-b">
+        <div className="container mx-auto px-4 text-center max-w-3xl">
+          <ShieldCheck className="h-12 w-12 text-primary mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-4">Pourquoi utiliser votre compte Google ?</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            TransGabon Connect utilise l'authentification Google uniquement pour vous identifier de manière sécurisée. 
+            Nous récupérons votre <strong>nom et votre adresse email</strong> pour vous envoyer vos billets électroniques, 
+            vos bordereaux de suivi de colis et pour sécuriser l'accès à votre historique de voyage. 
+            Aucune autre donnée privée n'est collectée ou partagée.
+          </p>
+        </div>
+      </section>
+
       {/* Features */}
       <section className="py-16">
         <div className="container mx-auto px-4">
@@ -157,20 +157,19 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Transport types */}
-      <section className="py-16 bg-muted/50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold text-center mb-10">Types de transport disponibles</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            {TRANSPORT_TYPES.map((t, i) => (
-              <div key={i} className="bg-card rounded-xl p-6 text-center shadow-sm border border-border transition-transform hover:scale-105">
-                <t.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
-                <span className="text-sm font-medium">{t.label}</span>
-              </div>
-            ))}
+      {/* Footer (EXIGENCE GOOGLE) */}
+      <footer className="py-12 bg-white border-t">
+        <div className="container mx-auto px-4 text-center">
+          <div className="flex flex-wrap justify-center gap-6 mb-6">
+            <Link to="/privacy" className="text-sm font-medium hover:text-primary transition-colors">Politique de Confidentialité</Link>
+            <Link to="/terms" className="text-sm font-medium hover:text-primary transition-colors">Conditions d'Utilisation</Link>
+            <a href="mailto:contact@votre-domaine.ga" className="text-sm font-medium hover:text-primary transition-colors">Contact</a>
           </div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+            © {new Date().getFullYear()} TransGabon-Connect • Tous droits réservés.
+          </p>
         </div>
-      </section>
+      </footer>
     </div>
   );
 }
