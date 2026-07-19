@@ -400,7 +400,7 @@ export default function SendParcelPage() {
               </div>
             </div>
             <Button onClick={handleSearchTrips} disabled={searchingTrips} className="w-full h-14 font-black rounded-2xl shadow-xl shadow-primary/20 uppercase tracking-widest text-xs">
-              {searchingTrips ? <RefreshCw className="animate-spin h-5 w-5" /> : "Trouver un bus ou navire"}
+              {searchingTrips ? <RefreshCw className="animate-spin h-5 w-5" /> : "Trouver un bus, un train ou navire"}
             </Button>
           </div>
 
