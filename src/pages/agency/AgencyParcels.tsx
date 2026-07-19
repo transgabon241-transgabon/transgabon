@@ -178,7 +178,6 @@ export default function AgencyParcels() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-5 rounded-3xl border shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-primary rounded-xl text-white shadow-lg shadow-primary/20">
@@ -191,7 +190,6 @@ export default function AgencyParcels() {
         </Button>
       </div>
 
-      {/* Filtres */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-3xl border-2 border-slate-50 shadow-sm">
         <div className="md:col-span-3 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -212,7 +210,6 @@ export default function AgencyParcels() {
         </Select>
       </div>
 
-      {/* Liste */}
       <div className="grid gap-3 relative">
         {paginatedParcels.map(p => (
           <ParcelCard 
@@ -225,7 +222,6 @@ export default function AgencyParcels() {
         ))}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-8 bg-white p-2 rounded-2xl border-2 border-slate-50 w-fit mx-auto shadow-sm">
           <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-9 w-9"><ChevronLeft size={18} /></Button>
@@ -249,9 +245,9 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
     const w = parseFloat(weight) || 0;
 
     if (selectedTariff.is_weight_based) {
-      return qty * w * selectedTariff.price; // Quantité x Poids x Prix/kg
+      return qty * w * selectedTariff.price;
     } else {
-      return qty * selectedTariff.price; // Quantité x Prix unitaire
+      return qty * selectedTariff.price;
     }
   }, [selectedTariff, weight, quantity]);
 
@@ -269,12 +265,14 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
     } catch (e) { toast.error("Erreur de sauvegarde"); }
   };
 
-  const nextStatus = (current: string) => {
+  const getNextStatus = (current: string) => {
     if (current === 'Pris en charge') return 'En transit';
     if (current === 'En transit') return 'Arrivé';
     if (current === 'Arrivé') return 'Livré';
     return null;
-  }(p.status);
+  };
+
+  const nextStatus = getNextStatus(p.status);
 
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : Bus;
 
@@ -282,7 +280,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
     <div className="bg-white border-2 border-slate-100 rounded-[1.5rem] p-4 hover:border-primary/20 transition-all group relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         
-        {/* Infos de base */}
         <div className="flex items-center gap-4 flex-1">
           <div className={`h-11 w-11 rounded-xl flex items-center justify-center text-white shadow-md ${p.transportType === 'BOAT' ? 'bg-blue-600' : 'bg-primary'}`}>
              <TransportIcon size={20} />
@@ -296,14 +293,12 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
           </div>
         </div>
 
-        {/* Itinéraire */}
         <div className="flex items-center gap-3 text-xs font-bold text-slate-400 px-4 md:border-x border-dashed">
            <span>{p.departureCity}</span>
            <ArrowRight size={14} className="text-primary/30" />
            <span>{p.arrivalCity}</span>
         </div>
 
-        {/* Détails Quantité/Poids/Prix */}
         <div className="flex items-center gap-6 px-4">
            <div className="text-right">
               <p className="text-[8px] font-black text-slate-300 uppercase">Quantité</p>
@@ -319,7 +314,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
            </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
           {p.status === 'En attente' && (
             <div className="relative">
@@ -403,15 +397,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
           </AlertDialog>
         </div>
       </div>
-    </div>
-  );
-}
-
-function InfoField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-0.5 text-left">
-      <div className="text-[9px] uppercase font-black text-slate-400 tracking-tighter leading-none">{label}</div>
-      <div className="font-bold text-slate-900 text-xs truncate leading-tight">{value || '—'}</div>
     </div>
   );
 }
