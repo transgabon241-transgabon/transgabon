@@ -15,7 +15,6 @@ import {
   ArrowRight, 
   CheckCircle2, 
   Calculator, 
-  Info, 
   RefreshCw, 
   ShoppingBag,
   Ship,
@@ -27,14 +26,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+type City = {
+  id: string;
+  name: string;
+};
+
 type Trip = {
   departureId: string;
   companyId: string;
   companyName: string;
   transportType: string;
-  transportTypeCode: string; // BUS, TRAIN, BOAT
+  transportTypeCode: string;
   vehicleNumber: string;
-  registration: string; // NOUVEAU
+  registration: string;
   departureTime: string;
   arrivalTime: string;
   departureCity: string;
@@ -56,28 +60,22 @@ const PAYMENT_METHODS = [
   { id: 'MOOV_MONEY', label: 'Moov Money' },
 ];
 
-const GABON_CITIES = [
-  "Libreville", "Port-Gentil", "Franceville", "Oyem", "Moanda", 
-  "Lambaréné", "Mouila", "Tchibanga", "Makokou", "Booué", "Ndjolé", "Lastoursville"
-];
-
 export default function SendParcelPage() {
   const { user, isLoading, loginWithRedirect } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [cities, setCities] = useState<City[]>([]); // Villes dynamiques
+  const [fromId, setFromId] = useState(''); // On stocke l'ID
+  const [toId, setToId] = useState('');     // On stocke l'ID
   const [date, setDate] = useState('');
   const [trips, setTrips] = useState<Trip[]>([]);
   const [searchingTrips, setSearchingTrips] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
 
-  // Tarifs dynamiques
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [selectedTariff, setSelectedTariff] = useState<Tariff | null>(null);
 
-  // Formulaire Colis
   const [senderName, setSenderName] = useState('');
   const [senderPhone, setSenderPhone] = useState('');
   const [receiverName, setReceiverName] = useState('');
@@ -88,6 +86,20 @@ export default function SendParcelPage() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ trackingNumber: string; price: number } | null>(null);
+
+  // 1. Charger les villes au montage du composant
+  useEffect(() => {
+    const fetchCities = async () => {
+      const { data, error } = await supabase
+        .from('cities')
+        .select('id, name')
+        .order('name', { ascending: true });
+      
+      if (data) setCities(data);
+      if (error) toast.error("Erreur lors du chargement des villes");
+    };
+    fetchCities();
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
@@ -100,7 +112,6 @@ export default function SendParcelPage() {
     }
   }, [user]);
 
-  // Charger les tarifs de l'agence sélectionnée
   useEffect(() => {
     if (selectedTrip) {
       const fetchTariffs = async () => {
@@ -114,40 +125,45 @@ export default function SendParcelPage() {
     }
   }, [selectedTrip]);
 
+  // 2. Recherche simplifiée (plus besoin de chercher les IDs, on les a déjà)
   const handleSearchTrips = async () => {
-    if (!from || !to || !date) { toast.error('Veuillez remplir l\'itinéraire.'); return; }
+    if (!fromId || !toId || !date) { toast.error('Veuillez remplir l\'itinéraire.'); return; }
     setSearchingTrips(true);
     try {
-      const { data: fromCity } = await supabase.from('cities').select('id').eq('name', from).single();
-      const { data: toCity } = await supabase.from('cities').select('id').eq('name', to).single();
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*, company:companies(name), vehicle:vehicles(registration)')
+        .eq('from_id', fromId)
+        .eq('to_id', toId)
+        .eq('departure_date', date);
 
-      if (fromCity && toCity) {
-        // MISE À JOUR QUERY : Jointure avec vehicles pour la registration
-        const { data, error } = await supabase
-          .from('trips')
-          .select('*, company:companies(name), vehicle:vehicles(registration)')
-          .eq('from_id', fromCity.id)
-          .eq('to_id', toCity.id)
-          .eq('departure_date', date);
+      if (error) throw error;
 
-        if (data && !error) {
-          setTrips(data.map(t => ({
-            departureId: t.id,
-            companyId: t.company_id,
-            companyName: t.company?.name || 'Opérateur',
-            transportType: t.type === 'BOAT' ? 'Bateau' : t.type === 'TRAIN' ? 'Train' : 'Bus',
-            transportTypeCode: t.type,
-            vehicleNumber: t.vehicle_number,
-            registration: t.vehicle?.registration || '—', // RÉCUPÉRATION IMMATRICULATION
-            departureTime: t.departure_time,
-            arrivalTime: t.arrival_time,
-            departureCity: from,
-            arrivalCity: to,
-            departureDate: date,
-            price: t.price
-          })));
-        }
+      if (data) {
+        // On récupère les noms des villes pour l'affichage
+        const cityNameFrom = cities.find(c => c.id === fromId)?.name || '';
+        const cityNameTo = cities.find(c => c.id === toId)?.name || '';
+
+        setTrips(data.map(t => ({
+          departureId: t.id,
+          companyId: t.company_id,
+          companyName: t.company?.name || 'Opérateur',
+          transportType: t.type === 'BOAT' ? 'Bateau' : t.type === 'TRAIN' ? 'Train' : 'Bus',
+          transportTypeCode: t.type,
+          vehicleNumber: t.vehicle_number,
+          registration: t.vehicle?.registration || '—',
+          departureTime: t.departure_time,
+          arrivalTime: t.arrival_time,
+          departureCity: cityNameFrom,
+          arrivalCity: cityNameTo,
+          departureDate: date,
+          price: t.price
+        })));
+
+        if (data.length === 0) toast.info("Aucun départ trouvé pour cette date.");
       }
+    } catch (err) {
+      toast.error("Erreur lors de la recherche des départs.");
     } finally { setSearchingTrips(false); }
   };
 
@@ -163,9 +179,6 @@ export default function SendParcelPage() {
     }
     setSubmitting(true);
     try {
-      const { data: fromCity } = await supabase.from('cities').select('id').eq('name', selectedTrip.departureCity).single();
-      const { data: toCity } = await supabase.from('cities').select('id').eq('name', selectedTrip.arrivalCity).single();
-
       const fullDescription = `${parcelTitle}${description ? ' - ' + description : ''}`;
 
       const { data: res, error } = await supabase.rpc('create_parcel_expedition_transaction', {
@@ -175,8 +188,8 @@ export default function SendParcelPage() {
         p_receiver_name: receiverName,
         p_receiver_phone: receiverPhone,
         p_receiver_city_name: selectedTrip.arrivalCity,
-        p_from_city_id: fromCity.id,
-        p_to_city_id: toCity.id,
+        p_from_city_id: fromId,
+        p_to_city_id: toId,
         p_company_id: selectedTrip.companyId,
         p_description: fullDescription,
         p_weight: parseFloat(weightKg),
@@ -196,7 +209,6 @@ export default function SendParcelPage() {
 
   if (isLoading || !user) return null;
 
-  // --- ECRAN DE SUCCÈS (REÇU PRO) ---
   if (step === 3 && result) {
     return (
       <div className="container mx-auto px-4 py-20 text-center max-w-md animate-in fade-in zoom-in-95 duration-500">
@@ -246,7 +258,6 @@ export default function SendParcelPage() {
         </div>
       </header>
 
-      {/* --- ÉTAPE 1 : RECHERCHE --- */}
       {step === 1 && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="bg-white border-2 border-primary/5 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
@@ -256,16 +267,24 @@ export default function SendParcelPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase ml-1">Ville Départ</Label>
-                <Select value={from} onValueChange={setFrom}>
-                  <SelectTrigger className="h-12 rounded-xl font-bold bg-slate-50 border-none"><SelectValue placeholder="Ville" /></SelectTrigger>
-                  <SelectContent>{GABON_CITIES.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
+                <Select value={fromId} onValueChange={setFromId}>
+                  <SelectTrigger className="h-12 rounded-xl font-bold bg-slate-50 border-none">
+                    <SelectValue placeholder="Ville" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase ml-1">Ville Arrivée</Label>
-                <Select value={to} onValueChange={setTo}>
-                  <SelectTrigger className="h-12 rounded-xl font-bold bg-slate-50 border-none"><SelectValue placeholder="Ville" /></SelectTrigger>
-                  <SelectContent>{GABON_CITIES.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
+                <Select value={toId} onValueChange={setToId}>
+                  <SelectTrigger className="h-12 rounded-xl font-bold bg-slate-50 border-none">
+                    <SelectValue placeholder="Ville" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5 text-left">
@@ -307,7 +326,6 @@ export default function SendParcelPage() {
         </div>
       )}
 
-      {/* --- ÉTAPE 2 : FORMULAIRE --- */}
       {step === 2 && selectedTrip && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="bg-slate-900 border-none rounded-2xl p-5 flex justify-between items-center text-white shadow-xl">
