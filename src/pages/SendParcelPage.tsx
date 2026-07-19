@@ -209,42 +209,149 @@ export default function SendParcelPage() {
 
   if (isLoading || !user) return null;
 
+  // --- ECRAN DE SUCCÈS ENRICHI (BORDEREAU PRO) ---
   if (step === 3 && result) {
     return (
-      <div className="container mx-auto px-4 py-20 text-center max-w-md animate-in fade-in zoom-in-95 duration-500">
-        <div className="h-20 w-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl shadow-emerald-100">
-          <CheckCircle2 size={40} />
-        </div>
-        <h1 className="text-3xl font-black italic mb-2">Expédition Validée</h1>
-        <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-[0.3em] mb-10">Bordereau de suivi généré</p>
-        
-        <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-2xl text-left space-y-6 relative overflow-hidden">
-           <div className="absolute top-0 right-0 p-4 opacity-5">
-              <Package size={80} />
-           </div>
-           <div>
-             <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Numéro de suivi (Tracking)</Label>
-             <p className="text-3xl font-mono font-black text-primary tracking-tighter mt-1">{result.trackingNumber}</p>
-           </div>
-           <div className="pt-6 border-t border-dashed border-slate-200">
-             <div className="flex justify-between items-end">
-                <div>
-                   <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Estimation à régler</Label>
-                   <p className="text-2xl font-black text-slate-900 leading-none">{result.price.toLocaleString()} F</p>
-                </div>
-                <Badge className="bg-emerald-100 text-emerald-700 font-black text-[9px] uppercase border-none">En attente dépôt</Badge>
-             </div>
-           </div>
+      <div className="container mx-auto px-4 py-10 max-w-2xl animate-in fade-in zoom-in-95 duration-500 print:p-0">
+        <div className="text-center mb-8 print:hidden">
+          <div className="h-16 w-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-emerald-100">
+            <CheckCircle2 size={32} />
+          </div>
+          <h1 className="text-3xl font-black italic">Expédition Validée</h1>
+          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Votre colis est enregistré dans notre système</p>
         </div>
 
-        <div className="flex flex-col gap-3 mt-10">
-          <Button onClick={() => navigate(`/track?q=${result.trackingNumber}`)} className="h-14 font-black rounded-2xl shadow-lg">SUIVRE MON COLIS</Button>
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="h-12 font-bold text-slate-400 uppercase text-[10px] tracking-widest">Retourner à mon compte</Button>
+        {/* --- CARTE BORDEREAU STYLE TICKET --- */}
+        <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-2xl overflow-hidden relative print:border-none print:shadow-none">
+          
+          {/* Header du Bordereau */}
+          <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
+            <div className="flex items-center gap-3">
+               <Package className="text-primary" size={24} />
+               <span className="font-black italic text-lg uppercase tracking-tighter">Bordereau de Fret</span>
+            </div>
+            <div className="text-right">
+               <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Date d'émission</p>
+               <p className="text-xs font-bold">{new Date().toLocaleDateString('fr-FR')}</p>
+            </div>
+          </div>
+
+          <div className="p-8 space-y-8">
+            {/* Numéro de suivi & QR Code */}
+            <div className="flex justify-between items-start gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Code de suivi unique</Label>
+                <p className="text-4xl font-mono font-black text-primary tracking-tighter">{result.trackingNumber}</p>
+                <Badge className="bg-emerald-100 text-emerald-700 font-black text-[9px] uppercase border-none px-3 py-1 mt-2">Prêt pour dépôt</Badge>
+              </div>
+              {/* Simulation de QR Code / Barcode */}
+              <div className="h-24 w-24 bg-slate-50 border-2 border-slate-100 rounded-2xl flex flex-col items-center justify-center p-2 text-center group hover:bg-slate-100 transition-colors">
+                 <div className="grid grid-cols-4 gap-1 opacity-20">
+                    {[...Array(16)].map((_, i) => <div key={i} className="h-2 w-2 bg-black rounded-sm" />)}
+                 </div>
+                 <span className="text-[7px] font-black uppercase mt-2 text-slate-400">Scan Agence</span>
+              </div>
+            </div>
+
+            {/* Trajet & Transport */}
+            <div className="bg-slate-50 rounded-3xl p-5 flex items-center justify-between border border-slate-100">
+               <div className="text-left">
+                  <p className="text-[8px] font-black text-slate-400 uppercase">Départ</p>
+                  <p className="font-bold text-sm text-slate-900">{selectedTrip.departureCity}</p>
+               </div>
+               <div className="flex flex-col items-center gap-1 flex-1 px-4">
+                  <div className="h-[1px] w-full bg-slate-200 relative">
+                     <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-white px-2 text-primary">
+                        {selectedTrip.transportTypeCode === 'BOAT' ? <Ship size={14}/> : <Bus size={14}/>}
+                     </div>
+                  </div>
+                  <span className="text-[8px] font-black text-primary uppercase">{selectedTrip.registration}</span>
+               </div>
+               <div className="text-right">
+                  <p className="text-[8px] font-black text-slate-400 uppercase">Arrivée</p>
+                  <p className="font-bold text-sm text-slate-900">{selectedTrip.arrivalCity}</p>
+               </div>
+            </div>
+
+            {/* Détails Colis */}
+            <div className="grid grid-cols-2 gap-8 py-4 border-y border-dashed border-slate-200">
+               <div className="space-y-4">
+                  <div>
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Expéditeur</Label>
+                    <p className="font-bold text-sm text-slate-900">{senderName}</p>
+                    <p className="text-xs text-slate-500">{senderPhone}</p>
+                  </div>
+                  <div>
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Contenu déclaré</Label>
+                    <p className="font-bold text-sm text-slate-900 leading-snug">{parcelTitle}</p>
+                  </div>
+               </div>
+               <div className="space-y-4">
+                  <div>
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Destinataire</Label>
+                    <p className="font-bold text-sm text-slate-900">{receiverName}</p>
+                    <p className="text-xs text-slate-500">{receiverPhone}</p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div>
+                      <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Poids</Label>
+                      <p className="font-bold text-sm text-slate-900">{weightKg} KG</p>
+                    </div>
+                    <div>
+                      <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Type</Label>
+                      <p className="font-bold text-[10px] text-slate-900 uppercase truncate">{selectedTariff.label}</p>
+                    </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* Section Prix (Pied de ticket) */}
+            <div className="flex justify-between items-center bg-primary/5 p-6 rounded-3xl border border-primary/10">
+               <div>
+                  <Label className="text-[9px] font-black uppercase text-primary tracking-widest leading-none">Total à régler au dépôt</Label>
+                  <p className="text-3xl font-black text-primary tracking-tighter mt-1">{result.price.toLocaleString()} F</p>
+                  <p className="text-[9px] font-bold text-slate-400 italic">Payable par {paymentMethod.replace('_', ' ')}</p>
+               </div>
+               <div className="text-right flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-full border shadow-sm">
+                    <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-black text-emerald-600 uppercase">Status : Enregistré</span>
+                  </div>
+                  <p className="text-[8px] text-slate-400 font-medium">Bordereau officiel TransGabon Connect</p>
+               </div>
+            </div>
+          </div>
+
+          {/* Ligne de découpe visuelle */}
+          <div className="relative h-4 flex items-center print:hidden">
+             <div className="absolute left-0 -ml-2 h-4 w-4 bg-slate-50 rounded-full border-r border-slate-100" />
+             <div className="w-full border-t-2 border-dashed border-slate-100 mx-2" />
+             <div className="absolute right-0 -mr-2 h-4 w-4 bg-slate-50 rounded-full border-l border-slate-100" />
+          </div>
+
+          <div className="p-6 bg-slate-50/50 flex justify-center print:hidden">
+             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Veuillez présenter ce code à l'agence pour le dépôt</p>
+          </div>
+        </div>
+
+        {/* --- ACTIONS --- */}
+        <div className="flex flex-col gap-3 mt-10 print:hidden">
+          <div className="grid grid-cols-2 gap-3">
+             <Button onClick={() => window.print()} variant="outline" className="h-14 font-black rounded-2xl border-2 gap-2">
+                <RefreshCw size={18} className="rotate-45" /> IMPRIMER / PDF
+             </Button>
+             <Button onClick={() => navigate(`/track?q=${result.trackingNumber}`)} className="h-14 font-black rounded-2xl shadow-lg">
+                SUIVRE MON COLIS
+             </Button>
+          </div>
+          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="h-12 font-bold text-slate-400 uppercase text-[10px] tracking-widest">
+            Retourner au menu principal
+          </Button>
         </div>
       </div>
     );
   }
-
+  
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl text-left space-y-10">
       
