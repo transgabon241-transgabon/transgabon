@@ -163,7 +163,7 @@ export default function HomePage() {
           <div className="flex flex-wrap justify-center gap-6 mb-6">
             <Link to="/privacy" className="text-sm font-medium hover:text-primary transition-colors">Politique de Confidentialité</Link>
             <Link to="/terms" className="text-sm font-medium hover:text-primary transition-colors">Conditions d'Utilisation</Link>
-            <a href="mailto:s@votre-domaine.ga" className="text-sm font-medium hover:text-primary transition-colors">Contact</a>
+            <a href="mailto:transgabon241@gmail.com" className="text-sm font-medium hover:text-primary transition-colors">Contact</a>
           </div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
             © {new Date().getFullYear()} TransGabon-Connect • Tous droits réservés.
