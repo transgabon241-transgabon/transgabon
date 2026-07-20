@@ -91,7 +91,7 @@ export default function HomePage() {
               Voyagez et Expédiez vos colis à travers le Gabon en toute simplicité
             </h1>
             <p className="text-lg md:text-xl opacity-90 leading-relaxed font-medium">
-              Réservez vos billets de train, bateau et bus en ligne, envoyez et suivez vos colis en temps réel. Comparez, réservez, et  payez en ligne, sans vous déplacer.
+              Réservez vos billets de train, bateau et bus en ligne, envoyez et suivez vos colis en temps réel. Comparez les offres, réservez, et  payez en ligne, sans vous déplacer.
             </p>
           </div>
 
