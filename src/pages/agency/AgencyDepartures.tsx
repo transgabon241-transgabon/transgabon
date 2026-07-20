@@ -84,7 +84,7 @@ export default function AgencyDepartures() {
           to:cities!to_id(name), 
           vehicle:vehicles(registration),
           trip_stops(city_id, arrival_time, price_from_start, cities(name))
-        `)
+        `) // <--- IL FAUT ABSOLUMENT trip_stops ICI
         .eq('company_id', user.companyId)
         .order('departure_date', { ascending: true });
 
@@ -149,9 +149,15 @@ export default function AgencyDepartures() {
       let tripId = editId;
 
       if (editId) {
-        await supabase.from('trips').update(tripData).eq('id', editId);
-        await supabase.from('trip_stops').delete().eq('trip_id', editId);
+        // 1. Mise à jour du trajet
+        const { error: updateErr } = await supabase.from('trips').update(tripData).eq('id', editId);
+        if (updateErr) throw updateErr;
+
+        // 2. Suppression des anciens arrêts pour remettre les nouveaux
+        const { error: delErr } = await supabase.from('trip_stops').delete().eq('trip_id', editId);
+        if (delErr) throw delErr;
       } else {
+        // 1. Création du nouveau trajet
         const route = routes.find(r => r.id === routeId);
         const vehicle = vehicles.find(v => v.id === vehicleId);
         const { data: fC } = await supabase.from('cities').select('id').ilike('name', route!.departureCity).single();
@@ -173,23 +179,30 @@ export default function AgencyDepartures() {
         tripId = newTrip.id;
       }
 
+      // 2. ENREGISTREMENT DES ARRÊTS (C'est ici que ça se joue)
       if (stops.length > 0 && tripId) {
         const stopsToInsert = stops.map((s, index) => ({
           trip_id: tripId,
           city_id: s.cityId,
-          arrival_time: s.arrivalTime,
-          price_from_start: Number(s.priceFromStart),
+          arrival_time: s.arrivalTime || null,
+          price_from_start: Number(s.priceFromStart) || 0,
           stop_order: index + 1
         }));
-        await supabase.from('trip_stops').insert(stopsToInsert);
+
+        const { error: stopsErr } = await supabase.from('trip_stops').insert(stopsToInsert);
+        if (stopsErr) throw stopsErr; // Si les arrêts ne s'enregistrent pas, on part dans le catch !
       }
 
       setShowForm(false);
       resetForm();
       loadData();
-      toast.success('Voyage et escales enregistrés');
-    } catch (e) { toast.error("Erreur de sauvegarde"); }
-    finally { setSaving(false); }
+      toast.success('Voyage et arrêts enregistrés avec succès !');
+    } catch (e: any) {
+      console.error("ERREUR:", e);
+      toast.error("Erreur lors de la sauvegarde : " + (e.message || "Problème BDD"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetForm = () => {
