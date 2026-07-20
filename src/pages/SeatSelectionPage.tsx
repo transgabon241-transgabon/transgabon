@@ -71,8 +71,8 @@ export default function SeatSelectionPage() {
           registration: trip.vehicle?.registration || '—',
           type: trip.type,
           basePrice: trip.price,
-          businessPrice: trip.class_business_price || trip.price * 1.5,
-          vipPrice: trip.class_vip_price || trip.price * 2,
+          businessPrice: trip.class_business_price || 0, 
+          vipPrice: trip.class_vip_price || 0,
           takenSeats
         });
 

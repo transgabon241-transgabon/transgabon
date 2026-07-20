@@ -11,13 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Save, RefreshCw, Hash } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Save, RefreshCw, Hash, Gem, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Departure = {
   id: string;
   departureCode: string;
-  registration: string; // NOUVEAU
+  registration: string;
   departureCity: string;
   arrivalCity: string;
   departureDate: string;
@@ -56,7 +56,6 @@ export default function AgencyDepartures() {
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // --- ÉTATS POUR LA PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -77,7 +76,6 @@ export default function AgencyDepartures() {
     if (!user?.companyId) return;
     setLoading(true);
     try {
-      // RÉCUPÉRATION AVEC JOINTURE VEHICLE POUR L'IMMATRICULATION
       const { data: tripsData } = await supabase
         .from('trips')
         .select('*, from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)')
@@ -87,7 +85,7 @@ export default function AgencyDepartures() {
       const formattedDeps: Departure[] = (tripsData || []).map(t => ({
         id: t.id,
         departureCode: t.vehicle_number,
-        registration: t.vehicle?.registration || 'Non spécifiée', // MAPPAGE DE L'IMMATRICULATION
+        registration: t.vehicle?.registration || 'Non spécifiée',
         departureCity: t.from.name,
         arrivalCity: t.to.name,
         departureDate: t.departure_date,
@@ -125,7 +123,6 @@ export default function AgencyDepartures() {
 
   useEffect(() => { loadData(); }, [user]);
 
-  // --- CALCUL PAGINATION ---
   const totalPages = Math.ceil(departures.length / itemsPerPage);
   const currentItems = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -195,13 +192,17 @@ export default function AgencyDepartures() {
     }
   };
 
-  const selectedVehicle = vehicles.find(v => v.id === vehicleId);
+  // Détection du type de transport pour adapter le formulaire
+  const currentVehicleType = editId 
+    ? departures.find(d => d.id === editId)?.type 
+    : vehicles.find(v => v.id === vehicleId)?.typeCode;
+
+  const isMultiClass = currentVehicleType === 'BOAT' || currentVehicleType === 'TRAIN';
 
   if (loading) return <div className="max-w-5xl mx-auto p-8 space-y-4"><Skeleton className="h-12 w-48 rounded-xl" /><Skeleton className="h-64 w-full rounded-[2rem]" /></div>;
 
   return (
     <div className="max-w-6xl mx-auto p-4 text-left">
-      {/* HEADER PROFESSIONNEL */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-black italic text-primary uppercase tracking-tighter">Gestion des départs</h1>
@@ -250,7 +251,8 @@ export default function AgencyDepartures() {
               <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t md:border-none pt-4 md:pt-0">
                 <div className="text-left md:text-right mr-4">
                    <p className="font-black text-primary text-xl leading-none">{dep.price.toLocaleString()} F</p>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{dep.bookingCount}/{dep.totalSeats} PLACES PRISES</p>
+                   {dep.vipPrice > 0 && <p className="text-[9px] font-bold text-emerald-600">VIP: {dep.vipPrice.toLocaleString()} F</p>}
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{dep.bookingCount}/{dep.totalSeats} PLACES</p>
                 </div>
                 <div className="flex gap-2">
                   <Link to={`/agency/passengers/${dep.id}`}><Button variant="outline" size="icon" className="rounded-xl border-2 hover:bg-slate-50" title="Manifeste"><Users size={18} /></Button></Link>
@@ -268,7 +270,6 @@ export default function AgencyDepartures() {
             </div>
           ))}
 
-          {/* --- PAGINATION UNIFIÉE --- */}
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-4 mt-12 bg-slate-100 p-2 rounded-2xl w-fit mx-auto border-2 border-white shadow-sm">
               <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10"><ChevronLeft /></Button>
@@ -283,7 +284,7 @@ export default function AgencyDepartures() {
         </div>
       )}
 
-      {/* MODAL FORMULAIRE UNIFIÉ */}
+      {/* MODAL FORMULAIRE */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh]">
           <DialogHeader><DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-left">{editId ? 'Modifier le Voyage' : 'Programmer un Voyage'}</DialogTitle></DialogHeader>
@@ -291,7 +292,7 @@ export default function AgencyDepartures() {
             {!editId && (
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                   <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Itinéraire du trajet</Label>
+                   <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Itinéraire</Label>
                    <Select value={routeId} onValueChange={setRouteId}>
                       <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Choisir un itinéraire" /></SelectTrigger>
                       <SelectContent className="rounded-xl">{routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold">{r.departureCity} → {r.arrivalCity}</SelectItem>)}</SelectContent>
@@ -320,7 +321,9 @@ export default function AgencyDepartures() {
 
             <div className="grid grid-cols-2 gap-4 border-t pt-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Prix Standard / Éco</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                  {currentVehicleType === 'TRAIN' ? 'Prix 2ème Classe' : 'Prix Standard / Éco'}
+                </Label>
                 <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-primary text-lg" />
               </div>
               <div className="space-y-1.5">
@@ -329,23 +332,27 @@ export default function AgencyDepartures() {
               </div>
             </div>
 
-            {/* OPTIONS MARITIMES (DÉTECTION DYNAMIQUE) */}
-            {(selectedVehicle?.typeCode === 'BOAT' || departures.find(d=>d.id===editId)?.type === 'BOAT') && (
-              <div className="grid grid-cols-2 gap-4 p-5 bg-blue-50/50 rounded-3xl border-2 border-blue-100 animate-in fade-in zoom-in-95">
+            {/* OPTIONS MULTI-CLASSES (BATEAU OU TRAIN) */}
+            {isMultiClass && (
+              <div className="grid grid-cols-2 gap-4 p-5 bg-primary/5 rounded-3xl border-2 border-primary/10 animate-in fade-in zoom-in-95">
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-blue-600 ml-1">Prix Business</Label>
-                  <Input type="number" placeholder="Facultatif" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-11 rounded-xl bg-white border-blue-200 font-bold" />
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">
+                    {currentVehicleType === 'TRAIN' ? 'Prix 1ère Classe' : 'Prix Business'}
+                  </Label>
+                  <Input type="number" placeholder="Facultatif" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/20 font-bold" />
                 </div>
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-blue-600 ml-1">Prix VIP</Label>
-                  <Input type="number" placeholder="Facultatif" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-11 rounded-xl bg-white border-blue-200 font-bold" />
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">
+                    {currentVehicleType === 'TRAIN' ? 'Prix Prestige / VIP' : 'Prix Salon VIP'}
+                  </Label>
+                  <Input type="number" placeholder="Facultatif" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/20 font-bold" />
                 </div>
               </div>
             )}
 
             {editId && (
               <div className="space-y-1.5 border-t pt-4 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">État actuel du trajet</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">État actuel</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-xl">
