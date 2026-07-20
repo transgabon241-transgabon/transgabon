@@ -108,7 +108,8 @@ export default function AgencyDepartures() {
             cityId: s.city_id,
             cityName: s.cities?.name,
             arrivalTime: s.arrival_time,
-            priceFromStart: s.price_from_start
+            priceFromStart: s.price_from_start,
+            stop_order: s.stop_order // <--- AJOUTE CETTE LIGNE POUR PERMETTRE LE TRI
         })).sort((a:any, b:any) => a.stop_order - b.stop_order)
       })));
 
