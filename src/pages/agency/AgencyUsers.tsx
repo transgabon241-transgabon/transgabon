@@ -7,14 +7,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Users, Plus, Key, Phone, Mail, RefreshCw, Trash2, UserCog } from 'lucide-react';
+import { 
+  Users, 
+  Plus, 
+  Phone, 
+  Mail, 
+  RefreshCw, 
+  Trash2, 
+  UserCog, 
+  ShieldCheck, 
+  UserPlus,
+  ArrowRight,
+  UserCheck
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 type AgencyStaff = {
-  id: string; firstName: string; lastName: string; email: string; phone: string; roleLabel: string;
+  id: string; 
+  firstName: string; 
+  lastName: string; 
+  email: string; 
+  phone: string; 
+  role: string;
+  roleLabel: string;
 };
 
 export default function AgencyUsers() {
@@ -24,6 +42,7 @@ export default function AgencyUsers() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Form states
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,123 +54,235 @@ export default function AgencyUsers() {
     if (!user?.companyId) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('User').select('*').eq('agencyId', user.companyId).in('role', ['AGENCE_EMBARQUEMENT', 'SERVICE_COLIS', 'CAISSIER']);
+      const { data, error } = await supabase
+        .from('User')
+        .select('*')
+        .eq('agencyId', user.companyId)
+        .in('role', ['AGENCE_EMBARQUEMENT', 'SERVICE_COLIS', 'CAISSIER']);
+      
       if (error) throw error;
-      const formatted: AgencyStaff[] = (data || []).map(a => ({
-        id: a.id, firstName: a.firstName, lastName: a.lastName, email: a.email || '—', phone: a.phone,
-        roleLabel: a.role === "SERVICE_COLIS" ? "Service Colis" : a.role === "CAISSIER" ? "Caissier" : "Embarquement"
-      }));
+      
+      const formatted: AgencyStaff[] = (data || []).map(a => {
+        const labels: Record<string, string> = {
+            "SERVICE_COLIS": "Agent Fret / Colis",
+            "CAISSIER": "Caissier d'agence",
+            "AGENCE_EMBARQUEMENT": "Contrôle Embarquement"
+        };
+        return {
+            id: a.id, 
+            firstName: a.firstName, 
+            lastName: a.lastName, 
+            email: a.email || '—', 
+            phone: a.phone,
+            role: a.role,
+            roleLabel: labels[a.role] || a.role
+        };
+      });
       setStaff(formatted);
-    } finally { setLoading(false); }
+    } catch (e) {
+      toast.error('Erreur de chargement de l’équipe');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadData(); }, [user]);
 
   const handleSave = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setSaving(true);
+    e.preventDefault();
+    setSaving(true);
 
-  // On utilise signUp. Le Trigger SQL s'occupera d'insérer dans la table User
-  const { data, error } = await supabase.auth.signUp({
-    email: email.trim().toLowerCase(),
-    password: password,
-    options: {
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-        phone: phone,
-        role: roleToAssign, // Ex: 'CAISSIER'
-        agencyId: user?.companyId // L'ID de l'agence du chef actuel
-      },
-      // IMPORTANT : empêche la redirection/déconnexion automatique
-      emailRedirectTo: window.location.origin 
-    }
-  });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password: password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            phone: phone,
+            role: roleToAssign,
+            agencyId: user?.companyId
+          },
+          emailRedirectTo: window.location.origin 
+        }
+      });
 
-    if (error) {
+      if (error) throw error;
+
+      toast.success("Agent recruté avec succès !");
+      setShowForm(false);
+      resetForm();
+      loadData();
+    } catch (error: any) {
       toast.error(error.message);
+    } finally {
       setSaving(false);
-      return;
     }
+  };
 
-    toast.success("Agent recruté ! Un e-mail de confirmation lui a été envoyé.");
-    setShowForm(false);
-    loadData();
-    setSaving(false);
+  const resetForm = () => {
+    setFirstName(''); setLastName(''); setEmail(''); setPhone(''); setPassword('');
   };
 
   const deleteAgent = async (id: string) => {
     const { error } = await supabase.from('User').delete().eq('id', id);
-    if (!error) { setStaff(staff.filter(s => s.id !== id)); toast.success("Supprimé"); }
+    if (!error) {
+      setStaff(staff.filter(s => s.id !== id));
+      toast.success("Collaborateur retiré");
+    }
   };
 
-  if (loading) return <div className="space-y-4 p-8"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-32 w-full" /></div>;
+  if (loading && staff.length === 0) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48 rounded-xl" /><Skeleton className="h-64 w-full rounded-[2.5rem]" /></div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500">
+      
+      {/* HEADER PROFESSIONNEL */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-3xl font-black italic text-primary flex items-center gap-3">
-            <Users className="h-8 w-8" /> Mon Équipe
+          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+             <Users className="text-primary h-8 w-8" /> Mon Équipe
           </h1>
-          <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest">Gestion du personnel de guichet</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Gestion des accès guichet et logistique</p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="rounded-xl font-black border-2 gap-2 shadow-lg h-12 px-6">
-          <Plus className="h-5 w-5" /> RECRUTER UN AGENT
+        <Button onClick={() => setShowForm(true)} className="rounded-2xl font-black gap-2 h-14 px-8 shadow-xl shadow-primary/20 transition-all active:scale-95 uppercase tracking-widest text-xs">
+          <UserPlus size={20} /> Recruter un agent
         </Button>
       </div>
 
-      <div className="grid gap-4">
+      {/* LISTE DES COLLABORATEURS */}
+      <div className="grid gap-4 md:grid-cols-2">
         {staff.map((agent) => (
-          <div key={agent.id} className="bg-card border-2 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex items-center justify-between group">
+          <div key={agent.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all group flex items-center justify-between">
             <div className="flex items-center gap-5">
-              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xl uppercase">
+              <div className="h-16 w-16 rounded-3xl bg-slate-900 flex items-center justify-center text-primary font-black text-xl shadow-lg">
                 {agent.firstName.charAt(0)}{agent.lastName.charAt(0)}
               </div>
               <div className="space-y-1">
-                <p className="font-bold text-slate-800 text-lg leading-tight">{agent.firstName} {agent.lastName}</p>
-                <div className="flex items-center gap-3 text-xs font-bold text-muted-foreground uppercase">
-                  <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {agent.email}</span>
-                  <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {agent.phone}</span>
+                <p className="font-black text-slate-900 text-lg leading-tight uppercase">{agent.firstName} {agent.lastName}</p>
+                <div className="flex flex-col gap-1">
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                        <Mail size={12} className="text-primary" /> {agent.email}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                        <Phone size={12} className="text-primary" /> {agent.phone}
+                    </span>
                 </div>
-                <Badge className="bg-emerald-50 text-emerald-700 border-2 border-emerald-100 font-black uppercase text-[9px] px-2.5">
-                  {agent.roleLabel}
-                </Badge>
+                <div className="pt-2">
+                    <Badge className={`text-[8px] font-black uppercase border-2 px-2.5 py-0.5 ${
+                        agent.role === 'CAISSIER' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                        agent.role === 'SERVICE_COLIS' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                        'bg-blue-50 text-blue-700 border-blue-100'
+                    }`}>
+                        {agent.roleLabel}
+                    </Badge>
+                </div>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => deleteAgent(agent.id)} className="text-red-200 hover:text-red-600 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all">
-              <Trash2 className="h-5 w-5" />
-            </Button>
+            
+            <div className="flex flex-col gap-2">
+                <AlertDialogDelete onConfirm={() => deleteAgent(agent.id)} name={agent.firstName} />
+            </div>
           </div>
         ))}
+
+        {staff.length === 0 && (
+            <div className="md:col-span-2 p-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
+                <UserCog className="h-12 w-12 mx-auto text-slate-200 mb-2" />
+                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Aucun collaborateur enregistré</p>
+            </div>
+        )}
       </div>
 
-      {/* DIALOG STYLE */}
+      {/* DIALOG DE RECRUTEMENT */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="rounded-[2.5rem] p-8">
-          <DialogHeader><DialogTitle className="text-2xl font-black italic">Nouveau Collaborateur</DialogTitle></DialogHeader>
-          <form onSubmit={handleSave} className="space-y-5 mt-4">
+        <DialogContent className="rounded-[2.5rem] p-10 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-left leading-none">
+                Recrutement
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSave} className="space-y-6 mt-8">
             <div className="grid grid-cols-2 gap-4">
-                <Input required placeholder="Prénom" value={firstName} onChange={e => setFirstName(e.target.value)} className="h-12 rounded-2xl border-2" />
-                <Input required placeholder="Nom" value={lastName} onChange={e => setLastName(e.target.value)} className="h-12 rounded-2xl border-2" />
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Prénom</Label>
+                    <Input required value={firstName} onChange={e => setFirstName(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
+                </div>
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nom</Label>
+                    <Input required value={lastName} onChange={e => setLastName(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
+                </div>
             </div>
-            <Select value={roleToAssign} onValueChange={(v: any) => setRoleToAssign(v)}>
-                <SelectTrigger className="h-12 rounded-2xl border-2 font-bold"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="AGENCE_EMBARQUEMENT" className="font-bold">Agent d'embarquement</SelectItem>
-                  <SelectItem value="SERVICE_COLIS" className="font-bold">Agent Colis / Fret</SelectItem>
-                  <SelectItem value="CAISSIER" className="font-bold">Caissier d'agence</SelectItem>
-                </SelectContent>
-            </Select>
-            <Input type="tel" required placeholder="Téléphone" value={phone} onChange={e => setPhone(e.target.value)} className="h-12 rounded-2xl border-2" />
-            <Input type="email" required placeholder="Email professionnel" value={email} onChange={e => setEmail(e.target.value)} className="h-12 rounded-2xl border-2" />
-            <Input type="password" required placeholder="Mot de passe temporaire" value={password} onChange={e => setPassword(e.target.value)} className="h-12 rounded-2xl border-2" />
-            <Button type="submit" disabled={saving} className="w-full h-14 rounded-2xl font-black shadow-lg">
-                {saving ? <RefreshCw className="animate-spin h-5 w-5" /> : "ACTIVER LE COMPTE"}
+
+            <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Affectation Poste</Label>
+                <Select value={roleToAssign} onValueChange={(v: any) => setRoleToAssign(v)}>
+                    <SelectTrigger className="h-14 rounded-2xl bg-slate-900 text-white border-none font-black text-xs uppercase tracking-widest shadow-lg">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-2xl">
+                      <SelectItem value="AGENCE_EMBARQUEMENT" className="font-bold">Contrôle Embarquement</SelectItem>
+                      <SelectItem value="SERVICE_COLIS" className="font-bold">Gestionnaire Fret / Colis</SelectItem>
+                      <SelectItem value="CAISSIER" className="font-bold">Caissier Principal</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Téléphone</Label>
+                    <Input type="tel" required value={phone} onChange={e => setPhone(e.target.value)} className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
+                </div>
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email Pro</Label>
+                    <Input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
+                </div>
+            </div>
+
+            <div className="space-y-1.5 text-left border-t border-dashed pt-6">
+                <Label className="text-[10px] font-black uppercase text-primary ml-1">Mot de passe temporaire</Label>
+                <Input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="h-14 rounded-2xl bg-primary/5 border-2 border-primary/10 font-black text-primary px-6" placeholder="••••••••" />
+                <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 italic">L'agent pourra le modifier lors de sa première connexion.</p>
+            </div>
+
+            <Button type="submit" disabled={saving} className="w-full h-16 rounded-[2rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest transition-all active:scale-95">
+                {saving ? <RefreshCw className="animate-spin h-6 w-6" /> : <UserCheck className="mr-2 h-6 w-6" />}
+                ACTIVER LE COMPTE
             </Button>
           </form>
         </DialogContent>
       </Dialog>
     </div>
   );
+}
+
+/**
+ * MINI COMPOSANT : ALERTE SUPPRESSION
+ */
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
+function AlertDialogDelete({ onConfirm, name }: { onConfirm: () => void, name: string }) {
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
+                    <Trash2 size={20} />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="font-black italic text-xl uppercase">Retirer de l'équipe ?</AlertDialogTitle>
+                    <AlertDialogDescription className="font-medium text-slate-600">
+                        Voulez-vous vraiment supprimer les accès de <strong>{name}</strong> ? Cette action bloquera ses futures connexions à l'agence.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
+                    <AlertDialogAction onClick={onConfirm} className="bg-red-600 rounded-xl font-bold uppercase text-white">CONFIRMER</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
 }

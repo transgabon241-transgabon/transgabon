@@ -6,7 +6,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CreditCard, Search, DollarSign, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { 
+  CreditCard, 
+  Search, 
+  DollarSign, 
+  ChevronLeft, 
+  ChevronRight, 
+  Building2, 
+  MapPin, 
+  Tag, 
+  BarChart3,
+  RefreshCw
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 type Booking = {
@@ -19,6 +32,8 @@ type Booking = {
   amount: number;
   companyId: string;
   companyName: string;
+  classLabel: string; // NOUVEAU
+  destination: string; // NOUVEAU
 };
 
 export default function AdminPayments() {
@@ -29,245 +44,249 @@ export default function AdminPayments() {
   const [filter, setFilter] = useState<'all' | 'Payé' | 'Non payé' | 'Remboursé'>('all');
   const [companyFilter, setCompanyFilter] = useState<string>('all');
 
-  // --- ÉTATS POUR LA PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setLoading(true);
-        
-        // 1. Récupération des compagnies pour le filtre
-        const { data: companiesData } = await supabase
-          .from('companies')
-          .select('id, name')
-          .order('name');
-        
-        if (companiesData) setCompanies(companiesData);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // 1. Récupération des compagnies
+      const { data: companiesData } = await supabase
+        .from('companies')
+        .select('id, name')
+        .order('name');
+      
+      if (companiesData) setCompanies(companiesData);
 
-        // 2. Récupération globale des réservations avec jointure sur trip et company
-        const { data, error } = await supabase
-          .from('bookings')
-          .select(`
-            *, 
-            passengers(*), 
-            trip:trips(company_id, company:companies(name))
-          `)
-          .order('created_at', { ascending: false });
+      // 2. Récupération globale avec jointures enrichies
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *, 
+          passengers(*), 
+          trip:trips(
+            company_id, 
+            company:companies(name),
+            to:cities!to_id(name)
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-        if (error) throw new Error(error.message);
+      if (error) throw error;
 
-        const formatted: Booking[] = (data || []).map(b => {
-          const lead = b.passengers[0];
-          const passengerName = lead ? `${lead.first_name} ${lead.last_name}` : 'Anonyme';
+      const classMapping: Record<string, string> = {
+        'VIP': 'VIP', 'BUSINESS': 'Business', '1ERE_CLASSE': '1ère Cl.', '2EME_CLASSE': '2ème Cl.', 'ECO': 'Éco', 'STANDARD': 'Std'
+      };
 
-          const methodLabel: Record<string, string> = {
-            AGENCE: 'Paiement en agence',
-            AIRTEL_MONEY: 'Airtel Money',
-            MOOV_MONEY: 'Moov Money',
-          };
+      const formatted: Booking[] = (data || []).map(b => {
+        const lead = b.passengers[0];
+        const methodLabel: Record<string, string> = {
+          AGENCE: 'Espèces',
+          AIRTEL_MONEY: 'Airtel Money',
+          MOOV_MONEY: 'Moov Money',
+        };
 
-          return {
-            id: b.id,
-            bookingNumber: b.reference,
-            passengerName,
-            paymentMethod: methodLabel[b.payment_method] || b.payment_method,
-            paymentStatus: b.status === 'PAYE' ? 'Payé' : b.status === 'REMBOURSE' ? 'Remboursé' : 'Non payé',
-            status: b.status === 'PAYE' ? 'Confirmé' : b.status === 'ANNULE' ? 'Annulé' : b.status === 'REMBOURSE' ? 'Remboursé' : 'En attente',
-            amount: b.total_amount,
-            companyId: b.trip?.company_id || '',
-            companyName: b.trip?.company?.name || 'Inconnue'
-          };
-        });
+        return {
+          id: b.id,
+          bookingNumber: b.reference,
+          passengerName: lead ? `${lead.first_name} ${lead.last_name}` : 'Anonyme',
+          paymentMethod: methodLabel[b.payment_method] || b.payment_method,
+          paymentStatus: b.status === 'PAYE' ? 'Payé' : b.status === 'REMBOURSE' ? 'Remboursé' : 'Non payé',
+          status: b.status,
+          amount: b.total_amount,
+          companyId: b.trip?.company_id || '',
+          companyName: b.trip?.company?.name || 'Inconnue',
+          classLabel: classMapping[b.class_type] || 'Standard',
+          destination: b.arrival_city_name || b.trip?.to?.name || 'Terminus'
+        };
+      });
 
-        setBookings(formatted);
-      } catch (e: any) {
-        toast.error(e.message || 'Erreur lors du chargement des données');
-      } finally {
-        setLoading(false);
-      }
-    };
+      setBookings(formatted);
+    } catch (e: any) {
+      toast.error('Erreur de chargement des flux financiers');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadInitialData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  // --- LOGIQUE DE FILTRAGE ---
+  // Filtrage
   const filtered = useMemo(() => {
     return bookings.filter(b => {
-      // Filtre de statut
       if (filter !== 'all' && b.paymentStatus !== filter) return false;
-      
-      // Filtre de compagnie
       if (companyFilter !== 'all' && b.companyId !== companyFilter) return false;
-      
-      // Recherche textuelle
       const q = search.toLowerCase();
-      return !q || b.bookingNumber.toLowerCase().includes(q) || b.passengerName.toLowerCase().includes(q);
+      return !q || b.bookingNumber.toLowerCase().includes(q) || b.passengerName.toLowerCase().includes(q) || b.companyName.toLowerCase().includes(q) || b.destination.toLowerCase().includes(q);
     });
   }, [bookings, filter, companyFilter, search]);
 
-  // Réinitialise la page à 1 quand un filtre change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, companyFilter, search]);
+  useEffect(() => { setCurrentPage(1); }, [filter, companyFilter, search]);
 
-  // Pagination
+  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginatedBookings = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filtered.slice(startIndex, startIndex + itemsPerPage);
-  }, [filtered, currentPage]);
 
-  // Calculs financiers basés sur le filtre de compagnie actuel (mais pas sur le statut pour garder la cohérence des cartes)
-  const statsSource = companyFilter === 'all' 
-    ? bookings 
-    : bookings.filter(b => b.companyId === companyFilter);
+  // Statistiques dynamiques selon le filtre agence
+  const statsSource = companyFilter === 'all' ? bookings : bookings.filter(b => b.companyId === companyFilter);
+  const totalPaid = statsSource.filter(b => b.status === 'PAYE').reduce((s, b) => s + b.amount, 0);
+  const totalPending = statsSource.filter(b => b.status === 'ATTENTE_PAIEMENT').reduce((s, b) => s + b.amount, 0);
 
-  const totalPaid = statsSource.filter(b => b.paymentStatus === 'Payé').reduce((s, b) => s + b.amount, 0);
-  const totalPending = statsSource.filter(b => b.paymentStatus === 'Non payé').reduce((s, b) => s + b.amount, 0);
-  const totalRefunded = statsSource.filter(b => b.paymentStatus === 'Remboursé').reduce((s, b) => s + b.amount, 0);
-
-  if (loading) return <div className="space-y-3 p-4">{[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>;
+  if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48" /><Skeleton className="h-64 w-full rounded-[2rem]" /></div>;
 
   return (
-    <div className="text-foreground text-left p-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold">Gestion des paiements</h1>
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500">
+      
+      {/* HEADER ADMIM */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+            <BarChart3 className="h-8 w-8 text-primary" /> Flux Financiers
+          </h1>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Supervision globale des encaissements réseau</p>
+        </div>
         
-        {/* Filtre par Compagnie */}
-        <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border-2 border-slate-50 shadow-sm">
+          <Building2 className="h-4 w-4 text-primary ml-2" />
           <Select value={companyFilter} onValueChange={setCompanyFilter}>
-            <SelectTrigger className="w-[200px] bg-white border-2">
+            <SelectTrigger className="w-[220px] border-none font-bold text-xs focus:ring-0">
               <SelectValue placeholder="Toutes les agences" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les agences</SelectItem>
+            <SelectContent className="rounded-xl shadow-xl">
+              <SelectItem value="all" className="font-bold">Toutes les agences</SelectItem>
               {companies.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <Button variant="ghost" size="icon" onClick={loadData} className="rounded-xl h-9 w-9 text-slate-300 hover:text-primary"><RefreshCw size={16}/></Button>
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <SummaryCard label="Total encaissé" value={`${totalPaid.toLocaleString()} FCFA`} color="text-green-600" icon={DollarSign} />
-        <SummaryCard label="En attente" value={`${totalPending.toLocaleString()} FCFA`} color="text-yellow-600" icon={CreditCard} />
-        <SummaryCard label="Remboursé" value={`${totalRefunded.toLocaleString()} FCFA`} color="text-muted-foreground" icon={CreditCard} />
+      {/* SUMMARY CARDS PREMIUM */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <SummaryCard label="Volume Encaissé" value={`${totalPaid.toLocaleString()} F`} color="text-emerald-600" bg="bg-emerald-50" icon={DollarSign} sub="Paiements confirmés" />
+        <SummaryCard label="En attente agence" value={`${totalPending.toLocaleString()} F`} color="text-amber-600" bg="bg-amber-50" icon={CreditCard} sub="Réservations non soldées" />
+        <SummaryCard label="Transactions" value={filtered.length} color="text-primary" bg="bg-primary/5" icon={Tag} sub="Volume total traité" />
       </div>
 
-      {/* Barre de recherche et Filtres de Statut */}
-      <div className="flex flex-col md:flex-row gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Billet ou passager…" className="pl-9 border-2" />
+      {/* RECHERCHE ET FILTRES RAPIDES */}
+      <div className="bg-card border-2 rounded-[2.5rem] p-6 shadow-sm grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
+        <div className="lg:col-span-2 space-y-2">
+           <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Recherche multicritères</Label>
+           <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+              <Input 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                placeholder="Billet, Passager, Agence ou Destination..." 
+                className="pl-12 h-14 rounded-2xl border-2 border-slate-100 bg-white font-medium text-base shadow-inner focus:border-primary transition-all" 
+              />
+           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {(['all', 'Payé', 'Non payé', 'Remboursé'] as const).map(f => (
-            <Button 
-              key={f} 
-              variant={filter === f ? 'default' : 'outline'} 
-              size="sm" 
-              onClick={() => setFilter(f)}
-              className="font-semibold"
-            >
-              {f === 'all' ? 'Tous les statuts' : f}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Table */}
-      {paginatedBookings.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground bg-slate-50 rounded-2xl border-2 border-dashed">
-          <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-20" />
-          <p>Aucune transaction ne correspond à vos critères</p>
-        </div>
-      ) : (
-        <>
-          <div className="border rounded-xl overflow-hidden bg-card shadow-sm border-slate-100">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left">
-                <tr>
-                  <th className="p-3 font-semibold uppercase text-[10px] text-slate-500">N° Billet</th>
-                  <th className="p-3 font-semibold uppercase text-[10px] text-slate-500 hidden md:table-cell">Passager</th>
-                  <th className="p-3 font-semibold uppercase text-[10px] text-slate-500">Agence</th>
-                  <th className="p-3 font-semibold uppercase text-[10px] text-slate-500 hidden lg:table-cell">Méthode</th>
-                  <th className="p-3 font-semibold uppercase text-[10px] text-slate-500">Paiement</th>
-                  <th className="text-right p-3 font-semibold uppercase text-[10px] text-slate-500">Montant</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {paginatedBookings.map(b => (
-                  <tr key={b.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-3 font-mono text-xs font-bold text-primary">{b.bookingNumber}</td>
-                    <td className="p-3 hidden md:table-cell font-medium">{b.passengerName}</td>
-                    <td className="p-3 text-xs font-semibold text-slate-600">{b.companyName}</td>
-                    <td className="p-3 hidden lg:table-cell text-muted-foreground text-xs">{b.paymentMethod || '—'}</td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${
-                        b.paymentStatus === 'Payé' ? 'bg-green-100 text-green-700 border-green-200' :
-                        b.paymentStatus === 'Non payé' ? 'bg-red-50 text-red-700 border-red-100' :
-                        'bg-gray-100 text-gray-700 border-gray-200'
-                      }`}>{b.paymentStatus}</span>
-                    </td>
-                    <td className="p-3 text-right font-bold text-slate-900">{b.amount.toLocaleString()} F</td>
-                  </tr>
+        <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Filtre Statut</Label>
+            <div className="flex bg-slate-100 p-1 rounded-xl border-2 border-white shadow-sm">
+                {(['all', 'Payé', 'Non payé'] as const).map(f => (
+                <button 
+                    key={f} 
+                    onClick={() => setFilter(f)}
+                    className={`flex-1 text-[10px] font-black uppercase py-3 rounded-lg transition-all ${filter === f ? 'bg-white shadow-sm text-primary' : 'text-slate-400'}`}
+                >
+                    {f === 'all' ? 'Tous' : f}
+                </button>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* --- CONTRÔLES DE PAGINATION --- */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 mt-6 bg-slate-100 p-2 rounded-xl w-fit mx-auto border shadow-inner">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                disabled={currentPage === 1} 
-                onClick={() => setCurrentPage(p => p - 1)}
-                className="h-8 w-8 rounded-lg bg-white"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center gap-1 text-xs font-black">
-                <span className="text-primary">{currentPage}</span>
-                <span className="text-slate-400">/</span>
-                <span className="text-slate-500">{totalPages}</span>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                disabled={currentPage === totalPages} 
-                onClick={() => setCurrentPage(p => p + 1)}
-                className="h-8 w-8 rounded-lg bg-white"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
             </div>
-          )}
+        </div>
+      </div>
 
-          <p className="text-[10px] text-muted-foreground mt-4 text-center font-bold uppercase tracking-widest">
-            {filtered.length} transaction(s) filtrée(s)
-          </p>
-        </>
+      {/* TABLEAU FINANCIER REFAIT */}
+      <div className="bg-card border-2 rounded-[2.5rem] overflow-hidden shadow-sm overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 border-b">
+            <tr>
+              <th className="p-5 font-black uppercase text-[10px] text-slate-400 text-left">Réf. Billet</th>
+              <th className="p-5 font-black uppercase text-[10px] text-slate-400 text-left">Passager / Agence</th>
+              <th className="p-5 font-black uppercase text-[10px] text-slate-400 text-center">Destination / Cl.</th>
+              <th className="p-5 font-black uppercase text-[10px] text-slate-400 text-center">Paiement</th>
+              <th className="p-5 font-black uppercase text-[10px] text-right">Montant</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {paginated.length === 0 ? (
+              <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs italic">Aucune donnée correspondante</td></tr>
+            ) : (
+              paginated.map(b => (
+                <tr key={b.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="p-5">
+                    <p className="font-mono font-black text-primary text-xs tracking-tighter">{b.bookingNumber}</p>
+                  </td>
+                  <td className="p-5">
+                    <p className="font-bold text-slate-900 leading-none">{b.passengerName}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase mt-1.5 flex items-center gap-1">
+                        <Building2 size={10} /> {b.companyName}
+                    </p>
+                  </td>
+                  <td className="p-5 text-center">
+                    <div className="flex flex-col items-center gap-1.5">
+                        <div className="flex items-center gap-1 text-[10px] font-black text-slate-700 uppercase">
+                            <MapPin size={10} className="text-primary" /> {b.destination}
+                        </div>
+                        <Badge variant="outline" className="text-[7px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2 py-0">
+                            {b.classLabel}
+                        </Badge>
+                    </div>
+                  </td>
+                  <td className="p-5 text-center">
+                    <span className={`inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase border-2 ${
+                      b.paymentStatus === 'Payé' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      b.paymentStatus === 'Remboursé' ? 'bg-red-50 text-red-700 border-red-100' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {b.paymentStatus}
+                    </span>
+                    <p className="text-[8px] font-bold text-slate-300 mt-1 uppercase italic">{b.paymentMethod}</p>
+                  </td>
+                  <td className="p-5 text-right font-black text-slate-900 text-lg tracking-tighter">
+                    {b.amount.toLocaleString()} F
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
+          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronLeft size={18}/></Button>
+          <div className="flex items-center gap-1 font-black text-[10px] uppercase text-slate-400 px-4">
+             <span className="text-primary">Page {currentPage}</span>
+             <span>/</span>
+             <span>{totalPages}</span>
+          </div>
+          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronRight size={18}/></Button>
+        </div>
       )}
+
+      <footer className="text-center pb-10 opacity-30">
+        <p className="text-[8px] font-black uppercase text-slate-400 tracking-[0.5em]">Console d'Administration Financière • Gabon Mobilité</p>
+      </footer>
     </div>
   );
 }
 
-function SummaryCard({ label, value, color, icon: Icon }: { label: string; value: string; color: string; icon: any }) {
+function SummaryCard({ label, value, color, bg, icon: Icon, sub }: any) {
   return (
-    <div className="bg-card border-2 border-slate-50 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-      <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100">
-        <Icon className={`h-6 w-6 ${color}`} />
+    <div className="bg-white border-2 border-slate-50 rounded-[2.5rem] p-6 shadow-xl shadow-slate-100/50 flex items-center gap-5 group hover:scale-[1.02] transition-all">
+      <div className={`h-16 w-16 rounded-[1.5rem] ${bg} flex items-center justify-center shrink-0 border-2 border-white shadow-sm`}>
+        <Icon className={`h-8 w-8 ${color}`} />
       </div>
       <div>
-        <div className={`text-xl font-black tracking-tight ${color}`}>{value}</div>
-        <div className="text-[10px] text-muted-foreground uppercase font-black tracking-wider">{label}</div>
+        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-2">{label}</p>
+        <div className={`text-2xl font-black tracking-tighter leading-none ${color}`}>{value}</div>
+        <p className="text-[8px] font-bold text-slate-300 mt-2 uppercase italic">{sub}</p>
       </div>
     </div>
   );

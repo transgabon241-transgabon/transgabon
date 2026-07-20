@@ -1,3 +1,5 @@
+"use client"
+
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -5,20 +7,42 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  // Base : typographie forte, majuscule, espacement des lettres, coins arrondis
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all focus-visible:outline-none [&>svg]:size-3",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        // Variante par défaut (Primaire - Vert Gabon)
+        default: 
+          "bg-primary/10 text-primary border-primary/20",
+        
+        // Variante secondaire (Gris élégant)
         secondary:
-          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+          "bg-slate-100 text-slate-600 border-slate-200",
+        
+        // Variante succès (Émeraude - pour "Payé", "Confirmé", "Livré")
+        success:
+          "bg-emerald-50 text-emerald-700 border-emerald-100",
+        
+        // Variante alerte (Ambre - pour "En attente", "Escale")
+        warning:
+          "bg-amber-50 text-amber-700 border-amber-100",
+        
+        // Variante destructive (Rouge - pour "Annulé", "Remboursé")
         destructive:
-          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+          "bg-red-50 text-red-700 border-red-100",
+        
+        // Variante Premium (Sombre - pour "VIP", "1ère Classe", "Admin")
+        premium:
+          "bg-slate-900 text-white border-slate-900 shadow-sm",
+        
+        // Variante outline (Transparent avec bordure)
         outline:
-          "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
+          "border-slate-200 text-slate-500 bg-transparent",
+        
+        // Variante fantôme (Sans fond)
         ghost:
-          "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
-        link: "text-primary underline-offset-4 hover:underline",
+          "border-transparent text-slate-400 hover:text-primary",
       },
     },
     defaultVariants: {

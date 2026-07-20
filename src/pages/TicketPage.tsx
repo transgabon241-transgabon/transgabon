@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, CheckCircle, Printer, AlertCircle, RefreshCw, Ship, Train, Bus, Hash } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Printer, RefreshCw, Ship, Train, Bus, Hash, MapPin, Gem } from 'lucide-react';
 
 type MappedBooking = {
   id: string;
@@ -15,12 +15,13 @@ type MappedBooking = {
   passengerName: string;
   passengerPhone: string;
   departureCity: string;
-  arrivalCity: string;
+  arrivalCity: string; // Destination réelle
   companyName: string;
   transportType: string;
-  transportTypeCode: string; // BUS, TRAIN, BOAT
-  registration: string; // NOUVEAU
+  transportTypeCode: string;
+  registration: string;
   travelClass: string;
+  classCode: string;
   departureDate: string;
   departureTime: string;
   seatNumber: string;
@@ -49,14 +50,11 @@ export default function TicketPage() {
 
     const loadTicketDetails = async () => {
       try {
-        // MISE À JOUR DE LA REQUÊTE : Ajout de la jointure vehicle:vehicles(registration)
         const { data: b, error } = await supabase
           .from('bookings')
           .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)), passengers(*)')
           .eq('id', bookingId)
           .single();
-
-        if (error) console.error("🔴 Error:", error.message);
 
         if (b && !error) {
           const leadPassenger = b.passengers[0];
@@ -69,38 +67,52 @@ export default function TicketPage() {
             MOOV_MONEY: 'Moov Money',
           };
 
+          const classMapping: Record<string, string> = {
+            'VIP': 'Salon VIP',
+            'BUSINESS': 'Classe Business',
+            '1ERE_CLASSE': '1ère Classe',
+            '2EME_CLASSE': '2ème Classe',
+            'ECO': 'Économique',
+            'STANDARD': 'Standard'
+          };
+
+          const destination = b.arrival_city_name || b.trip.to.name;
+          const prettyClass = classMapping[b.class_type] || b.travel_class || 'Standard';
+
           const qrPayload = JSON.stringify({
             ref: b.reference,
-            trip: b.trip_id,
-            passenger: passengerName,
-            class: b.travel_class
+            pass: passengerName,
+            to: destination,
+            seat: seatNumber,
+            cls: prettyClass
           });
 
           const typeLabels: Record<string, string> = {
             BUS: 'Autocar',
-            TRAIN: 'Train',
-            BOAT: 'Bateau'
+            TRAIN: 'Train Voyageur',
+            BOAT: 'Navire / Bateau'
           };
 
           setBooking({
             id: b.id,
             bookingNumber: b.reference,
-            status: b.status === 'PAYE' ? 'Confirmé' : b.status === 'ANNULE' ? 'Annulé' : b.status === 'REMBOURSE' ? 'Remboursé' : 'En attente',
+            status: b.status === 'PAYE' ? 'Confirmé' : b.status === 'ANNULE' ? 'Annulé' : 'En attente',
             passengerName,
             passengerPhone: b.contact_phone,
             departureCity: b.trip.from.name,
-            arrivalCity: b.trip.to.name,
+            arrivalCity: destination,
             companyName: b.trip.company.name,
             transportType: typeLabels[b.trip.type] || b.trip.type,
             transportTypeCode: b.trip.type,
-            registration: b.trip.vehicle?.registration || '—', // MAPPAGE DE L'IMMATRICULATION
-            travelClass: b.travel_class || 'Économique',
+            registration: b.trip.vehicle?.registration || '—',
+            travelClass: prettyClass,
+            classCode: b.class_type,
             departureDate: b.trip.departure_date,
             departureTime: b.trip.departure_time,
             seatNumber,
             amount: b.total_amount,
             paymentMethod: methodLabel[b.payment_method] || b.payment_method,
-            paymentStatus: b.status === 'PAYE' ? 'Réglé' : 'Non réglé',
+            paymentStatus: b.status === 'PAYE' ? 'Réglé' : 'À régler',
             qrCodeData: qrPayload,
           });
         }
@@ -114,103 +126,118 @@ export default function TicketPage() {
     loadTicketDetails();
   }, [user, bookingId]);
 
-  if (isLoading) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Chargement sécurisé...</p>
-    </div>
-  );
-
-  if (!user) return <div className="min-h-screen bg-background" />;
-  if (loading) return <div className="max-w-lg mx-auto p-8"><Skeleton className="h-[400px] w-full rounded-[2.5rem]" /></div>;
-
-  if (!booking) return <div className="p-20 text-center font-bold text-red-500 uppercase">Billet introuvable</div>;
+  if (isLoading) return <div className="p-20 text-center animate-pulse font-black uppercase">Sécurisation...</div>;
+  if (loading) return <div className="max-w-lg mx-auto p-8"><Skeleton className="h-[500px] w-full rounded-[3rem]" /></div>;
+  if (!booking) return <div className="p-20 text-center font-bold text-red-500 uppercase">Erreur : Billet introuvable</div>;
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(booking.qrCodeData)}`;
+  const TransportIcon = booking.transportTypeCode === 'BOAT' ? Ship : booking.transportTypeCode === 'TRAIN' ? Train : Bus;
 
   return (
-    <div className="container mx-auto px-4 py-10 max-w-lg">
-      <Link to="/dashboard" className="inline-flex items-center gap-1 text-xs font-black uppercase text-muted-foreground hover:text-primary mb-6 print:hidden transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Mes réservations
+    <div className="container mx-auto px-4 py-10 max-w-lg animate-in fade-in duration-700">
+      <Link to="/dashboard" className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-muted-foreground hover:text-primary mb-6 print:hidden">
+        <ArrowLeft size={12} /> Retour à mon espace
       </Link>
 
-      <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] overflow-hidden shadow-2xl print:border-none print:shadow-none">
+      <div className="bg-white border-2 border-slate-100 rounded-[3rem] overflow-hidden shadow-2xl print:border-none print:shadow-none">
         
-        {/* Header dynamique selon le type de transport */}
-        <div className={`p-8 text-white print:[print-color-adjust:exact] ${
+        {/* Header dynamique */}
+        <div className={`p-8 text-white ${
           booking.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 
           booking.transportTypeCode === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'
         }`}>
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Titre de Transport</span>
+              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                 <TransportIcon size={20} />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest">Billet Officiel</span>
             </div>
-            {booking.transportTypeCode === 'BOAT' ? <Ship size={24} className="opacity-50" /> : <Train size={24} className="opacity-50" />}
+            <div className="text-right">
+               <p className="text-[8px] font-bold uppercase opacity-60">Référence</p>
+               <p className="font-mono font-black text-sm">{booking.bookingNumber}</p>
+            </div>
           </div>
-          <h2 className="text-3xl font-black leading-none mb-1 tracking-tighter uppercase">{booking.departureCity} → {booking.arrivalCity}</h2>
-          <p className="text-xs font-bold opacity-80 uppercase tracking-widest">{booking.companyName} • {booking.transportType}</p>
+          
+          <div className="space-y-1">
+             <h2 className="text-3xl font-black leading-none tracking-tighter uppercase">{booking.departureCity}</h2>
+             <div className="flex items-center gap-3 opacity-40">
+                <div className="h-px flex-1 bg-white" />
+                <ArrowLeft className="rotate-180" size={14} />
+                <div className="h-px flex-1 bg-white" />
+             </div>
+             <h2 className="text-3xl font-black leading-none tracking-tighter uppercase">{booking.arrivalCity}</h2>
+          </div>
+          
+          <p className="mt-4 text-xs font-bold uppercase tracking-widest opacity-80">{booking.companyName}</p>
         </div>
 
-        {/* QR Code */}
-        <div className="p-8 flex flex-col items-center justify-center bg-white border-b-2 border-dashed border-slate-100">
-          <div className="p-4 bg-slate-50 rounded-[2rem] border-2 border-slate-100 mb-4">
-            <img src={qrUrl} alt="QR Code" className="h-44 w-44" />
+        {/* QR Code Section */}
+        <div className="p-8 flex flex-col items-center justify-center bg-white border-b-2 border-dashed border-slate-100 relative">
+          {/* Encoches de ticket */}
+          <div className="absolute -left-4 top-full -translate-y-1/2 h-8 w-8 bg-slate-50 rounded-full border-r-2 border-slate-100 print:hidden" />
+          <div className="absolute -right-4 top-full -translate-y-1/2 h-8 w-8 bg-slate-50 rounded-full border-l-2 border-slate-100 print:hidden" />
+          
+          <div className="p-4 bg-slate-50 rounded-[2.5rem] border-2 border-slate-100 mb-4 shadow-inner">
+            <img src={qrUrl} alt="QR Code" className="h-40 w-44" />
           </div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Présenter au contrôle</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Scanner à l'embarquement</p>
         </div>
 
-        {/* Informations détaillées */}
-        <div className="p-8 grid grid-cols-2 gap-y-6 gap-x-4 text-left">
-            <InfoField label="Référence" value={booking.bookingNumber} isMono />
-            
-            {/* AFFICHAGE DE L'IMMATRICULATION */}
-            <InfoField label="Immatriculation">
-                <span className="flex items-center gap-1 font-mono text-xs font-black text-slate-900 uppercase">
-                    <Hash size={12} className="text-primary" /> {booking.registration}
-                </span>
-            </InfoField>
-
-            <InfoField label="Passager" value={booking.passengerName} />
-            <InfoField label="Siège" value={booking.seatNumber} />
-            
-            <InfoField label="Confort / Classe">
-                <span className="bg-primary/5 text-primary px-2 py-0.5 rounded-md text-[10px] font-black uppercase border border-primary/10">
-                    {booking.travelClass}
-                </span>
-            </InfoField>
-
-            <InfoField label="Date" value={new Date(booking.departureDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} />
-            <InfoField label="Heure" value={booking.departureTime} />
-            <InfoField label="Montant" value={`${booking.amount.toLocaleString()} FCFA`} />
-            
-            <InfoField label="Paiement">
-               <span className={`font-black uppercase text-[10px] ${booking.paymentStatus === 'Réglé' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                 {booking.paymentStatus}
+        {/* Détails du passager */}
+        <div className="p-8 grid grid-cols-2 gap-y-8 text-left bg-white">
+            <InfoField label="Voyageur" value={booking.passengerName} />
+            <InfoField label="Siège attribué">
+               <span className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-sm shadow-md">
+                 {booking.seatNumber}
                </span>
             </InfoField>
+
+            <InfoField label="Immatriculation">
+                <div className="flex items-center gap-1.5 font-black text-xs text-slate-700 uppercase">
+                    <Hash size={14} className="text-primary" /> {booking.registration}
+                </div>
+            </InfoField>
+
+            <InfoField label="Classe / Confort">
+                <div className="flex items-center gap-1.5 font-black text-xs text-primary uppercase italic">
+                    {(booking.classCode === 'VIP' || booking.classCode === '1ERE_CLASSE') && <Gem size={14} />}
+                    {booking.travelClass}
+                </div>
+            </InfoField>
+
+            <div className="col-span-2 grid grid-cols-3 gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <InfoField label="Date" value={new Date(booking.departureDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} />
+               <InfoField label="Départ" value={booking.departureTime} />
+               <InfoField label="Montant" value={`${booking.amount.toLocaleString()} F`} />
+            </div>
         </div>
 
-        <div className="p-8 pt-0 print:hidden">
-          <Button onClick={() => window.print()} className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl hover:scale-[1.02] transition-transform">
-            <Printer className="h-5 w-5" /> IMPRIMER / PDF
+        {/* Footer actions */}
+        <div className="p-8 pt-0 flex flex-col gap-4 print:hidden">
+          <Button onClick={() => window.print()} variant="outline" className="w-full h-14 rounded-2xl font-black border-2 gap-2 hover:bg-slate-50">
+            <Printer size={18} /> TÉLÉCHARGER / IMPRIMER
           </Button>
+          <div className="flex items-center justify-center gap-2">
+             <div className={`h-2 w-2 rounded-full animate-pulse ${booking.paymentStatus === 'Réglé' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+             <span className="text-[10px] font-black uppercase text-slate-400">Statut : {booking.paymentStatus}</span>
+          </div>
         </div>
       </div>
       
-      <p className="mt-8 text-center text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-        TransGabon-Connect • Plateforme Nationale de Transport<br/>
-        Pièce d'identité originale obligatoire. Billet personnel et incessible.
+      <p className="mt-8 text-center text-[7px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-relaxed opacity-60">
+        TransGabon-Connect • Validateur de Transport National<br/>
+        Ce titre est personnel. Une pièce d'identité peut être exigée lors du contrôle.
       </p>
     </div>
   );
 }
 
-function InfoField({ label, value, children, isMono = false }: { label: string; value?: string; children?: React.ReactNode; isMono?: boolean }) {
+function InfoField({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <div className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none">{label}</div>
-      <div className={`text-sm font-bold truncate leading-none ${isMono ? 'font-mono text-primary' : 'text-slate-900'}`}>
+      <div className="text-[8px] font-black uppercase text-slate-400 tracking-widest">{label}</div>
+      <div className="text-sm font-bold text-slate-900 truncate uppercase">
         {children || value || '—'}
       </div>
     </div>

@@ -1,6 +1,7 @@
+"use client"
+
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
-
 import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
@@ -9,7 +10,24 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        // Base : Hauteur confortable, fond gris doux, ombre interne et police grasse
+        "flex h-12 w-full min-w-0 rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-2 text-sm font-bold text-slate-900 transition-all shadow-inner outline-none",
+        
+        // Placeholder : Gris moyen, police un peu plus légère pour le contraste
+        "placeholder:text-slate-400 placeholder:font-medium",
+        
+        // Focus : Le champ devient blanc pur, la bordure passe au vert (primary) et un halo apparaît
+        "focus-visible:bg-white focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 focus-visible:shadow-none",
+        
+        // État Désactivé : Gris sourd, curseur barré
+        "disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60",
+        
+        // État Erreur (Aria-invalid) : Bordure rouge et halo rouge
+        "aria-invalid:border-red-500 aria-invalid:ring-red-100",
+        
+        // Spécifique pour les fichiers (input type file)
+        "file:border-0 file:bg-transparent file:text-sm file:font-black file:text-primary",
+        
         className
       )}
       {...props}

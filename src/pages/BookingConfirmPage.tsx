@@ -10,15 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Smartphone, Building2, Check, CreditCard, Ship, Crown, Gem, RefreshCw } from 'lucide-react';
+import { Smartphone, Building2, Check, CreditCard, Ship, Crown, Gem, RefreshCw, Train, Bus, MapPin } from 'lucide-react';
 
 type TripDetails = {
   id: string;
-  price: number;
-  vipPrice: number;
-  businessPrice: number;
   companyName: string;
   vehicleNumber: string;
+  registration: string;
   type: string; // BUS, TRAIN, BOAT
 };
 
@@ -31,14 +29,15 @@ const PAYMENT_METHODS = [
 export default function BookingConfirmPage() {
   const { departureId } = useParams();
   const [params] = useSearchParams();
-  
-  // Récupération des infos de l'URL
-  const seat = params.get('seat') || '';
-  const shipClass = params.get('class') || 'ECO'; // Par défaut ECO pour les bus/trains
-  
   const navigate = useNavigate();
   const { user, isLoading, loginWithRedirect } = useAuth();
 
+  // RÉCUPÉRATION DES INFOS DEPUIS L'URL (calculées en amont)
+  const seat = params.get('seat') || '';
+  const selectedClass = params.get('class') || 'STANDARD';
+  const finalPrice = Number(params.get('price')) || 0;
+  const destinationName = params.get('to') || '';
+  
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -65,18 +64,16 @@ export default function BookingConfirmPage() {
       try {
         const { data: d, error } = await supabase
           .from('trips')
-          .select('*, company:companies(name)')
+          .select('*, company:companies(name), vehicle:vehicles(registration)')
           .eq('id', departureId)
           .single();
 
         if (d && !error) {
           setTrip({
             id: d.id,
-            price: d.price,
-            vipPrice: d.class_vip_price || d.price * 2,
-            businessPrice: d.class_business_price || d.price * 1.5,
             companyName: d.company?.name || 'Compagnie',
             vehicleNumber: d.vehicle_number,
+            registration: d.vehicle?.registration || '—',
             type: d.type
           });
         }
@@ -90,15 +87,18 @@ export default function BookingConfirmPage() {
     loadTripDetails();
   }, [departureId]);
 
-  // CALCUL DU PRIX FINAL SELON LA CLASSE
-  const finalPrice = useMemo(() => {
-    if (!trip) return 0;
-    if (trip.type === 'BOAT') {
-      if (shipClass === 'VIP') return trip.vipPrice;
-      if (shipClass === 'BUSINESS') return trip.businessPrice;
-    }
-    return trip.price;
-  }, [trip, shipClass]);
+  // Formattage lisible de la classe
+  const classLabel = useMemo(() => {
+    const labels: Record<string, string> = {
+      'VIP': 'Salon VIP',
+      'BUSINESS': 'Classe Business',
+      '1ERE_CLASSE': '1ère Classe',
+      '2EME_CLASSE': '2ème Classe',
+      'ECO': 'Classe Économique',
+      'STANDARD': 'Classe Standard'
+    };
+    return labels[selectedClass] || selectedClass;
+  }, [selectedClass]);
 
   const handleSubmit = async () => {
     if (!name.trim() || !phone.trim() || !paymentMethod || !departureId || !seat) {
@@ -117,7 +117,7 @@ export default function BookingConfirmPage() {
       if (paymentMethod === 'airtel_money') mappedMethod = 'AIRTEL_MONEY';
       else if (paymentMethod === 'moov_money') mappedMethod = 'MOOV_MONEY';
 
-      // Appel RPC Supabase (On envoie le finalPrice calculé)
+      // Appel RPC Supabase (On envoie le finalPrice reçu de l'URL)
       const { data, error } = await supabase.rpc('create_booking_transaction', {
         p_trip_id: departureId,
         p_user_id: user?.id || null,
@@ -141,102 +141,111 @@ export default function BookingConfirmPage() {
     }
   };
 
+  const TransportIcon = trip?.type === 'BOAT' ? Ship : trip?.type === 'TRAIN' ? Train : Bus;
+
   if (isLoading || !user) return null;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-lg text-left">
-      <h1 className="text-3xl font-black italic mb-2 tracking-tight">Finaliser ma place</h1>
-      <p className="text-muted-foreground mb-8 text-sm uppercase font-bold tracking-widest">Étape finale · Confirmation</p>
+      <h1 className="text-3xl font-black italic mb-2 tracking-tight uppercase">Confirmation</h1>
+      <p className="text-muted-foreground mb-8 text-[10px] uppercase font-bold tracking-[0.2em]">Dernière étape avant votre voyage</p>
 
       {loading ? (
         <div className="space-y-4">
-          <Skeleton className="h-32 w-full rounded-[2rem]" />
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-[2.5rem]" />
+          <Skeleton className="h-32 w-full rounded-[2.5rem]" />
         </div>
       ) : (
         <div className="space-y-6">
-          {/* RÉCAPITULATIF DU VOYAGE */}
+          {/* RÉCAPITULATIF DU VOYAGE AMÉLIORÉ */}
           {trip && (
-            <div className="bg-white border-2 border-primary/10 rounded-[2rem] p-6 shadow-xl shadow-primary/5 relative overflow-hidden">
-               <div className="flex justify-between items-start mb-4">
+            <div className="bg-white border-2 border-primary/10 rounded-[2.5rem] p-8 shadow-2xl shadow-primary/5 relative overflow-hidden">
+               <div className="flex justify-between items-start mb-6">
                   <div>
                     <p className="font-black text-primary uppercase text-[10px] tracking-widest mb-1">{trip.companyName}</p>
-                    <p className="font-bold text-slate-800 italic">Voyage n° {trip.vehicleNumber}</p>
+                    <div className="flex items-center gap-2">
+                        <TransportIcon size={18} className="text-slate-400" />
+                        <p className="font-bold text-slate-800 italic uppercase text-sm">{trip.registration}</p>
+                    </div>
                   </div>
-                  <Badge className="bg-slate-900 text-white border-none font-black px-3 py-1 rounded-full uppercase text-[10px]">
-                    Siège {seat}
-                  </Badge>
-               </div>
-
-               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 mb-4">
-                  <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary font-bold">
-                    {trip.type === 'BOAT' ? <Ship size={20} /> : <Check size={20} />}
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Confort sélectionné</p>
-                    <p className="font-black text-sm text-slate-700">{trip.type === 'BOAT' ? shipClass : 'Classe Unique'}</p>
+                  <div className="text-right">
+                    <Badge className="bg-slate-900 text-white border-none font-black px-4 py-1.5 rounded-full uppercase text-[10px]">
+                        Siège {seat}
+                    </Badge>
                   </div>
                </div>
 
-               <div className="flex justify-between items-end pt-4 border-t border-dashed">
-                  <p className="text-xs font-bold text-slate-400 uppercase">Total à payer</p>
-                  <p className="text-3xl font-black text-primary tracking-tighter">{finalPrice.toLocaleString()} <span className="text-xs">FCFA</span></p>
+               <div className="space-y-3 mb-6">
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <MapPin size={18} className="text-primary" />
+                    <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-none">Destination finale</p>
+                        <p className="font-black text-slate-700 uppercase">{destinationName}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                    {selectedClass.includes('VIP') || selectedClass.includes('1ERE') ? <Gem size={18} className="text-primary" /> : <Check size={18} className="text-primary" />}
+                    <div>
+                        <p className="text-[9px] font-black text-primary/60 uppercase tracking-tighter leading-none">Confort choisi</p>
+                        <p className="font-black text-primary uppercase text-sm">{classLabel}</p>
+                    </div>
+                  </div>
+               </div>
+
+               <div className="flex justify-between items-center pt-6 border-t border-dashed border-slate-200">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Montant Total</p>
+                  <p className="text-4xl font-black text-primary tracking-tighter">{finalPrice.toLocaleString()} <span className="text-xs">F</span></p>
                </div>
             </div>
           )}
 
           {/* FORMULAIRE PASSAGER */}
-          <div className="space-y-4 bg-slate-50/50 p-6 rounded-[2rem] border-2 border-white">
-            <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Nom du voyageur</Label>
+          <div className="space-y-4 bg-slate-50/50 p-6 rounded-[2.5rem] border-2 border-white">
+            <h3 className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Identité du voyageur</h3>
+            <div className="space-y-3">
                 <Input value={name} onChange={e => setName(e.target.value)} placeholder="Prénom et Nom" className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
-            </div>
-            
-            <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Téléphone de contact</Label>
-                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+241" className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
+                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Téléphone (+241)" className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
             </div>
           </div>
 
           {/* MODES DE PAIEMENT */}
           <div className="space-y-3">
-            <Label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Choisir un mode de paiement</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Moyen de paiement</Label>
             <div className="grid gap-3">
               {PAYMENT_METHODS.map(pm => (
                 <button
                   key={pm.value}
                   type="button"
                   onClick={() => setPaymentMethod(pm.value)}
-                  className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all group ${
+                  className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${
                     paymentMethod === pm.value
                       ? 'border-primary bg-primary/5 shadow-inner'
                       : 'border-slate-100 bg-white hover:border-primary/20'
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${paymentMethod === pm.value ? 'bg-primary text-white' : 'bg-slate-50 text-slate-400'}`}>
-                       <pm.icon size={20} />
+                    <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${paymentMethod === pm.value ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-slate-50 text-slate-400'}`}>
+                       <pm.icon size={22} />
                     </div>
-                    <span className={`font-bold ${paymentMethod === pm.value ? 'text-primary' : 'text-slate-600'}`}>{pm.label}</span>
+                    <span className={`font-black uppercase text-xs tracking-tight ${paymentMethod === pm.value ? 'text-primary' : 'text-slate-600'}`}>{pm.label}</span>
                   </div>
-                  {paymentMethod === pm.value && <div className="h-5 w-5 bg-primary rounded-full flex items-center justify-center text-white"><Check size={12} strokeWidth={4} /></div>}
+                  {paymentMethod === pm.value && <Check className="text-primary" size={20} strokeWidth={4} />}
                 </button>
               ))}
             </div>
           </div>
 
           <Button
-            className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-tighter hover:scale-[1.02] transition-transform mt-4"
+            className="w-full h-20 rounded-[2rem] font-black text-2xl shadow-2xl shadow-primary/20 uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all mt-4"
             onClick={handleSubmit}
             disabled={submitting || !name || !phone || !paymentMethod || !trip}
           >
-            {submitting ? <RefreshCw className="animate-spin mr-2" /> : <CreditCard className="mr-2 h-6 w-6" />}
-            {submitting ? 'RÉSERVATION...' : 'CONFIRMER ET PAYER'}
+            {submitting ? <RefreshCw className="animate-spin mr-3" /> : <CreditCard className="mr-3 h-7 w-7" />}
+            {submitting ? 'TRAITEMENT...' : 'PAYER MAINTENANT'}
           </Button>
 
-          <p className="text-[9px] text-center text-muted-foreground font-medium px-8">
-            En confirmant, vous acceptez les conditions de transport de la compagnie et la politique de confidentialité de Gabon Mobilité.
+          <p className="text-[9px] text-center text-muted-foreground font-bold px-10 uppercase tracking-tighter opacity-60">
+            Paiement sécurisé par cryptage SSL. En validant, vous recevrez votre billet avec QR Code par email et dans votre historique.
           </p>
         </div>
       )}

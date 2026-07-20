@@ -1,31 +1,33 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { CalendarDays, MapPin, Ticket, X, Eye, Bus, Package } from 'lucide-react';
+import { CalendarDays, MapPin, Ticket, X, Eye, Bus, Package, Ship, Train, Hash, Gem, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 type Booking = {
   id: string;
   bookingNumber: string;
   status: string;
   passengerName: string;
-  passengerPhone: string;
   departureCity: string;
   arrivalCity: string;
   companyName: string;
   transportType: string;
+  transportTypeCode: string;
   departureDate: string;
   departureTime: string;
   seatNumber: string;
   amount: number;
   paymentMethod: string;
+  classLabel: string; // NOUVEAU
 };
 
 type Parcel = {
@@ -36,10 +38,7 @@ type Parcel = {
   arrivalCity: string;
   companyName: string;
   departureDate: string;
-  receiverName: string;
-  receiverCity: string;
-  parcelType: string;
-  weightKg: number;
+  description: string;
   price: number;
 };
 
@@ -60,83 +59,64 @@ export default function DashboardPage() {
 
     const loadDashboardData = async () => {
       try {
-        // 1. Récupération des réservations réelles de l'utilisateur dans Supabase
-        const { data: bookingsData } = await supabase
+        // 1. RÉCUPÉRATION DES RÉSERVATIONS
+        const { data: bData } = await supabase
           .from('bookings')
-          .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)), passengers(*)') // <-- Ajout de !from_id et !to_id
+          .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)), passengers(*)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        // Mappage fluide vers l'UI d'origine
-        const formattedBookings: Booking[] = (bookingsData || []).map(b => {
-          const lead = b.passengers[0];
-          
-          const methodLabel: Record<string, string> = {
-            AGENCE: 'Paiement en agence',
-            AIRTEL_MONEY: 'Airtel Money',
-            MOOV_MONEY: 'Moov Money',
-          };
+        const classMapping: Record<string, string> = {
+          'VIP': 'VIP', 'BUSINESS': 'Business', '1ERE_CLASSE': '1ère Cl.', '2EME_CLASSE': '2ème Cl.', 'ECO': 'Éco', 'STANDARD': 'Std'
+        };
 
-          return {
-            id: b.id,
-            bookingNumber: b.reference,
-            status: b.status === 'PAYE' ? 'Confirmé' : b.status === 'ANNULE' ? 'Annulé' : b.status === 'REMBOURSE' ? 'Remboursé' : 'En attente',
-            passengerName: lead ? `${lead.first_name} ${lead.last_name}` : 'Anonyme',
-            passengerPhone: b.contact_phone,
-            departureCity: b.trip.from.name,
-            arrivalCity: b.trip.to.name,
-            companyName: b.trip.company.name,
-            transportType: b.trip.type === 'TRAIN' ? 'Train' : 'Bus',
-            departureDate: b.trip.departure_date,
-            departureTime: b.trip.departure_time,
-            seatNumber: b.passengers.map((p: any) => p.seat_number).filter(Boolean).join(', ') || '—',
-            amount: b.total_amount,
-            paymentMethod: methodLabel[b.payment_method] || b.payment_method
-          };
-        });
+        const formattedBookings: Booking[] = (bData || []).map(b => ({
+          id: b.id,
+          bookingNumber: b.reference,
+          status: b.status === 'PAYE' ? 'Confirmé' : b.status === 'ANNULE' ? 'Annulé' : b.status === 'REMBOURSE' ? 'Remboursé' : 'En attente',
+          passengerName: b.passengers[0] ? `${b.passengers[0].first_name} ${b.passengers[0].last_name}` : 'Moi',
+          departureCity: b.trip.from.name,
+          arrivalCity: b.arrival_city_name || b.trip.to.name, // GESTION ESCALE
+          companyName: b.trip.company.name,
+          transportType: b.trip.type === 'TRAIN' ? 'Train' : b.trip.type === 'BOAT' ? 'Bateau' : 'Bus',
+          transportTypeCode: b.trip.type,
+          departureDate: b.trip.departure_date,
+          departureTime: b.trip.departure_time,
+          seatNumber: b.passengers[0]?.seat_number || '—',
+          amount: b.total_amount,
+          paymentMethod: b.payment_method.replace('_', ' '),
+          classLabel: classMapping[b.class_type] || 'Standard'
+        }));
 
         setBookings(formattedBookings);
 
-        // 2. Récupération des colis réels de l'utilisateur dans Supabase
-        const { data: parcelsData } = await supabase
+        // 2. RÉCUPÉRATION DES COLIS
+        const { data: pData } = await supabase
           .from('parcels')
-          .select('*, company:companies(name), from:cities(name), to:cities(name)')
+          .select('*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)')
           .eq('sender_id', user.id)
           .order('created_at', { ascending: false });
 
-        // Mappage fluide vers l'UI d'origine
-        const formattedParcels: Parcel[] = (parcelsData || []).map(p => {
-          
-          const statusLabel: Record<string, string> = {
+        setParcels((pData || []).map(p => ({
+          id: p.id,
+          trackingNumber: p.tracking_number,
+          status: {
             COLIS_ENREGISTRE: 'En attente',
             EN_ATTENTE_DEPART: 'Pris en charge',
             EN_COURS_DE_TRANSPORT: 'En transit',
             ARRIVE_A_DESTINATION: 'Arrivé',
-            DISPONIBLE_POUR_RETRAIT: 'Arrivé',
-            LIVRE: 'Livré',
-            RETOURNE: 'Retourné'
-          };
-
-          return {
-            id: p.id,
-            trackingNumber: p.tracking_number,
-            status: statusLabel[p.status] || p.status,
-            departureCity: p.from.name,
-            arrivalCity: p.to.name,
-            companyName: p.company.name,
-            departureDate: p.created_at.slice(0, 10),
-            receiverName: p.receiver_name,
-            receiverCity: p.receiver_name,
-            parcelType: p.description,
-            weightKg: p.weight,
-            price: p.price
-          };
-        });
-
-        setParcels(formattedParcels);
+            LIVRE: 'Livré'
+          }[p.status as string] || p.status,
+          departureCity: p.from.name,
+          arrivalCity: p.to.name,
+          companyName: p.company.name,
+          departureDate: p.created_at.slice(0, 10),
+          description: p.description,
+          price: p.price
+        })));
 
       } catch (err) {
-        console.error("Erreur de chargement des données d'historique :", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -147,81 +127,65 @@ export default function DashboardPage() {
 
   const handleCancel = async (id: string) => {
     try {
-      // Appel de la procédure stockée (RPC) sécurisée d'annulation sur Supabase
-      const { data, error } = await supabase.rpc('cancel_booking_by_user', {
-        p_booking_id: id,
-        p_user_id: user.id
-      });
-
-      if (error || !data?.success) {
-        toast.error(error?.message || data?.error || 'Erreur lors de l’annulation');
-        return;
-      }
-
+      const { data: res, error } = await supabase.rpc('cancel_booking_by_user', { p_booking_id: id, p_user_id: user?.id });
+      if (error || !res?.success) throw new Error(res?.error || "Erreur d'annulation");
       setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Annulé' } : b));
-      toast.success('Réservation annulée avec succès !');
-    } catch (err: any) {
-      toast.error('Une erreur réseau est survenue.');
-    }
+      toast.success('Réservation annulée');
+    } catch (err: any) { toast.error(err.message); }
   };
 
   if (isLoading || !user) return null;
 
   const today = new Date().toISOString().split('T')[0];
-  const upcoming = bookings.filter(b => b.status !== 'Annulé' && b.status !== 'Remboursé' && b.departureDate >= today);
-  const past = bookings.filter(b => b.status === 'Terminé' || b.departureDate < today);
-  const cancelled = bookings.filter(b => b.status === 'Annulé' || b.status === 'Remboursé');
+  const upcoming = bookings.filter(b => b.status === 'Confirmé' && b.departureDate >= today);
+  const past = bookings.filter(b => b.status !== 'Annulé' && (b.status === 'Terminé' || b.departureDate < today));
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div className="text-left">
-          <h1 className="text-2xl font-bold">Mes voyages</h1>
-          <p className="text-muted-foreground">Bonjour {user.firstName || user.email} 👋</p>
+    <div className="container mx-auto px-4 py-12 max-w-5xl text-left space-y-10 animate-in fade-in duration-500">
+      
+      {/* Welcome Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl">
+        <div>
+          <p className="text-primary font-black uppercase text-[10px] tracking-[0.3em] mb-2">Mon Espace Personnel</p>
+          <h1 className="text-3xl font-black italic">Bonjour, {user.firstName || 'Voyageur'}</h1>
+          <p className="text-slate-400 text-sm mt-1">Gérez vos billets et suivez vos colis en temps réel.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/send-parcel')} className="gap-2">
-            <Package className="h-4 w-4" /> Envoyer un colis
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => navigate('/send-parcel')} className="rounded-2xl font-black bg-white/5 border-white/10 hover:bg-white/10 text-white h-12 gap-2">
+            <Package size={18} /> FRET
           </Button>
-          <Button onClick={() => navigate('/')} className="gap-2">
-            <Bus className="h-4 w-4" /> Nouveau voyage
+          <Button onClick={() => navigate('/')} className="rounded-2xl font-black shadow-lg shadow-primary/20 h-12 gap-2">
+            <Bus size={18} /> NOUVEAU VOYAGE
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        <StatCard label="Total réservations" value={bookings.length} icon={Ticket} />
-        <StatCard label="À venir" value={upcoming.length} icon={CalendarDays} />
-        <StatCard label="Terminés" value={past.length} icon={MapPin} />
-        <StatCard label="Annulés/Remboursés" value={cancelled.length} icon={X} />
-        <StatCard label="Colis envoyés" value={parcels.length} icon={Package} />
+      {/* Mini Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatItem label="Billets actifs" value={upcoming.length} icon={Ticket} color="text-primary" />
+        <StatItem label="Colis envoyés" value={parcels.length} icon={Package} color="text-emerald-500" />
+        <StatItem label="Voyages passés" value={past.length} icon={CalendarDays} color="text-blue-500" />
+        <StatItem label="Annulations" value={bookings.filter(b => b.status === 'Annulé').length} icon={X} color="text-red-400" />
       </div>
 
-      <Tabs defaultValue="upcoming" className="text-left">
-        <TabsList>
-          <TabsTrigger value="upcoming">À venir ({upcoming.length})</TabsTrigger>
-          <TabsTrigger value="past">Historique ({past.length})</TabsTrigger>
-          <TabsTrigger value="cancelled">Annulés/Remboursés ({cancelled.length})</TabsTrigger>
-          <TabsTrigger value="parcels">Colis ({parcels.length})</TabsTrigger>
+      <Tabs defaultValue="upcoming" className="w-full">
+        <TabsList className="bg-slate-100 p-1.5 rounded-2xl h-14 w-fit mb-8">
+          <TabsTrigger value="upcoming" className="rounded-xl px-6 font-black uppercase text-[10px]">À Venir ({upcoming.length})</TabsTrigger>
+          <TabsTrigger value="past" className="rounded-xl px-6 font-black uppercase text-[10px]">Historique ({past.length})</TabsTrigger>
+          <TabsTrigger value="parcels" className="rounded-xl px-6 font-black uppercase text-[10px]">Mes Colis ({parcels.length})</TabsTrigger>
         </TabsList>
 
         {loading ? (
-          <div className="mt-6 space-y-4">
-            {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
-          </div>
+            <div className="space-y-4"><Skeleton className="h-32 w-full rounded-[2rem]" /><Skeleton className="h-32 w-full rounded-[2rem]" /></div>
         ) : (
           <>
-            <TabsContent value="upcoming">
-              <BookingList bookings={upcoming} onCancel={handleCancel} showCancel />
+            <TabsContent value="upcoming" className="space-y-4 animate-in slide-in-from-bottom-2">
+              <BookingList bookings={upcoming} onCancel={handleCancel} showActions />
             </TabsContent>
-            <TabsContent value="past">
+            <TabsContent value="past" className="space-y-4 animate-in slide-in-from-bottom-2">
               <BookingList bookings={past} />
             </TabsContent>
-            <TabsContent value="cancelled">
-              <BookingList bookings={cancelled} />
-            </TabsContent>
-            <TabsContent value="parcels">
+            <TabsContent value="parcels" className="space-y-4 animate-in slide-in-from-bottom-2">
               <ParcelList parcels={parcels} />
             </TabsContent>
           </>
@@ -231,122 +195,117 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: number; icon: any }) {
-  return (
-    <div className="bg-card border rounded-xl p-4 text-left">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
-          <Icon className="h-5 w-5 text-accent-foreground" />
-        </div>
-        <div>
-          <div className="text-2xl font-bold">{value}</div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ParcelList({ parcels }: { parcels: Parcel[] }) {
-  if (parcels.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground">Aucun colis envoyé</div>;
-  }
-  const statusColor: Record<string, string> = {
-    'En attente': 'bg-yellow-100 text-yellow-800',
-    'Pris en charge': 'bg-blue-100 text-blue-800',
-    'En transit': 'bg-orange-100 text-orange-800',
-    'Arrivé': 'bg-emerald-100 text-emerald-800',
-    'Livré': 'bg-green-100 text-green-800',
-    'Retourné': 'bg-red-100 text-red-800',
-  };
-  return (
-    <div className="space-y-3 mt-4">
-      {parcels.map(p => (
-        <div key={p.id} className="border rounded-xl bg-card p-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-sm font-semibold">{p.trackingNumber}</span>
-                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusColor[p.status] || 'bg-muted'}`}>{p.status}</span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {p.departureCity} → {p.arrivalCity} • {p.companyName} • {p.departureDate ? new Date(p.departureDate + 'T00:00:00').toLocaleDateString('fr-FR') : ''}
-              </div>
-              <div className="text-sm mt-1">Destinataire: {p.receiverName} ({p.receiverCity}) • {p.parcelType} • {p.weightKg} kg</div>
-              <div className="text-sm font-medium mt-1">{p.price.toLocaleString()} FCFA</div>
-            </div>
-            <Link to={`/track?q=${p.trackingNumber}`}>
-              <Button variant="outline" size="sm" className="gap-1"><Eye className="h-3 w-3" /> Suivre</Button>
-            </Link>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function BookingList({ bookings, onCancel, showCancel }: { bookings: Booking[]; onCancel?: (id: string) => void; showCancel?: boolean }) {
+/**
+ * LISTE DES RÉSERVATIONS
+ */
+function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[], onCancel?: (id: string) => void, showActions?: boolean }) {
   const navigate = useNavigate();
-
-  if (bookings.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground">Aucune réservation</div>;
-  }
-
-  const statusColor: Record<string, string> = {
-    'En attente': 'bg-yellow-100 text-yellow-800',
-    'Confirmé': 'bg-green-100 text-green-800',
-    'Annulé': 'bg-red-100 text-red-800',
-    'Remboursé': 'bg-red-100 text-red-800',
-    'Terminé': 'bg-blue-100 text-blue-800',
-  };
+  if (bookings.length === 0) return <EmptyState label="Aucune réservation trouvée" />;
 
   return (
-    <div className="space-y-3 mt-4">
-      {bookings.map(b => (
-        <div key={b.id} className="border rounded-xl bg-card p-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold">{b.departureCity} → {b.arrivalCity}</span>
-                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusColor[b.status] || 'bg-muted'}`}>
-                  {b.status}
-                </span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {b.companyName} • {b.departureDate ? new Date(b.departureDate + 'T00:00:00').toLocaleDateString('fr-FR') : ''} à {b.departureTime} • Siège {b.seatNumber}
-              </div>
-              <div className="text-sm font-medium mt-1">{b.amount.toLocaleString()} FCFA — {b.paymentMethod}</div>
+    <div className="grid gap-4">
+      {bookings.map(b => {
+        const TransportIcon = b.transportTypeCode === 'BOAT' ? Ship : b.transportTypeCode === 'TRAIN' ? Train : Bus;
+        return (
+          <div key={b.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all group flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-5 flex-1 w-full">
+               <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${b.transportTypeCode === 'BOAT' ? 'bg-blue-600' : b.transportTypeCode === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
+                  <TransportIcon size={24} />
+               </div>
+               <div>
+                  <div className="flex items-center gap-2 font-black text-lg text-slate-800 uppercase tracking-tighter">
+                     {b.departureCity} <ArrowRight size={14} className="text-primary opacity-30" /> {b.arrivalCity}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                     <Badge variant="outline" className="text-[8px] font-black uppercase h-5 border-primary/20 text-primary">{b.classLabel}</Badge>
+                     <span className="text-[10px] font-bold text-muted-foreground uppercase">{b.companyName} • {new Date(b.departureDate).toLocaleDateString('fr-FR')} • {b.departureTime}</span>
+                  </div>
+               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate(`/ticket/${b.id}`)}>
-                <Eye className="h-3 w-3" /> Voir
-              </Button>
-              {showCancel && onCancel && b.status !== 'Annulé' && b.status !== 'Remboursé' && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1 text-destructive border-destructive/30">
-                      <X className="h-3 w-3" /> Annuler
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader className="text-left">
-                      <AlertDialogTitle>Annuler cette réservation ?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Billet {b.bookingNumber} — {b.departureCity} → {b.arrivalCity}. 
-                        <br /><span className="text-xs text-destructive font-semibold">Rappel : Moins de 4h avant le départ, l&apos;annulation n&apos;est plus possible en ligne.</span>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Garder</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onCancel(b.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Oui, annuler</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+               <div className="text-right mr-4 hidden sm:block">
+                  <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Montant</p>
+                  <p className="font-black text-slate-900">{b.amount.toLocaleString()} F</p>
+               </div>
+               <Button onClick={() => navigate(`/ticket/${b.id}`)} variant="outline" className="flex-1 md:flex-none h-11 rounded-xl border-2 font-black text-[10px] uppercase gap-2">
+                 <Eye size={16} /> Billet
+               </Button>
+               {showActions && b.status === 'Confirmé' && onCancel && (
+                 <AlertDialog>
+                   <AlertDialogTrigger asChild>
+                     <Button variant="ghost" className="h-11 w-11 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><X size={20}/></Button>
+                   </AlertDialogTrigger>
+                   <AlertDialogContent className="rounded-[2.5rem]">
+                     <AlertDialogHeader>
+                       <AlertDialogTitle className="font-black italic uppercase">Annuler le voyage ?</AlertDialogTitle>
+                       <AlertDialogDescription className="font-medium">Cette action est soumise aux conditions de remboursement de {b.companyName}.</AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter>
+                       <AlertDialogCancel className="rounded-xl font-bold">RETOUR</AlertDialogCancel>
+                       <AlertDialogAction onClick={() => onCancel(b.id)} className="bg-red-600 rounded-xl font-bold">ANNULER BILLET</AlertDialogAction>
+                     </AlertDialogFooter>
+                   </AlertDialogContent>
+                 </AlertDialog>
+               )}
             </div>
           </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * LISTE DES COLIS
+ */
+function ParcelList({ parcels }: { parcels: Parcel[] }) {
+  if (parcels.length === 0) return <EmptyState label="Aucun colis enregistré" icon={Package} />;
+
+  return (
+    <div className="grid gap-4">
+      {parcels.map(p => (
+        <div key={p.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-5 flex-1 w-full">
+             <div className="h-14 w-14 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-100">
+                <Package size={24} />
+             </div>
+             <div>
+                <div className="flex items-center gap-2 font-black text-slate-800 uppercase tracking-tighter mb-1">
+                   {p.departureCity} ➔ {p.arrivalCity}
+                </div>
+                <div className="flex items-center gap-2">
+                   <Badge className="bg-slate-900 text-white text-[8px] font-mono h-5">{p.trackingNumber}</Badge>
+                   <span className="text-[10px] font-bold text-muted-foreground uppercase">{p.companyName} • {p.status}</span>
+                </div>
+             </div>
+          </div>
+          <Link to={`/track?q=${p.trackingNumber}`} className="w-full md:w-auto">
+             <Button variant="outline" className="w-full h-11 rounded-xl border-2 font-black text-[10px] uppercase gap-2 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-100">
+               <Eye size={16} /> Suivre colis
+             </Button>
+          </Link>
         </div>
       ))}
+    </div>
+  );
+}
+
+function StatItem({ label, value, icon: Icon, color }: any) {
+  return (
+    <div className="bg-white border-2 border-slate-100 p-5 rounded-3xl shadow-sm hover:border-primary/20 transition-colors">
+      <Icon className={`h-5 w-5 ${color} mb-3`} />
+      <p className="text-2xl font-black text-slate-900 leading-none mb-1">{value}</p>
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
+    </div>
+  );
+}
+
+function EmptyState({ label, icon: Icon = Ticket }: any) {
+  return (
+    <div className="py-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
+      <Icon className="h-12 w-12 mx-auto text-slate-200 mb-4" />
+      <p className="text-slate-400 font-bold uppercase text-xs tracking-[0.2em]">{label}</p>
     </div>
   );
 }

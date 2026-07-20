@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Armchair, Ship, Crown, Gem, ArrowRight, Bus, Train, Star } from 'lucide-react';
+import { Ship, Crown, Gem, ArrowRight, Bus, Train, MapPin, Hash } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
@@ -15,16 +15,24 @@ type SeatData = {
   seatsPerRow: number;
   vehicleName: string;
   registration: string;
-  takenSeats: string[];
-  type: string; // BUS, TRAIN, BOAT
+  takenSeats: string[]; // Toujours un tableau
+  type: string;
   basePrice: number;
   businessPrice: number;
   vipPrice: number;
+  isStop: boolean;
+  destinationName: string;
 };
 
 export default function SeatSelectionPage() {
   const { departureId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  const urlPrice = searchParams.get('price');
+  const isStop = searchParams.get('isStop') === 'true';
+  const destinationName = searchParams.get('to') || 'Destination';
+
   const [loading, setLoading] = useState(true);
   const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
@@ -55,13 +63,25 @@ export default function SeatSelectionPage() {
 
         const activeBookingIds = activeBookings?.map(b => b.id) || [];
         let takenSeats: string[] = [];
+        
         if (activeBookingIds.length > 0) {
           const { data: passengers } = await supabase
             .from('passengers')
             .select('seat_number')
             .in('booking_id', activeBookingIds);
-          takenSeats = passengers?.map(p => p.seat_number).filter(Boolean) as string[] || [];
+          
+          // Sécurité : filtrer les valeurs nulles et s'assurer que c'est un tableau
+          takenSeats = passengers?.map(p => p.seat_number).filter((s): s is string => !!s) || [];
         }
+
+        const basePrice = urlPrice ? Number(urlPrice) : trip.price;
+        const businessPrice = isStop 
+          ? Math.round(basePrice * 1.5) 
+          : (trip.class_business_price || Math.round(basePrice * 1.5));
+          
+        const vipPrice = isStop 
+          ? Math.round(basePrice * 2) 
+          : (trip.class_vip_price || Math.round(basePrice * 2));
 
         setData({
           totalSeats: trip.seats_total,
@@ -70,18 +90,20 @@ export default function SeatSelectionPage() {
           vehicleName: trip.vehicle?.name || trip.company?.name,
           registration: trip.vehicle?.registration || '—',
           type: trip.type,
-          basePrice: trip.price,
-          businessPrice: trip.class_business_price || 0, 
-          vipPrice: trip.class_vip_price || 0,
-          takenSeats
+          basePrice,
+          businessPrice,
+          vipPrice,
+          isStop,
+          destinationName,
+          takenSeats: takenSeats // On injecte le tableau (vide ou plein)
         });
 
-        // Modification ici : Seul le BUS est en STANDARD direct
         if (trip.type !== 'BOAT' && trip.type !== 'TRAIN') {
           setSelectedClass('STANDARD');
         }
 
       } catch (err) {
+        console.error("Crash configuration:", err);
         setData(null);
       } finally {
         setLoading(false);
@@ -89,35 +111,38 @@ export default function SeatSelectionPage() {
     };
 
     loadConfiguration();
-  }, [departureId]);
+  }, [departureId, urlPrice, isStop, destinationName]);
 
   if (loading) return <div className="max-w-lg mx-auto p-10"><Skeleton className="h-80 w-full rounded-[3rem]" /></div>;
   if (!data) return <div className="p-20 text-center font-black uppercase text-red-500">Erreur système.</div>;
 
-  // --- ÉTAPE 1 : SÉLECTION DE LA CLASSE (MARITIME & TRAIN) ---
   const needsClassSelection = (data.type === 'BOAT' || data.type === 'TRAIN') && !selectedClass;
 
   if (needsClassSelection) {
     const isTrain = data.type === 'TRAIN';
     return (
       <div className="container mx-auto px-4 py-12 max-w-lg text-left animate-in fade-in duration-500">
-        <h1 className="text-4xl font-black italic mb-2 tracking-tighter uppercase text-slate-900">Le Confort</h1>
-        <p className="text-muted-foreground mb-10 text-xs font-bold uppercase tracking-widest leading-relaxed">
-          {isTrain ? 'Voyage Ferroviaire' : 'Trajet Maritime'} • {data.vehicleName}
+        <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-4xl font-black italic tracking-tighter uppercase text-slate-900">Le Confort</h1>
+            {data.isStop && <Badge className="bg-amber-100 text-amber-700 border-none text-[10px] uppercase font-black">Tarif Escale</Badge>}
+        </div>
+        <p className="text-muted-foreground mb-10 text-xs font-bold uppercase tracking-widest leading-relaxed flex items-center gap-2">
+          {isTrain ? 'Voyage Ferroviaire' : 'Trajet Maritime'} • {data.vehicleName} 
+          <ArrowRight size={12} /> <MapPin size={12} className="text-primary"/> {data.destinationName}
         </p>
 
         <div className="space-y-4">
           <ClassCard 
             title={isTrain ? "2ème Classe" : "Économique"} 
             price={data.basePrice} 
-            desc={isTrain ? "Voyage standard optimisé" : "Salon climatisé grand public"} 
+            desc={isTrain ? "Voyage standard" : "Salon climatisé"} 
             icon={isTrain ? <Train className="h-6 w-6" /> : <Ship className="h-6 w-6" />}
             onClick={() => setSelectedClass(isTrain ? '2EME_CLASSE' : 'ECO')}
           />
           <ClassCard 
             title={isTrain ? "1ère Classe" : "Business"} 
             price={data.businessPrice} 
-            desc={isTrain ? "Confort supérieur et calme" : "Sièges confort, priorité bagages"} 
+            desc="Confort supérieur" 
             icon={<Crown className="h-6 w-6" />}
             onClick={() => setSelectedClass(isTrain ? '1ERE_CLASSE' : 'BUSINESS')}
             color="bg-blue-600 shadow-blue-100"
@@ -125,7 +150,7 @@ export default function SeatSelectionPage() {
           <ClassCard 
             title="Salon VIP" 
             price={data.vipPrice} 
-            desc={isTrain ? "Espace prestige SETRAG" : "Espace privé, service à bord"} 
+            desc="Espace prestige" 
             icon={<Gem className="h-6 w-6" />}
             onClick={() => setSelectedClass('VIP')}
             color="bg-slate-900 shadow-slate-200"
@@ -135,7 +160,7 @@ export default function SeatSelectionPage() {
     );
   }
 
-  // --- ÉTAPE 2 : PLAN DES SIÈGES ---
+  // --- GÉNÉRATION DU PLAN DE SALLE ---
   const seatLabels: string[][] = [];
   for (let r = 0; r < data.rows; r++) {
     const row: string[] = [];
@@ -160,8 +185,8 @@ export default function SeatSelectionPage() {
                 <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">
                   {selectedClass?.replace('_', ' ')} • {data.vehicleName}
                 </p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
-                  Immat: {data.registration}
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1 flex items-center gap-1">
+                  Immat: {data.registration} • Vers: {data.destinationName}
                 </p>
              </div>
           </div>
@@ -175,12 +200,12 @@ export default function SeatSelectionPage() {
 
       <div className="bg-white border-2 border-slate-100 rounded-[3rem] p-10 shadow-2xl shadow-slate-100/50 mb-10">
         <div className="text-center text-[9px] font-black text-slate-300 mb-8 tracking-[1em] uppercase">Partie Avant</div>
-        
         <div className="space-y-4">
           {seatLabels.map((row, ri) => (
             <div key={ri} className="flex justify-center gap-4">
               {row.map((seat, si) => {
-                const taken = data.takenSeats.includes(seat);
+                // SÉCURITÉ : Utilisation de optional chaining et fallback sur tableau vide
+                const taken = (data?.takenSeats || []).includes(seat);
                 const isSelected = selectedSeat === seat;
                 const showGap = data.seatsPerRow >= 4 && si === Math.floor(data.seatsPerRow / 2) - 1;
 
@@ -204,10 +229,10 @@ export default function SeatSelectionPage() {
             </div>
           ))}
         </div>
-        
         <div className="text-center text-[9px] font-black text-slate-300 mt-10 tracking-[1em] uppercase">Partie Arrière</div>
       </div>
 
+      {/* LÉGENDE */}
       <div className="flex justify-center gap-6 mb-10 text-[9px] font-black uppercase tracking-widest text-slate-400">
          <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-white border-2 border-slate-100" /> Libre</div>
          <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-primary" /> Choisi</div>
@@ -217,7 +242,10 @@ export default function SeatSelectionPage() {
       <Button
         className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-tighter hover:scale-[1.02] transition-transform"
         disabled={!selectedSeat}
-        onClick={() => navigate(`/confirm/${departureId}?seat=${selectedSeat}&class=${selectedClass}`)}
+        onClick={() => {
+            const finalPrice = selectedClass === 'VIP' ? data.vipPrice : (selectedClass === 'BUSINESS' || selectedClass === '1ERE_CLASSE' ? data.businessPrice : data.basePrice);
+            navigate(`/confirm/${departureId}?seat=${selectedSeat}&class=${selectedClass}&price=${finalPrice}&to=${data.destinationName}`);
+        }}
       >
         {selectedSeat ? `RÉSERVER LE SIÈGE ${selectedSeat}` : 'SÉLECTIONNEZ UNE PLACE'}
       </Button>

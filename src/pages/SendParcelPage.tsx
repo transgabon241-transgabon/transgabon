@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from 'react'; // Ajout de useCallback
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase';
@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   Ship,
   Bus,
+  Train,
   Hash,
   MapPin,
   User
@@ -41,6 +42,7 @@ type Trip = {
   arrivalCity: string;
   departureDate: string;
   price: number;
+  isEscale: boolean;
 };
 
 type Tariff = {
@@ -70,7 +72,8 @@ export default function SendParcelPage() {
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
 
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
-  const [selectedTariffId, setSelectedTariffId] = useState<string>(""); // On stocke l'ID uniquement
+  const [selectedTariffId, setSelectedTariffId] = useState<string>("");
+  const [tariffsLoading, setTariffsLoading] = useState(false);
 
   const [senderName, setSenderName] = useState('');
   const [senderPhone, setSenderPhone] = useState('');
@@ -105,31 +108,33 @@ export default function SendParcelPage() {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
   }, [isLoading, user, loginWithRedirect]);
 
-  // Charger les tarifs (Dépend uniquement de l'ID de la compagnie pour éviter les boucles)
-  const currentCompanyId = selectedTrip?.companyId;
+  // Charger les tarifs
   useEffect(() => {
-    if (currentCompanyId) {
+    if (selectedTrip?.companyId) {
       const fetchTariffs = async () => {
+        setTariffsLoading(true);
+        setSelectedTariffId(""); 
         const { data } = await supabase
           .from('company_parcel_tariffs')
           .select('*')
-          .eq('company_id', currentCompanyId);
+          .eq('company_id', selectedTrip.companyId);
         if (data) setTariffs(data);
+        setTariffsLoading(false);
       };
       fetchTariffs();
     }
-  }, [currentCompanyId]);
+  }, [selectedTrip?.companyId]);
 
-  // On récupère l'objet tarif sélectionné via son ID de manière stable
-  const selectedTariff = useMemo(() => 
-    tariffs.find(t => t.id === selectedTariffId) || null
-  , [selectedTariffId, tariffs]);
+  const selectedTariff = useMemo(() => {
+    if (!selectedTariffId) return null;
+    return tariffs.find(t => t.id === selectedTariffId) || null;
+  }, [selectedTariffId, tariffs]);
 
   const estimatedPrice = useMemo(() => {
-    if (!selectedTariff) return 0;
+    if (!selectedTariff || !selectedTrip) return 0;
     const w = parseFloat(weightKg) || 0;
     return selectedTariff.is_weight_based ? w * selectedTariff.price : selectedTariff.price;
-  }, [selectedTariff, weightKg]);
+  }, [selectedTariff, weightKg, selectedTrip]);
 
   const handleSearchTrips = async () => {
     if (!fromId || !toId || !date) { toast.error('Itinéraire incomplet'); return; }
@@ -137,54 +142,54 @@ export default function SendParcelPage() {
     try {
       const { data, error } = await supabase
         .from('trips')
-        .select('*, company:companies(name), vehicle:vehicles(registration)')
-        .eq('from_id', fromId).eq('to_id', toId).eq('departure_date', date);
+        .select(`*, company:companies(name), vehicle:vehicles(registration), trip_stops(*)`)
+        .eq('from_id', fromId)
+        .eq('departure_date', date);
 
       if (error) throw error;
       if (data) {
         const cFrom = cities.find(c => c.id === fromId)?.name || '';
         const cTo = cities.find(c => c.id === toId)?.name || '';
-        setTrips(data.map(t => ({
-          departureId: t.id,
-          companyId: t.company_id,
-          companyName: t.company?.name || 'Compagnie',
-          transportType: t.type === 'BOAT' ? 'Bateau' : 'Bus',
-          transportTypeCode: t.type,
-          vehicleNumber: t.vehicle_number,
-          registration: t.vehicle?.registration || '—',
-          departureTime: t.departure_time,
-          arrivalTime: t.arrival_time,
-          departureCity: cFrom,
-          arrivalCity: cTo,
-          departureDate: date,
-          price: t.price
-        })));
+        const res: Trip[] = [];
+        data.forEach(t => {
+            if (t.to_id === toId) {
+                res.push({
+                    departureId: t.id, companyId: t.company_id, companyName: t.company?.name || 'Compagnie',
+                    transportType: t.type === 'BOAT' ? 'Bateau' : t.type === 'TRAIN' ? 'Train' : 'Bus',
+                    transportTypeCode: t.type, vehicleNumber: t.vehicle_number, registration: t.vehicle?.registration || '—',
+                    departureTime: t.departure_time, arrivalTime: t.arrival_time, departureCity: cFrom, arrivalCity: cTo,
+                    departureDate: date, price: t.price, isEscale: false
+                });
+            } else {
+                const escale = t.trip_stops?.find((s: any) => s.city_id === toId);
+                if (escale) {
+                    res.push({
+                        departureId: t.id, companyId: t.company_id, companyName: t.company?.name || 'Compagnie',
+                        transportType: t.type === 'BOAT' ? 'Bateau' : t.type === 'TRAIN' ? 'Train' : 'Bus',
+                        transportTypeCode: t.type, vehicleNumber: t.vehicle_number, registration: t.vehicle?.registration || '—',
+                        departureTime: t.departure_time, arrivalTime: escale.arrival_time, departureCity: cFrom, arrivalCity: cTo,
+                        departureDate: date, price: escale.price_from_start || t.price, isEscale: true
+                    });
+                }
+            }
+        });
+        setTrips(res);
       }
     } finally { setSearchingTrips(false); }
   };
 
   const handleSubmit = async () => {
     if (!selectedTrip || !selectedTariff || !parcelTitle || !receiverName || !receiverPhone) {
-      toast.error('Informations manquantes'); return;
+      toast.error('Champs manquants'); return;
     }
     setSubmitting(true);
     try {
-      const fullDesc = `${parcelTitle}${description ? ' - ' + description : ''}`;
       const { data: res, error } = await supabase.rpc('create_parcel_expedition_transaction', {
-        p_sender_id: user?.id || null,
-        p_sender_name: senderName,
-        p_sender_phone: senderPhone,
-        p_receiver_name: receiverName,
-        p_receiver_phone: receiverPhone,
-        p_receiver_city_name: selectedTrip.arrivalCity,
-        p_from_city_id: fromId,
-        p_to_city_id: toId,
-        p_company_id: selectedTrip.companyId,
-        p_description: fullDesc,
-        p_weight: parseFloat(weightKg),
-        p_parcel_type: selectedTariff.label,
-        p_payment_method: paymentMethod,
-        p_price: estimatedPrice
+        p_sender_id: user?.id || null, p_sender_name: senderName, p_sender_phone: senderPhone,
+        p_receiver_name: receiverName, p_receiver_phone: receiverPhone, p_receiver_city_name: selectedTrip.arrivalCity,
+        p_from_city_id: fromId, p_to_city_id: toId, p_company_id: selectedTrip.companyId, 
+        p_description: `${parcelTitle} ${description}`, p_weight: parseFloat(weightKg), 
+        p_parcel_type: selectedTariff.label, p_payment_method: paymentMethod, p_price: estimatedPrice
       });
       if (error || !res?.success) throw new Error(error?.message || res?.error);
       setResult({ trackingNumber: res.tracking_number, price: estimatedPrice });
@@ -192,132 +197,74 @@ export default function SendParcelPage() {
     } catch (err: any) { toast.error(err.message); } finally { setSubmitting(false); }
   };
 
-  // --- RENDU ---
   if (isLoading || !user) return null;
 
+  // --- RENDU SUCCÈS (Identique au précédent) ---
   if (step === 3 && result) {
-    return (
-        <div className="container mx-auto px-4 py-10 max-w-2xl animate-in fade-in zoom-in-95 duration-500 print:p-0">
-          <div className="text-center mb-8 print:hidden">
-            <div className="h-16 w-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-emerald-100">
-              <CheckCircle2 size={32} />
-            </div>
-            <h1 className="text-3xl font-black italic">Expédition Validée</h1>
-            <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Votre colis est enregistré</p>
-          </div>
-  
-          <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-2xl overflow-hidden relative print:border-none print:shadow-none">
-            <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                 <Package className="text-primary" size={24} />
-                 <span className="font-black italic text-lg uppercase tracking-tighter">Bordereau de Fret</span>
+      return (
+          <div className="container mx-auto px-4 py-10 max-w-2xl animate-in fade-in zoom-in-95 text-left">
+            <div className="text-center mb-8">
+              <div className="h-16 w-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <CheckCircle2 size={32} />
               </div>
-              <p className="text-xs font-bold">{new Date().toLocaleDateString('fr-FR')}</p>
+              <h1 className="text-3xl font-black italic uppercase italic">Expédition Validée</h1>
             </div>
-  
-            <div className="p-8 space-y-8">
-              <div className="flex justify-between items-start gap-4">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Tracking</Label>
+            <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
+                <div>
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Code Tracking</Label>
                   <p className="text-4xl font-mono font-black text-primary tracking-tighter">{result.trackingNumber}</p>
                 </div>
-                <div className="h-20 w-20 bg-slate-50 border-2 border-slate-100 rounded-2xl flex items-center justify-center">
-                   <div className="grid grid-cols-3 gap-1 opacity-20">
-                      {[...Array(9)].map((_, i) => <div key={i} className="h-2 w-2 bg-black rounded-sm" />)}
-                   </div>
-                </div>
-              </div>
-  
-              <div className="bg-slate-50 rounded-3xl p-5 flex items-center justify-between border border-slate-100 text-sm">
-                 <div className="text-left font-bold">{selectedTrip.departureCity}</div>
-                 <div className="px-4 text-primary font-black uppercase text-[10px]">{selectedTrip.registration}</div>
-                 <div className="text-right font-bold">{selectedTrip.arrivalCity}</div>
-              </div>
-  
-              <div className="grid grid-cols-2 gap-8 py-4 border-y border-dashed border-slate-200">
-                 <div>
-                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Expéditeur</Label>
-                    <p className="font-bold text-sm">{senderName}</p>
-                 </div>
-                 <div>
-                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Destinataire</Label>
-                    <p className="font-bold text-sm">{receiverName}</p>
-                 </div>
-              </div>
-  
-              <div className="flex justify-between items-center bg-primary/5 p-6 rounded-3xl border border-primary/10">
-                 <div>
-                    <Label className="text-[9px] font-black uppercase text-primary tracking-widest">Total à régler</Label>
+                <div className="flex justify-between items-center bg-primary/5 p-6 rounded-3xl border border-primary/10">
                     <p className="text-3xl font-black text-primary tracking-tighter">{result.price.toLocaleString()} F</p>
-                 </div>
-                 <Badge className="bg-white text-emerald-600 font-black uppercase text-[10px]">Enregistré</Badge>
-              </div>
+                    <Badge className="bg-white text-emerald-600 font-black">Prêt au dépôt</Badge>
+                </div>
+                <Button onClick={() => navigate('/dashboard')} className="w-full h-14 rounded-2xl font-black">RETOUR ACCUEIL</Button>
             </div>
           </div>
-  
-          <div className="flex flex-col gap-3 mt-10 print:hidden">
-            <Button onClick={() => window.print()} variant="outline" className="h-14 font-black rounded-2xl border-2">IMPRIMER</Button>
-            <Button onClick={() => navigate('/dashboard')} className="h-14 font-black rounded-2xl shadow-lg">MENU PRINCIPAL</Button>
-          </div>
-        </div>
-      );
+      )
   }
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl text-left space-y-10">
       
       <header className="flex items-center gap-4 bg-white p-5 rounded-3xl border-2 border-slate-50 shadow-sm w-full">
-        <div className="p-3 bg-primary rounded-2xl text-white"><Package size={24} /></div>
+        <div className="p-3 bg-primary rounded-2xl text-white shadow-lg"><Package size={24} /></div>
         <div>
           <h1 className="text-2xl font-black italic text-slate-900 uppercase">Service de Fret</h1>
-          <p className="text-[9px] font-bold text-muted-foreground uppercase">Étape {step} sur 2</p>
+          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Étape {step}/2</p>
         </div>
       </header>
 
       {step === 1 && (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white border-2 border-primary/5 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
-            <h2 className="font-black text-xs uppercase mb-6 flex items-center gap-2 text-primary">
-               <MapPin size={16}/> Itinéraire
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 text-left">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase ml-1">Départ</Label>
-                <Select value={fromId} onValueChange={setFromId}>
-                  <SelectTrigger className="h-12 rounded-xl font-bold bg-slate-50 border-none"><SelectValue placeholder="Ville" /></SelectTrigger>
-                  <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase ml-1">Arrivée</Label>
-                <Select value={toId} onValueChange={setToId}>
-                  <SelectTrigger className="h-12 rounded-xl font-bold bg-slate-50 border-none"><SelectValue placeholder="Ville" /></SelectTrigger>
-                  <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase ml-1">Date</Label>
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" min={new Date().toISOString().split('T')[0]} />
-              </div>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-white border-2 border-primary/5 rounded-[2.5rem] p-8 shadow-xl">
+            <h2 className="font-black text-xs uppercase mb-6 flex items-center gap-2 text-primary"><MapPin size={16}/> Itinéraire</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <div className="space-y-1.5"><Label>Départ</Label><Select value={fromId} onValueChange={setFromId}><SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Ville"/></SelectTrigger><SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-1.5"><Label>Arrivée</Label><Select value={toId} onValueChange={setToId}><SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Ville"/></SelectTrigger><SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" min={new Date().toISOString().split('T')[0]} /></div>
             </div>
             <Button onClick={handleSearchTrips} disabled={searchingTrips} className="w-full h-14 font-black rounded-2xl shadow-xl">
-              {searchingTrips ? <RefreshCw className="animate-spin h-5 w-5" /> : "Trouver un bus"}
+              {searchingTrips ? <RefreshCw className="animate-spin h-5 w-5" /> : "Rechercher départs"}
             </Button>
           </div>
 
           <div className="space-y-4">
             {trips.map(t => (
-              <button key={t.departureId} onClick={() => { setSelectedTrip(t); setStep(2); }} className="w-full text-left bg-white border-2 border-slate-100 hover:border-primary p-6 rounded-[2rem] transition-all flex justify-between items-center shadow-sm">
+              <button key={`${t.departureId}-${t.isEscale}`} onClick={() => { setSelectedTrip(t); setStep(2); }} className="w-full text-left bg-white border-2 border-slate-100 hover:border-primary p-6 rounded-[2rem] transition-all flex justify-between items-center shadow-sm hover:shadow-xl group">
                 <div className="flex items-center gap-5">
-                   <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center text-white">
-                      {t.transportTypeCode === 'BOAT' ? <Ship size={20}/> : <Bus size={20}/>}
+                   <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-white shadow-md ${t.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 'bg-primary'}`}>
+                      {t.transportTypeCode === 'BOAT' ? <Ship size={24}/> : t.transportTypeCode === 'TRAIN' ? <Train size={24}/> : <Bus size={24}/>}
                    </div>
                    <div>
-                      <div className="font-black text-slate-800 uppercase text-sm">{t.departureCity} <ArrowRight className="inline mx-2" size={14} /> {t.arrivalCity}</div>
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase">{t.companyName} • {t.registration}</div>
+                      <div className="font-black text-slate-800 uppercase text-sm flex items-center gap-2">
+                        {t.departureCity} <ArrowRight size={14} className="text-primary opacity-30" /> {t.arrivalCity}
+                        {t.isEscale && <Badge className="bg-amber-50 text-amber-600 border-none text-[7px] uppercase h-4">Escale</Badge>}
+                      </div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase">{t.companyName} • {t.departureTime} ➔ {t.arrivalTime}</div>
                    </div>
                 </div>
-                <ArrowRight size={20} className="text-slate-200" />
+                <ArrowRight size={20} className="text-slate-200 group-hover:text-primary" />
               </button>
             ))}
           </div>
@@ -325,25 +272,29 @@ export default function SendParcelPage() {
       )}
 
       {step === 2 && selectedTrip && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-slate-900 border-none rounded-2xl p-5 flex justify-between items-center text-white">
-             <div>
-                <p className="text-[10px] font-black uppercase text-primary">Trajet</p>
-                <p className="font-bold text-sm">{selectedTrip.departureCity} ➔ {selectedTrip.arrivalCity}</p>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+          {/* RECAP VOYAGE */}
+          <div className="bg-slate-900 border-none rounded-2xl p-5 flex justify-between items-center text-white shadow-xl">
+             <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center">
+                    {selectedTrip.transportTypeCode === 'BOAT' ? <Ship size={20}/> : <Bus size={20}/>}
+                </div>
+                <p className="font-bold text-sm uppercase">{selectedTrip.departureCity} ➔ {selectedTrip.arrivalCity}</p>
              </div>
-             <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="text-[9px] font-black uppercase underline text-primary">Modifier</Button>
+             <Button variant="ghost" size="sm" onClick={() => { setStep(1); setSelectedTariffId(""); }} className="text-[9px] font-black uppercase underline text-primary">Modifier</Button>
           </div>
 
+          {/* CONTACTS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
             <div className="bg-card border-2 rounded-[2rem] p-6 space-y-4">
-              <h2 className="font-black text-[10px] uppercase text-slate-400 tracking-widest">Expéditeur</h2>
+              <h2 className="font-black text-[10px] uppercase text-slate-400 flex items-center gap-2"><User size={12}/> Expéditeur</h2>
               <div className="space-y-3">
                 <Input value={senderName} onChange={e => setSenderName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-50 border-none font-bold" />
                 <Input value={senderPhone} onChange={e => setSenderPhone(e.target.value)} placeholder="Tél" className="h-11 rounded-xl bg-slate-50 border-none font-bold" />
               </div>
             </div>
-            <div className="bg-card border-2 rounded-[2rem] p-6 space-y-4 text-left">
-              <h2 className="font-black text-[10px] uppercase text-slate-400 tracking-widest">Destinataire</h2>
+            <div className="bg-card border-2 rounded-[2rem] p-6 space-y-4">
+              <h2 className="font-black text-[10px] uppercase text-slate-400 flex items-center gap-2"><User size={12}/> Destinataire</h2>
               <div className="space-y-3">
                 <Input value={receiverName} onChange={e => setReceiverName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-50 border-none font-bold" />
                 <Input value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} placeholder="Tél" className="h-11 rounded-xl bg-slate-50 border-none font-bold" />
@@ -351,64 +302,75 @@ export default function SendParcelPage() {
             </div>
           </div>
 
+          {/* TARIFS & POIDS */}
           <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 space-y-6 shadow-xl text-left">
             <div className="space-y-5">
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-black uppercase ml-1">Contenu du colis</Label>
+                <Label className="text-[11px] font-black uppercase ml-1">Nature du colis</Label>
                 <div className="relative">
                   <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
-                  <Input value={parcelTitle} onChange={e => setParcelTitle(e.target.value)} placeholder="Ex: 2 sacs de riz..." className="h-14 rounded-2xl font-bold pl-12 border-2 border-slate-100" />
+                  <Input value={parcelTitle} onChange={e => setParcelTitle(e.target.value)} placeholder="Ex: 2 cartons de poisson..." className="h-14 rounded-2xl font-bold pl-12 border-2 border-slate-100" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-black uppercase ml-1">Catégorie tarifaire</Label>
+                  <Label className="text-[11px] font-black uppercase ml-1">Grille tarifaire agence</Label>
+                  
+                  {/* --- CORRECTIF ANTI-FREEZE ICI --- */}
                   <Select 
+                    key={selectedTrip.departureId} 
                     value={selectedTariffId} 
-                    onValueChange={setSelectedTariffId} // Mise à jour stable de l'ID
+                    onValueChange={setSelectedTariffId}
+                    disabled={tariffsLoading}
                   >
-                    <SelectTrigger className="h-12 rounded-xl font-bold border-2 border-slate-100 text-left">
-                        <SelectValue placeholder="Choisir tarif" />
+                    <SelectTrigger className="h-12 rounded-xl font-bold border-2 border-slate-100">
+                        <SelectValue placeholder={tariffsLoading ? "Chargement..." : "Choisir tarif"} />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-none shadow-2xl">
-                      {tariffs.map(t => (
-                        <SelectItem key={t.id} value={t.id} className="font-bold">
-                          {t.label} ({t.price.toLocaleString()} F{t.is_weight_based ? '/kg' : ''})
-                        </SelectItem>
-                      ))}
+                    <SelectContent className="rounded-xl shadow-2xl z-[200]">
+                      {tariffs.length > 0 ? (
+                        tariffs.map(t => (
+                          <SelectItem key={t.id} value={t.id.toString()} className="font-bold">
+                            {t.label} ({t.price.toLocaleString()} F{t.is_weight_based ? '/kg' : ''})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-4 text-xs text-slate-400 italic">Aucun tarif configuré</div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[11px] font-black uppercase ml-1">Poids (kg)</Label>
-                  <Input type="number" step="0.5" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="h-12 rounded-xl font-bold border-2 border-slate-100" />
+                
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-black uppercase ml-1">Estimation Poids (kg)</Label>
+                  <Input type="number" step="0.5" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="h-12 rounded-xl font-bold border-2 border-slate-100" disabled={selectedTariffId !== "" && !selectedTariff?.is_weight_based} />
                 </div>
               </div>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Détails (Optionnel)" className="rounded-xl font-medium border-2" />
+              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Précisions supplémentaires..." className="rounded-xl font-medium border-2" />
             </div>
 
-            <div className="bg-emerald-600 rounded-2xl p-5 flex items-center justify-between text-white shadow-xl shadow-emerald-100">
-               <Calculator size={28} className="opacity-40" />
-               <div className="text-3xl font-black tracking-tighter">
-                 {estimatedPrice.toLocaleString()} <span className="text-[10px] uppercase">FCFA</span>
+            <div className="bg-emerald-600 rounded-3xl p-6 flex items-center justify-between text-white shadow-xl">
+               <Calculator size={32} className="opacity-30" />
+               <div className="text-right">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none mb-1">Total estimé</p>
+                  <div className="text-4xl font-black tracking-tighter">{estimatedPrice.toLocaleString()} <span className="text-xs uppercase">FCFA</span></div>
                </div>
             </div>
           </div>
 
           <div className="bg-card border-2 rounded-[2rem] p-6 shadow-sm text-left">
-            <h2 className="font-black text-[10px] uppercase text-slate-400 mb-4 tracking-widest">Paiement</h2>
+            <h2 className="font-black text-[10px] uppercase text-slate-400 mb-4 tracking-widest">Règlement</h2>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger className="h-12 rounded-xl font-black bg-slate-50 border-none px-5"><SelectValue placeholder="Mode de paiement" /></SelectTrigger>
-              <SelectContent className="rounded-xl">{PAYMENT_METHODS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}</SelectContent>
+              <SelectContent className="rounded-xl shadow-xl z-[200]">{PAYMENT_METHODS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
 
-          <Button onClick={handleSubmit} disabled={submitting} className="w-full h-16 rounded-[2rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest">
+          <Button onClick={handleSubmit} disabled={submitting} className="w-full h-16 rounded-[2rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest active:scale-95 transition-all">
             {submitting ? <RefreshCw className="animate-spin h-6 w-6" /> : "VALIDER L'EXPÉDITION"}
           </Button>
         </div>
       )}
     </div>
   );
-} 
+}

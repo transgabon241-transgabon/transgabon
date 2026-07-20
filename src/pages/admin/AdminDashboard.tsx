@@ -1,10 +1,24 @@
 "use client"
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase'; // <-- Utilise votre SDK Supabase de production
+import { useEffect, useState, useMemo } from 'react';
+import { supabase } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Ticket, DollarSign, UsersRound, Building2, TrendingUp } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { 
+  Ticket, 
+  DollarSign, 
+  UsersRound, 
+  Building2, 
+  TrendingUp, 
+  BarChart3, 
+  MapPin, 
+  Activity,
+  ArrowRight,
+  Ship,
+  Train,
+  Bus
+} from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
+import { Badge } from '@/components/ui/badge';
 
 type DashData = {
   totalBookings: number;
@@ -21,15 +35,13 @@ type DashData = {
     passengerName: string;
     status: string;
     paymentStatus: string;
-    paymentMethod: string;
     amount: number;
+    destinationName: string;
+    classLabel: string;
   }[];
 };
 
-const PIE_COLORS = [
-  'hsl(152, 55%, 38%)', 'hsl(40, 95%, 55%)', 'hsl(200, 65%, 50%)',
-  'hsl(280, 55%, 55%)', 'hsl(15, 80%, 55%)', 'hsl(180, 50%, 45%)',
-];
+const PIE_COLORS = ['#0f172a', '#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 
 export default function AdminDashboard() {
   const [data, setData] = useState<DashData | null>(null);
@@ -39,178 +51,196 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Interrogation de la fonction RPC analytique optimisée
         const { data: res, error } = await supabase.rpc('get_admin_dashboard_stats');
-        
-        if (error) throw new Error(error.message);
+        if (error) throw error;
         setData(res);
       } catch (e: any) {
-        setError(e.message || 'Erreur lors de la récupération des données.');
+        console.error("Erreur stats:", e);
+        setError(e.message || 'Erreur de chargement des statistiques.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchDashboardData();
   }, []);
 
   if (loading) return <DashSkeleton />;
-  if (error) return <div className="text-destructive p-8 text-left">{error}</div>;
+  if (error) return <div className="p-8 bg-red-50 text-red-600 rounded-3xl border-2 border-red-100 font-bold">{error}</div>;
   if (!data) return null;
 
   return (
-    <div className="text-foreground text-left">
-      <h1 className="text-2xl font-bold mb-1">Tableau de bord</h1>
-      <p className="text-muted-foreground mb-6">Vue d&apos;ensemble de la plateforme GabonTransport</p>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KPI icon={Ticket} label="Réservations" value={data.totalBookings} />
-        <KPI icon={DollarSign} label="Chiffre d&apos;affaires" value={`${data.totalRevenue.toLocaleString()} FCFA`} />
-        <KPI icon={UsersRound} label="Voyageurs" value={data.totalUsers} />
-        <KPI icon={Building2} label="Compagnies" value={data.totalCompanies} />
+    <div className="text-left space-y-8 animate-in fade-in duration-700">
+      <div>
+        <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter">Supervision Nationale</h1>
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] mt-1">Gabon Mobilité • Statistiques Globales</p>
       </div>
 
-      {/* Charts row */}
-      <div className="grid lg:grid-cols-2 gap-6 mb-8">
-        {/* Monthly revenue chart */}
-        <div className="bg-card border rounded-xl p-5">
-          <h3 className="font-semibold mb-4 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Revenus mensuels</h3>
-          {data.monthlyRevenue.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={data.monthlyRevenue}>
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => [`${v.toLocaleString()} FCFA`, 'Revenu']} />
-                <Bar dataKey="revenue" fill="hsl(152, 55%, 38%)" radius={[4, 4, 0, 0]} />
-              </BarChart>
+      {/* KPIs PREMIUM */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KPI icon={DollarSign} label="Volume d'affaires" value={`${(data.totalRevenue || 0).toLocaleString()} F`} color="text-emerald-600" bg="bg-emerald-50" />
+        <KPI icon={Ticket} label="Billets émis" value={data.totalBookings || 0} color="text-primary" bg="bg-primary/5" />
+        <KPI icon={UsersRound} label="Membres actifs" value={data.totalUsers || 0} color="text-blue-600" bg="bg-blue-50" />
+        <KPI icon={Building2} label="Transporteurs" value={data.totalCompanies || 0} color="text-slate-900" bg="bg-slate-100" />
+      </div>
+
+      {/* GRAPHIQUES */}
+      <div className="grid lg:grid-cols-2 gap-8">
+        {/* REVENUS MENSUELS */}
+        <div className="bg-white border-2 border-slate-50 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                <TrendingUp size={18} className="text-emerald-500" /> Croissance Mensuelle
+            </h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data.monthlyRevenue || []}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} tickFormatter={v => `${v/1000}k`} />
+              <Tooltip 
+                cursor={{fill: '#f8fafc'}}
+                contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              />
+              <Bar dataKey="revenue" fill="#0f172a" radius={[10, 10, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* RÉPARTITION STATUTS */}
+        <div className="bg-white border-2 border-slate-50 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
+          <h3 className="font-black uppercase text-xs tracking-widest mb-8">État des Réservations</h3>
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <ResponsiveContainer width="100%" height={250} className="max-w-[220px]">
+              <PieChart>
+                <Pie data={data.bookingsByStatus || []} dataKey="count" nameKey="status" innerRadius={60} outerRadius={100} paddingAngle={5}>
+                  {(data.bookingsByStatus || []).map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="none" />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
             </ResponsiveContainer>
-          ) : (
-            <p className="text-muted-foreground text-center py-12 text-sm">Aucune donnée disponible</p>
-          )}
-        </div>
-
-        {/* Bookings by status pie */}
-        <div className="bg-card border rounded-xl p-5">
-          <h3 className="font-semibold mb-4">Réservations par statut</h3>
-          {data.bookingsByStatus.length > 0 ? (
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <ResponsiveContainer width="100%" height={250} className="max-w-[200px]">
-                <PieChart>
-                  <Pie data={data.bookingsByStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={90} innerRadius={50}>
-                    {data.bookingsByStatus.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v: number) => [v, 'Réservations']} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-2 flex-1">
-                {data.bookingsByStatus.map((s, i) => (
-                  <div key={s.status} className="flex items-center gap-2 text-sm">
-                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                    <span className="text-muted-foreground truncate">{s.status}</span>
-                    <span className="font-semibold ml-auto">{s.count}</span>
+            <div className="space-y-3 flex-1 w-full">
+              {(data.bookingsByStatus || []).map((s, i) => (
+                <div key={s.status} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                    <span className="text-[10px] font-black uppercase text-slate-500">{(s.status || '').replace('_', ' ')}</span>
                   </div>
-                ))}
-              </div>
+                  <span className="font-black text-sm">{s.count}</span>
+                </div>
+              ))}
             </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-12 text-sm">Aucune donnée</p>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Revenue by company & Top routes */}
-      <div className="grid lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-card border rounded-xl p-5">
-          <h3 className="font-semibold mb-4">Revenus par compagnie</h3>
-          <div className="space-y-3">
-            {data.revenueByCompany.slice(0, 8).map(c => {
-              const maxRev = data.revenueByCompany[0]?.revenue || 1;
-              const pct = maxRev > 0 ? (c.revenue / maxRev) * 100 : 0;
+      {/* PERFORMANCE AGENCES & TRAJETS */}
+      <div className="grid lg:grid-cols-2 gap-8">
+        <div className="bg-white border-2 border-slate-50 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
+          <h3 className="font-black uppercase text-xs tracking-widest mb-6">Top Transporteurs (CA)</h3>
+          <div className="space-y-6">
+            {(data.revenueByCompany || []).slice(0, 5).map((c, i) => {
+              const max = data.revenueByCompany?.[0]?.revenue || 1;
               return (
-                <div key={c.company}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium">{c.company}</span>
-                    <span className="text-muted-foreground">{c.revenue.toLocaleString()} FCFA ({c.bookings} rés.)</span>
+                <div key={c.company} className="space-y-2">
+                  <div className="flex justify-between items-end">
+                    <div className="flex items-center gap-3">
+                        <span className="h-6 w-6 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[10px] font-black">{i+1}</span>
+                        <span className="font-bold text-sm text-slate-800 uppercase">{c.company}</span>
+                    </div>
+                    <span className="text-xs font-black text-primary">{(c.revenue || 0).toLocaleString()} F</span>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${(c.revenue / max) * 100}%` }} />
                   </div>
                 </div>
-              );
+              )
             })}
-            {data.revenueByCompany.length === 0 && <p className="text-muted-foreground text-sm text-center py-4">Aucune donnée</p>}
           </div>
         </div>
 
-        <div className="bg-card border rounded-xl p-5">
-          <h3 className="font-semibold mb-4">Trajets les plus demandés</h3>
-          <div className="space-y-3">
-            {data.topRoutes.map((r, i) => (
-              <div key={r.route} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}</span>
-                  <span className="text-sm font-medium">{r.route}</span>
+        <div className="bg-white border-2 border-slate-50 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
+          <h3 className="font-black uppercase text-xs tracking-widest mb-6">Axes les plus fréquentés</h3>
+          <div className="space-y-4">
+            {(data.topRoutes || []).map((r, i) => (
+              <div key={r.route} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-primary/30 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-primary">
+                    <MapPin size={18} />
+                  </div>
+                  <span className="text-sm font-black text-slate-700 uppercase italic tracking-tighter">{r.route}</span>
                 </div>
-                <span className="text-sm text-muted-foreground">{r.bookings} réservations</span>
+                <div className="text-right">
+                   <p className="text-xs font-black text-slate-900">{r.bookings}</p>
+                   <p className="text-[8px] font-bold text-slate-400 uppercase">Réservations</p>
+                </div>
               </div>
             ))}
-            {data.topRoutes.length === 0 && <p className="text-muted-foreground text-sm text-center py-4">Aucune donnée</p>}
           </div>
         </div>
       </div>
 
-      {/* Recent bookings */}
-      <div className="bg-card border rounded-xl p-5">
-        <h3 className="font-semibold mb-4">Dernières réservations</h3>
-        {data.recentBookings.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-8">Aucune réservation</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-3 font-medium">N° Billet</th>
-                  <th className="text-left p-3 font-medium hidden md:table-cell">Passager</th>
-                  <th className="text-left p-3 font-medium">Statut</th>
-                  <th className="text-left p-3 font-medium hidden md:table-cell">Paiement</th>
-                  <th className="text-left p-3 font-medium hidden lg:table-cell">Méthode</th>
-                  <th className="text-right p-3 font-medium">Montant</th>
+      {/* DERNIÈRES RÉSERVATIONS ENRICHIES */}
+      <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50 overflow-hidden">
+        <div className="flex items-center justify-between mb-8">
+            <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                <Activity size={18} className="text-primary" /> Transactions Récentes
+            </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b-2 border-slate-50">
+                <th className="text-left p-4 font-black uppercase text-[10px] text-slate-400">Billet / Passager</th>
+                <th className="text-left p-4 font-black uppercase text-[10px] text-slate-400">Destination</th>
+                <th className="text-center p-4 font-black uppercase text-[10px] text-slate-400">Confort</th>
+                <th className="text-center p-4 font-black uppercase text-[10px] text-slate-400">Statut</th>
+                <th className="text-right p-4 font-black uppercase text-[10px] text-slate-400">Montant</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {(data.recentBookings || []).map(b => (
+                <tr key={b.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="p-4">
+                    <p className="font-mono font-black text-primary text-xs tracking-tighter">{b.bookingNumber}</p>
+                    <p className="text-xs font-bold text-slate-700 uppercase mt-1">{b.passengerName}</p>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase">
+                        <MapPin size={12} className="text-primary" /> {b.destinationName}
+                    </div>
+                  </td>
+                  <td className="p-4 text-center">
+                     <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary px-2">
+                        {(b.classLabel || 'Standard').replace('_', ' ')}
+                     </Badge>
+                  </td>
+                  <td className="p-4 text-center">
+                     <StatusBadge value={b.status} />
+                  </td>
+                  <td className="p-4 text-right font-black text-slate-900 text-base tracking-tighter">
+                    {(b.amount || 0).toLocaleString()} F
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {data.recentBookings.map(b => (
-                  <tr key={b.id} className="border-t hover:bg-muted/30 text-left">
-                    <td className="p-3 font-mono text-xs">{b.bookingNumber}</td>
-                    <td className="p-3 hidden md:table-cell">{b.passengerName}</td>
-                    <td className="p-3"><StatusBadge value={b.status} /></td>
-                    <td className="p-3 hidden md:table-cell"><PayBadge value={b.paymentStatus} /></td>
-                    <td className="p-3 hidden lg:table-cell text-muted-foreground">{b.paymentMethod}</td>
-                    <td className="p-3 text-right font-medium">{b.amount.toLocaleString()} FCFA</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
 
-function KPI({ icon: Icon, label, value }: { icon: any; label: string; value: string | number }) {
+// ... Les sous-composants KPI, StatusBadge et DashSkeleton restent identiques
+
+function KPI({ icon: Icon, label, value, color, bg }: { icon: any; label: string; value: string | number; color: string; bg: string }) {
   return (
-    <div className="bg-card border rounded-xl p-5">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center shrink-0">
-          <Icon className="h-5 w-5 text-accent-foreground" />
-        </div>
-        <div>
-          <div className="text-2xl font-bold">{value}</div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-        </div>
+    <div className="bg-white border-2 border-slate-50 rounded-[2rem] p-6 shadow-xl shadow-slate-100/50 flex items-center gap-5 hover:scale-[1.05] transition-transform">
+      <div className={`h-14 w-14 rounded-2xl ${bg} flex items-center justify-center shrink-0 border-2 border-white shadow-sm`}>
+        <Icon className={`h-7 w-7 ${color}`} />
+      </div>
+      <div>
+        <div className="text-2xl font-black tracking-tight text-slate-900 leading-none mb-1">{value}</div>
+        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</div>
       </div>
     </div>
   );
@@ -218,35 +248,23 @@ function KPI({ icon: Icon, label, value }: { icon: any; label: string; value: st
 
 function StatusBadge({ value }: { value: string }) {
   const colors: Record<string, string> = {
-    'En attente': 'bg-yellow-100 text-yellow-800',
-    'Confirmé': 'bg-green-100 text-green-800',
-    'Annulé': 'bg-red-100 text-red-800',
-    'Terminé': 'bg-blue-100 text-blue-800',
-    'Remboursé': 'bg-gray-100 text-gray-800',
+    'PAYE': 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    'ATTENTE_PAIEMENT': 'bg-amber-50 text-amber-600 border-amber-100',
+    'ANNULE': 'bg-red-50 text-red-600 border-red-100',
+    'REMBOURSE': 'bg-slate-100 text-slate-600 border-slate-200',
   };
-  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[value] || 'bg-muted'}`}>{value}</span>;
-}
-
-function PayBadge({ value }: { value: string }) {
-  const colors: Record<string, string> = {
-    'Payé': 'bg-green-100 text-green-800',
-    'Non payé': 'bg-red-100 text-red-800',
-    'Remboursé': 'bg-gray-100 text-gray-800',
-  };
-  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[value] || 'bg-muted'}`}>{value}</span>;
+  return <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase border-2 ${colors[value] || 'bg-muted'}`}>{(value || '').replace('_', ' ')}</span>;
 }
 
 function DashSkeleton() {
   return (
-    <div className="text-left">
-      <Skeleton className="h-8 w-48 mb-2" />
-      <Skeleton className="h-4 w-64 mb-6" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+    <div className="space-y-8 text-left">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 rounded-[2rem]" />)}
       </div>
-      <div className="grid lg:grid-cols-2 gap-6 mb-8">
-        <Skeleton className="h-72 rounded-xl" />
-        <Skeleton className="h-72 rounded-xl" />
+      <div className="grid lg:grid-cols-2 gap-8">
+        <Skeleton className="h-[400px] rounded-[2.5rem]" />
+        <Skeleton className="h-[400px] rounded-[2.5rem]" />
       </div>
     </div>
   );

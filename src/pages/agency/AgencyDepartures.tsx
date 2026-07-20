@@ -37,7 +37,7 @@ type Departure = {
   bookingCount: number;
   status: string;
   type: string;
-  stops: any[];
+  stops: TripStop[];
 };
 
 type Route = { id: string; departureCity: string; arrivalCity: string; };
@@ -150,7 +150,6 @@ export default function AgencyDepartures() {
 
       if (editId) {
         await supabase.from('trips').update(tripData).eq('id', editId);
-        // Supprimer les anciennes escales pour ré-insertion propre
         await supabase.from('trip_stops').delete().eq('trip_id', editId);
       } else {
         const route = routes.find(r => r.id === routeId);
@@ -174,7 +173,6 @@ export default function AgencyDepartures() {
         tripId = newTrip.id;
       }
 
-      // Insertion des escales
       if (stops.length > 0 && tripId) {
         const stopsToInsert = stops.map((s, index) => ({
           trip_id: tripId,
@@ -210,7 +208,7 @@ export default function AgencyDepartures() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-black italic text-primary uppercase tracking-tighter">Gestion des départs</h1>
-          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Planification multi-arrêts</p>
+          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Planification trajets & escales</p>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-12 shadow-lg">
           <Plus size={20} /> NOUVEAU DÉPART
@@ -219,7 +217,7 @@ export default function AgencyDepartures() {
 
       <div className="space-y-4">
         {currentItems.map(dep => (
-          <div key={dep.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all group">
+          <div key={dep.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all group overflow-hidden">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-5 flex-1 w-full">
                 <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${dep.type === 'BOAT' ? 'bg-blue-600' : dep.type === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
@@ -232,26 +230,27 @@ export default function AgencyDepartures() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     <span className="text-primary font-black px-2 py-0.5 bg-primary/5 rounded border border-primary/10 text-[10px] uppercase">{dep.registration}</span>
-                    <span className="text-xs font-bold text-muted-foreground">{dep.departureDate} • {dep.departureTime}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{new Date(dep.departureDate).toLocaleDateString('fr-FR')} • {dep.departureTime}</span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                 <div className="text-right">
+                 <div className="text-right mr-4">
                     <p className="font-black text-primary text-xl leading-none">{dep.price.toLocaleString()} F</p>
-                    <p className="text-[9px] font-black text-slate-400 uppercase mt-1">{dep.bookingCount}/{dep.totalSeats} PLACES</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase mt-1">{dep.bookingCount}/{dep.totalSeats} PLACES PRISES</p>
                  </div>
                  <Button variant="outline" size="icon" onClick={() => { 
                      setEditId(dep.id); setDepDate(dep.departureDate); setDepTime(dep.departureTime);
                      setArrTime(dep.arrivalTime); setPrice(String(dep.price)); setVipPrice(String(dep.vipPrice));
-                     setBusinessPrice(String(dep.businessPrice)); setStops(dep.stops); setShowForm(true);
+                     setBusinessPrice(String(dep.businessPrice)); setStops(dep.stops); setStatus(dep.status); setShowForm(true);
                  }} className="rounded-xl border-2"><Pencil size={18} /></Button>
                  <Link to={`/agency/passengers/${dep.id}`}><Button variant="outline" size="icon" className="rounded-xl border-2"><Users size={18} /></Button></Link>
               </div>
             </div>
 
+            {/* ESCALES DANS LA LISTE */}
             {dep.stops.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-dashed flex gap-3 overflow-x-auto pb-2">
+              <div className="mt-4 pt-4 border-t border-dashed flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {dep.stops.map((s, idx) => (
                   <div key={idx} className="flex items-center gap-2 shrink-0 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
                     <MapPin size={10} className="text-primary" />
@@ -274,21 +273,22 @@ export default function AgencyDepartures() {
           <div className="space-y-6 mt-6">
             <div className="grid grid-cols-2 gap-4">
                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Itinéraire Principal</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Trajet Principal</Label>
                   <Select value={routeId} onValueChange={setRouteId} disabled={!!editId}>
-                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Trajet" /></SelectTrigger>
-                    <SelectContent>{routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold">{r.departureCity} → {r.arrivalCity}</SelectItem>)}</SelectContent>
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
+                    <SelectContent className="rounded-xl">{routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold">{r.departureCity} → {r.arrivalCity}</SelectItem>)}</SelectContent>
                   </Select>
                </div>
                <div className="space-y-1.5">
                   <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Véhicule</Label>
                   <Select value={vehicleId} onValueChange={setVehicleId} disabled={!!editId}>
-                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Véhicule" /></SelectTrigger>
-                    <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold">{v.vehicleNumber} ({v.vehicleType})</SelectItem>)}</SelectContent>
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Choisir matériel" /></SelectTrigger>
+                    <SelectContent className="rounded-xl">{vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold">{v.vehicleNumber} ({v.vehicleType})</SelectItem>)}</SelectContent>
                   </Select>
                </div>
             </div>
 
+            {/* SECTION ESCALES INTERMÉDIAIRES */}
             <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xs font-black uppercase flex items-center gap-2 text-slate-600"><Clock size={16}/> Escales intermédiaires</h3>
@@ -310,13 +310,15 @@ export default function AgencyDepartures() {
                       <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-10 w-10 text-red-400"><X size={16}/></Button>
                     </div>
                   ))}
-                  {stops.length === 0 && <p className="text-[10px] text-center text-slate-400 font-bold uppercase italic py-2">Pas d'arrêts</p>}
+                  {stops.length === 0 && <p className="text-[10px] text-center text-slate-400 font-bold uppercase italic py-2">Aucun arrêt intermédiaire configuré</p>}
                </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 border-t pt-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Prix Standard / 2ème Cl.</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                    {currentVehicleType === 'TRAIN' ? 'Prix 2ème Classe' : 'Prix Standard / Éco'}
+                </Label>
                 <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-primary text-lg" />
               </div>
               <div className="space-y-1.5">
@@ -328,19 +330,35 @@ export default function AgencyDepartures() {
             {(currentVehicleType === 'BOAT' || currentVehicleType === 'TRAIN') && (
               <div className="grid grid-cols-2 gap-4 p-5 bg-primary/5 rounded-3xl border-2 border-primary/10">
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Prix 1ère Classe' : 'Prix Business'}</Label>
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">
+                      {currentVehicleType === 'TRAIN' ? 'Prix 1ère Classe' : 'Prix Business'}
+                  </Label>
                   <Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/10 font-bold" />
                 </div>
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Prix Prestige' : 'Prix Salon VIP'}</Label>
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">
+                      {currentVehicleType === 'TRAIN' ? 'Prix Prestige / VIP' : 'Prix Salon VIP'}
+                  </Label>
                   <Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/10 font-bold" />
                 </div>
               </div>
             )}
 
-            <Button onClick={handleSave} disabled={saving} className="w-full h-16 rounded-3xl font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest">
+            {editId && (
+              <div className="space-y-1.5 border-t pt-4 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">État actuel du trajet</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {['Programmé', 'Embarquement', 'Parti', 'Arrivé', 'Annulé'].map(s => <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button onClick={handleSave} disabled={saving} className="w-full h-16 rounded-3xl font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest active:scale-95 transition-all">
               {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2" />}
-              {editId ? 'METTRE À JOUR' : 'VALIDER LE TRAJET'}
+              {editId ? 'METTRE À JOUR LE VOYAGE' : 'CONFIRMER LA PROGRAMMATION'}
             </Button>
           </div>
         </DialogContent>

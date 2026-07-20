@@ -2,16 +2,49 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
+    
+    <!-- CODES DE VÉRIFICATION GOOGLE (Gardez les vôtres ici) -->
     <meta name="google-site-verification" content="R1w4HUEBpFQXFa2JUxbGQyq0NhjgbJD6deunBb7TLuU" />
     <meta name="google-site-verification" content="google28c8b9b787c6fa66" />
+
+    <!-- IDENTITÉ VISUELLE -->
     <link rel="icon" type="image/png" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TransGabon-Connect</title>
-  </head>
-  <body class="bg-background">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0f172a" /> <!-- Couleur Ardoise Premium pour les navigateurs mobiles -->
+
+    <!-- RÉFÉRENCEMENT (SEO) & CRÉDIBILITÉ (Important pour Google Trust & Safety) -->
+    <title>TransGabon-Connect | Billetterie & Fret National</title>
+    <meta name="description" content="Plateforme officielle gabonaise de réservation de billets (Train SETRAG, Bus, Bateau) et de suivi de fret. Voyagez et expédiez vos colis en toute sécurité." />
+    <meta name="author" content="TransGabon-Connect" />
     
+    <!-- OPEN GRAPH (Pour un bel affichage lors du partage sur WhatsApp/Facebook) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="TransGabon-Connect | Le transport gabonais en un clic" />
+    <meta property="og:description" content="Réservez vos billets et suivez vos colis à travers tout le Gabon." />
+    <meta property="og:url" content="https://transgabon.vercel.app" />
+    <meta property="og:site_name" content="TransGabon-Connect" />
+
+    <!-- OPTIMISATION iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/favicon.ico" />
+
+  </head>
+  <body class="bg-slate-50 text-slate-900 antialiased">
+    
+    <!-- DIV ROOT POUR REACT -->
     <div id="root"></div>
     
+    <!-- SCRIPT PRINCIPAL VITE -->
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- NOSCRIPT : Au cas où le JS est désactivé -->
+    <noscript>
+      <div style="padding: 20px; text-align: center; font-family: sans-serif;">
+        <h1>JavaScript requis</h1>
+        <p>Veuillez activer JavaScript pour accéder à la plateforme TransGabon-Connect.</p>
+      </div>
+    </noscript>
+
   </body>
 </html>
