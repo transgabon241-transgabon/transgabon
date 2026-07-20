@@ -5,15 +5,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Armchair, AlertCircle, Ship, Crown, Gem, Check, ArrowRight, Hash, Bus, Train } from 'lucide-react';
+import { Armchair, Ship, Crown, Gem, ArrowRight, Bus, Train, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 type SeatData = {
   totalSeats: number;
   rows: number;
   seatsPerRow: number;
   vehicleName: string;
-  registration: string; // NOUVEAU
+  registration: string;
   takenSeats: string[];
   type: string; // BUS, TRAIN, BOAT
   basePrice: number;
@@ -35,7 +36,6 @@ export default function SeatSelectionPage() {
 
     const loadConfiguration = async () => {
       try {
-        // 1. RÉCUPÉRATION DU TRAJET + VÉHICULE (Jointure pour le plan de salle réel)
         const { data: trip, error: tripError } = await supabase
           .from('trips')
           .select('*, company:companies(name), vehicle:vehicles(*)')
@@ -47,7 +47,6 @@ export default function SeatSelectionPage() {
           return;
         }
 
-        // 2. RÉCUPÉRATION DES SIÈGES OCCUPÉS
         const { data: activeBookings } = await supabase
           .from('bookings')
           .select('id')
@@ -64,7 +63,6 @@ export default function SeatSelectionPage() {
           takenSeats = passengers?.map(p => p.seat_number).filter(Boolean) as string[] || [];
         }
 
-        // 3. CONSTRUCTION DES DONNÉES (Utilise la config réelle du véhicule)
         setData({
           totalSeats: trip.seats_total,
           rows: trip.vehicle?.rows || Math.ceil(trip.seats_total / 4),
@@ -78,8 +76,10 @@ export default function SeatSelectionPage() {
           takenSeats
         });
 
-        // Par défaut, pas de choix de classe si ce n'est pas un bateau
-        if (trip.type !== 'BOAT') setSelectedClass('STANDARD');
+        // Modification ici : Seul le BUS est en STANDARD direct
+        if (trip.type !== 'BOAT' && trip.type !== 'TRAIN') {
+          setSelectedClass('STANDARD');
+        }
 
       } catch (err) {
         setData(null);
@@ -94,35 +94,38 @@ export default function SeatSelectionPage() {
   if (loading) return <div className="max-w-lg mx-auto p-10"><Skeleton className="h-80 w-full rounded-[3rem]" /></div>;
   if (!data) return <div className="p-20 text-center font-black uppercase text-red-500">Erreur système.</div>;
 
-  // --- ÉTAPE 1 : SÉLECTION DE LA CLASSE (MARITIME) ---
-  if (data.type === 'BOAT' && !selectedClass) {
+  // --- ÉTAPE 1 : SÉLECTION DE LA CLASSE (MARITIME & TRAIN) ---
+  const needsClassSelection = (data.type === 'BOAT' || data.type === 'TRAIN') && !selectedClass;
+
+  if (needsClassSelection) {
+    const isTrain = data.type === 'TRAIN';
     return (
       <div className="container mx-auto px-4 py-12 max-w-lg text-left animate-in fade-in duration-500">
         <h1 className="text-4xl font-black italic mb-2 tracking-tighter uppercase text-slate-900">Le Confort</h1>
         <p className="text-muted-foreground mb-10 text-xs font-bold uppercase tracking-widest leading-relaxed">
-          Trajet Maritime • {data.vehicleName}
+          {isTrain ? 'Voyage Ferroviaire' : 'Trajet Maritime'} • {data.vehicleName}
         </p>
 
         <div className="space-y-4">
           <ClassCard 
-            title="Économique" 
+            title={isTrain ? "2ème Classe" : "Économique"} 
             price={data.basePrice} 
-            desc="Salon climatisé grand public" 
-            icon={<Ship className="h-6 w-6" />}
-            onClick={() => setSelectedClass('ECO')}
+            desc={isTrain ? "Voyage standard optimisé" : "Salon climatisé grand public"} 
+            icon={isTrain ? <Train className="h-6 w-6" /> : <Ship className="h-6 w-6" />}
+            onClick={() => setSelectedClass(isTrain ? '2EME_CLASSE' : 'ECO')}
           />
           <ClassCard 
-            title="Business" 
+            title={isTrain ? "1ère Classe" : "Business"} 
             price={data.businessPrice} 
-            desc="Sièges confort, priorité bagages" 
+            desc={isTrain ? "Confort supérieur et calme" : "Sièges confort, priorité bagages"} 
             icon={<Crown className="h-6 w-6" />}
-            onClick={() => setSelectedClass('BUSINESS')}
+            onClick={() => setSelectedClass(isTrain ? '1ERE_CLASSE' : 'BUSINESS')}
             color="bg-blue-600 shadow-blue-100"
           />
           <ClassCard 
             title="Salon VIP" 
             price={data.vipPrice} 
-            desc="Espace privé, service à bord" 
+            desc={isTrain ? "Espace prestige SETRAG" : "Espace privé, service à bord"} 
             icon={<Gem className="h-6 w-6" />}
             onClick={() => setSelectedClass('VIP')}
             color="bg-slate-900 shadow-slate-200"
@@ -155,7 +158,7 @@ export default function SeatSelectionPage() {
              </div>
              <div>
                 <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">
-                  {selectedClass} • {data.vehicleName}
+                  {selectedClass?.replace('_', ' ')} • {data.vehicleName}
                 </p>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
                   Immat: {data.registration}
@@ -163,14 +166,13 @@ export default function SeatSelectionPage() {
              </div>
           </div>
         </div>
-        {data.type === 'BOAT' && (
+        {(data.type === 'BOAT' || data.type === 'TRAIN') && (
           <Button variant="ghost" size="sm" onClick={() => setSelectedClass(null)} className="text-[10px] font-black text-slate-400 hover:text-primary underline uppercase transition-all">
             Changer Classe
           </Button>
         )}
       </div>
 
-      {/* PLAN DE SALLE */}
       <div className="bg-white border-2 border-slate-100 rounded-[3rem] p-10 shadow-2xl shadow-slate-100/50 mb-10">
         <div className="text-center text-[9px] font-black text-slate-300 mb-8 tracking-[1em] uppercase">Partie Avant</div>
         
@@ -180,7 +182,6 @@ export default function SeatSelectionPage() {
               {row.map((seat, si) => {
                 const taken = data.takenSeats.includes(seat);
                 const isSelected = selectedSeat === seat;
-                // Couloir central dynamique
                 const showGap = data.seatsPerRow >= 4 && si === Math.floor(data.seatsPerRow / 2) - 1;
 
                 return (
@@ -207,17 +208,10 @@ export default function SeatSelectionPage() {
         <div className="text-center text-[9px] font-black text-slate-300 mt-10 tracking-[1em] uppercase">Partie Arrière</div>
       </div>
 
-      {/* LÉGENDE */}
       <div className="flex justify-center gap-6 mb-10 text-[9px] font-black uppercase tracking-widest text-slate-400">
-         <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-white border-2 border-slate-100" /> Libre
-         </div>
-         <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-primary" /> Choisi
-         </div>
-         <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-slate-50" /> Occupé
-         </div>
+         <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-white border-2 border-slate-100" /> Libre</div>
+         <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-primary" /> Choisi</div>
+         <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-50" /> Occupé</div>
       </div>
 
       <Button
@@ -231,9 +225,6 @@ export default function SeatSelectionPage() {
   );
 }
 
-/**
- * COMPOSANT : CARTE DE SÉLECTION DE CLASSE
- */
 function ClassCard({ title, price, desc, icon, onClick, color = "bg-emerald-600 shadow-emerald-100" }: any) {
   return (
     <button 
