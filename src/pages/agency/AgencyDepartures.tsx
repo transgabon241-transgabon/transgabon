@@ -8,11 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Save, RefreshCw, Hash, Gem, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Save, RefreshCw, Hash, MapPin, Clock, X, Gem } from 'lucide-react';
 import { toast } from 'sonner';
+
+type TripStop = {
+  cityId: string;
+  cityName?: string;
+  arrivalTime: string;
+  priceFromStart: number;
+};
 
 type Departure = {
   id: string;
@@ -29,37 +36,29 @@ type Departure = {
   totalSeats: number;
   bookingCount: number;
   status: string;
-  type: string; // BUS, TRAIN, BOAT
+  type: string;
+  stops: any[];
 };
 
-type Route = {
-  id: string;
-  departureCity: string;
-  arrivalCity: string;
-};
-
-type Vehicle = {
-  id: string;
-  vehicleNumber: string;
-  vehicleType: string;
-  typeCode: string;
-  totalSeats: number;
-};
+type Route = { id: string; departureCity: string; arrivalCity: string; };
+type Vehicle = { id: string; vehicleNumber: string; vehicleType: string; typeCode: string; totalSeats: number; };
 
 export default function AgencyDepartures() {
   const { user } = useAuth();
   const [departures, setDepartures] = useState<Departure[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [cities, setCities] = useState<{id: string, name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [stops, setStops] = useState<TripStop[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Form state
+  // Form states
   const [routeId, setRouteId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [depDate, setDepDate] = useState('');
@@ -70,22 +69,29 @@ export default function AgencyDepartures() {
   const [businessPrice, setBusinessPrice] = useState('');
   const [status, setStatus] = useState('');
 
-  const isBoardingAgent = user?.role === 'Agent Embarquement';
-
   const loadData = async () => {
     if (!user?.companyId) return;
     setLoading(true);
     try {
+      const { data: citiesData } = await supabase.from('cities').select('id, name').order('name');
+      if (citiesData) setCities(citiesData);
+
       const { data: tripsData } = await supabase
         .from('trips')
-        .select('*, from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)')
+        .select(`
+          *, 
+          from:cities!from_id(name), 
+          to:cities!to_id(name), 
+          vehicle:vehicles(registration),
+          trip_stops(city_id, arrival_time, price_from_start, cities(name))
+        `)
         .eq('company_id', user.companyId)
         .order('departure_date', { ascending: true });
 
-      const formattedDeps: Departure[] = (tripsData || []).map(t => ({
+      setDepartures((tripsData || []).map(t => ({
         id: t.id,
         departureCode: t.vehicle_number,
-        registration: t.vehicle?.registration || 'Non spécifiée',
+        registration: t.vehicle?.registration || '—',
         departureCity: t.from.name,
         arrivalCity: t.to.name,
         departureDate: t.departure_date,
@@ -97,61 +103,40 @@ export default function AgencyDepartures() {
         totalSeats: t.seats_total,
         bookingCount: t.seats_total - t.seats_left,
         status: t.status || 'Programmé',
-        type: t.type
-      }));
-
-      setDepartures(formattedDeps);
-
-      const { data: routesData } = await supabase.from('routes').select('*');
-      setRoutes((routesData || []).map(r => ({ id: r.id, departureCity: r.departure_city, arrivalCity: r.arrival_city })));
-
-      const { data: vehiclesData } = await supabase.from('vehicles').select('*').eq('company_id', user.companyId);
-      setVehicles((vehiclesData || []).map(v => ({
-        id: v.id,
-        vehicleNumber: v.name,
-        vehicleType: v.type === 'BOAT' ? 'Bateau' : v.type === 'TRAIN' ? 'Train' : 'Bus',
-        typeCode: v.type,
-        totalSeats: v.capacity
+        type: t.type,
+        stops: (t.trip_stops || []).map((s: any) => ({
+            cityId: s.city_id,
+            cityName: s.cities?.name,
+            arrivalTime: s.arrival_time,
+            priceFromStart: s.price_from_start
+        }))
       })));
 
-    } catch (e: any) {
-      toast.error('Erreur de chargement');
-    } finally {
-      setLoading(false);
-    }
+      const { data: rD } = await supabase.from('routes').select('*');
+      if (rD) setRoutes(rD.map(r => ({ id: r.id, departureCity: r.departure_city, arrivalCity: r.arrival_city })));
+      
+      const { data: vD } = await supabase.from('vehicles').select('*').eq('company_id', user.companyId);
+      if (vD) setVehicles(vD.map(v => ({ id: v.id, vehicleNumber: v.name, vehicleType: v.type, typeCode: v.type, totalSeats: v.capacity })));
+
+    } catch (e) { toast.error('Erreur réseau'); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { loadData(); }, [user]);
 
-  const totalPages = Math.ceil(departures.length / itemsPerPage);
-  const currentItems = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return departures.slice(start, start + itemsPerPage);
-  }, [departures, currentPage]);
-
-  const resetForm = () => {
-    setRouteId(''); setVehicleId(''); setDepDate(''); setDepTime(''); setArrTime(''); 
-    setPrice(''); setVipPrice(''); setBusinessPrice(''); setStatus('');
-    setEditId(null);
-  };
-
-  const openEdit = (dep: Departure) => {
-    setEditId(dep.id);
-    setDepDate(dep.departureDate);
-    setDepTime(dep.departureTime);
-    setArrTime(dep.arrivalTime || '');
-    setPrice(String(dep.price));
-    setVipPrice(String(dep.vipPrice));
-    setBusinessPrice(String(dep.businessPrice));
-    setStatus(dep.status);
-    setShowForm(true);
+  const addStop = () => setStops([...stops, { cityId: '', arrivalTime: '', priceFromStart: 0 }]);
+  const removeStop = (idx: number) => setStops(stops.filter((_, i) => i !== idx));
+  const updateStop = (idx: number, field: keyof TripStop, val: any) => {
+    const newStops = [...stops];
+    (newStops[idx] as any)[field] = val;
+    setStops(newStops);
   };
 
   const handleSave = async () => {
     if (!user?.companyId) return;
     setSaving(true);
     try {
-      const payload: any = {
+      const tripData = {
         departure_date: depDate,
         departure_time: depTime,
         arrival_time: arrTime,
@@ -161,69 +146,81 @@ export default function AgencyDepartures() {
         status: status || 'Programmé'
       };
 
+      let tripId = editId;
+
       if (editId) {
-        await supabase.from('trips').update(payload).eq('id', editId);
+        await supabase.from('trips').update(tripData).eq('id', editId);
+        // Supprimer les anciennes escales pour ré-insertion propre
+        await supabase.from('trip_stops').delete().eq('trip_id', editId);
       } else {
         const route = routes.find(r => r.id === routeId);
         const vehicle = vehicles.find(v => v.id === vehicleId);
         const { data: fC } = await supabase.from('cities').select('id').ilike('name', route!.departureCity).single();
         const { data: tC } = await supabase.from('cities').select('id').ilike('name', route!.arrivalCity).single();
 
-        await supabase.from('trips').insert([{
-          ...payload,
+        const { data: newTrip, error: tripErr } = await supabase.from('trips').insert([{
+          ...tripData,
           company_id: user.companyId,
           type: vehicle!.typeCode,
           vehicle_number: vehicle!.vehicleNumber,
           vehicle_id: vehicle!.id,
           from_id: fC!.id,
           to_id: tC!.id,
-          duration_min: 240,
           seats_total: vehicle!.totalSeats,
           seats_left: vehicle!.totalSeats,
-        }]);
+        }]).select().single();
+
+        if (tripErr) throw tripErr;
+        tripId = newTrip.id;
       }
+
+      // Insertion des escales
+      if (stops.length > 0 && tripId) {
+        const stopsToInsert = stops.map((s, index) => ({
+          trip_id: tripId,
+          city_id: s.cityId,
+          arrival_time: s.arrivalTime,
+          price_from_start: Number(s.priceFromStart),
+          stop_order: index + 1
+        }));
+        await supabase.from('trip_stops').insert(stopsToInsert);
+      }
+
       setShowForm(false);
+      resetForm();
       loadData();
-      toast.success('Modifications enregistrées');
-    } catch (e) {
-      toast.error("Erreur de sauvegarde");
-    } finally {
-      setSaving(false);
-    }
+      toast.success('Voyage et escales enregistrés');
+    } catch (e) { toast.error("Erreur de sauvegarde"); }
+    finally { setSaving(false); }
   };
 
-  // Détection du type de transport pour adapter le formulaire
-  const currentVehicleType = editId 
-    ? departures.find(d => d.id === editId)?.type 
-    : vehicles.find(v => v.id === vehicleId)?.typeCode;
+  const resetForm = () => {
+    setEditId(null); setRouteId(''); setVehicleId(''); setDepDate(''); setDepTime(''); setArrTime('');
+    setPrice(''); setVipPrice(''); setBusinessPrice(''); setStops([]);
+  };
 
-  const isMultiClass = currentVehicleType === 'BOAT' || currentVehicleType === 'TRAIN';
+  const currentVehicleType = editId ? departures.find(d => d.id === editId)?.type : vehicles.find(v => v.id === vehicleId)?.typeCode;
+  const currentItems = useMemo(() => departures.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage), [departures, currentPage]);
+  const totalPages = Math.ceil(departures.length / itemsPerPage);
 
-  if (loading) return <div className="max-w-5xl mx-auto p-8 space-y-4"><Skeleton className="h-12 w-48 rounded-xl" /><Skeleton className="h-64 w-full rounded-[2rem]" /></div>;
+  if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full"/></div>;
 
   return (
     <div className="max-w-6xl mx-auto p-4 text-left">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-black italic text-primary uppercase tracking-tighter">Gestion des départs</h1>
-          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Planification des trajets agence</p>
+          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Planification multi-arrêts</p>
         </div>
-        {!isBoardingAgent && (
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-12 px-6 shadow-lg shadow-primary/20 transition-all active:scale-95">
-            <Plus size={20} /> NOUVEAU DÉPART
-          </Button>
-        )}
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-12 shadow-lg">
+          <Plus size={20} /> NOUVEAU DÉPART
+        </Button>
       </div>
 
-      {departures.length === 0 ? (
-        <div className="p-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
-          <RefreshCw className="h-12 w-12 mx-auto mb-4 text-slate-200" />
-          <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">Aucun voyage programmé</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {currentItems.map(dep => (
-            <div key={dep.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:shadow-xl transition-all group">
+      <div className="space-y-4">
+        {currentItems.map(dep => (
+          <div key={dep.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all group">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-5 flex-1 w-full">
                 <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${dep.type === 'BOAT' ? 'bg-blue-600' : dep.type === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
                   {dep.type === 'BOAT' ? <Ship size={24} /> : dep.type === 'TRAIN' ? <Train size={24} /> : <Bus size={24} />}
@@ -234,137 +231,116 @@ export default function AgencyDepartures() {
                     <StatusBadge status={dep.status} />
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <p className="text-xs font-bold text-muted-foreground uppercase">
-                      {dep.departureCode} 
-                    </p>
-                    <span className="text-primary font-black px-2 py-0.5 bg-primary/5 rounded border border-primary/10 text-[10px] flex items-center gap-1 uppercase">
-                       <Hash size={10} /> {dep.registration}
-                    </span>
-                    <span className="text-slate-300">•</span>
-                    <p className="text-xs font-bold text-muted-foreground">
-                      {new Date(dep.departureDate + 'T00:00:00').toLocaleDateString('fr-FR')} • {dep.departureTime}
-                    </p>
+                    <span className="text-primary font-black px-2 py-0.5 bg-primary/5 rounded border border-primary/10 text-[10px] uppercase">{dep.registration}</span>
+                    <span className="text-xs font-bold text-muted-foreground">{dep.departureDate} • {dep.departureTime}</span>
                   </div>
                 </div>
               </div>
-              
-              <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t md:border-none pt-4 md:pt-0">
-                <div className="text-left md:text-right mr-4">
-                   <p className="font-black text-primary text-xl leading-none">{dep.price.toLocaleString()} F</p>
-                   {dep.vipPrice > 0 && <p className="text-[9px] font-bold text-emerald-600">VIP: {dep.vipPrice.toLocaleString()} F</p>}
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{dep.bookingCount}/{dep.totalSeats} PLACES</p>
-                </div>
-                <div className="flex gap-2">
-                  <Link to={`/agency/passengers/${dep.id}`}><Button variant="outline" size="icon" className="rounded-xl border-2 hover:bg-slate-50" title="Manifeste"><Users size={18} /></Button></Link>
-                  {!isBoardingAgent && (
-                    <>
-                      <Button variant="outline" size="icon" onClick={() => openEdit(dep)} className="rounded-xl border-2 hover:bg-slate-50" title="Modifier"><Pencil size={18} /></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild><Button variant="outline" size="icon" className="rounded-xl border-2 text-red-500 hover:bg-red-50"><Trash2 size={18} /></Button></AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black italic text-2xl uppercase">Supprimer ?</AlertDialogTitle><AlertDialogDescription className="font-medium">Cette action annulera définitivement ce départ.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl font-bold">Retour</AlertDialogCancel><AlertDialogAction onClick={() => { supabase.from('trips').delete().eq('id', dep.id).then(()=>loadData()); }} className="bg-red-600 rounded-xl font-bold">SUPPRIMER</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
-                      </AlertDialog>
-                    </>
-                  )}
-                </div>
+              <div className="flex items-center gap-4">
+                 <div className="text-right">
+                    <p className="font-black text-primary text-xl leading-none">{dep.price.toLocaleString()} F</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase mt-1">{dep.bookingCount}/{dep.totalSeats} PLACES</p>
+                 </div>
+                 <Button variant="outline" size="icon" onClick={() => { 
+                     setEditId(dep.id); setDepDate(dep.departureDate); setDepTime(dep.departureTime);
+                     setArrTime(dep.arrivalTime); setPrice(String(dep.price)); setVipPrice(String(dep.vipPrice));
+                     setBusinessPrice(String(dep.businessPrice)); setStops(dep.stops); setShowForm(true);
+                 }} className="rounded-xl border-2"><Pencil size={18} /></Button>
+                 <Link to={`/agency/passengers/${dep.id}`}><Button variant="outline" size="icon" className="rounded-xl border-2"><Users size={18} /></Button></Link>
               </div>
             </div>
-          ))}
 
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-12 bg-slate-100 p-2 rounded-2xl w-fit mx-auto border-2 border-white shadow-sm">
-              <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10"><ChevronLeft /></Button>
-              <div className="flex items-center gap-1 font-black text-xs uppercase tracking-widest text-slate-400 px-2">
-                <span className="text-primary">{currentPage}</span>
-                <span>/</span>
-                <span>{totalPages}</span>
-              </div>
-              <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10"><ChevronRight /></Button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* MODAL FORMULAIRE */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh]">
-          <DialogHeader><DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-left">{editId ? 'Modifier le Voyage' : 'Programmer un Voyage'}</DialogTitle></DialogHeader>
-          <div className="space-y-6 mt-6">
-            {!editId && (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                   <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Itinéraire</Label>
-                   <Select value={routeId} onValueChange={setRouteId}>
-                      <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Choisir un itinéraire" /></SelectTrigger>
-                      <SelectContent className="rounded-xl">{routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold">{r.departureCity} → {r.arrivalCity}</SelectItem>)}</SelectContent>
-                   </Select>
-                </div>
-                <div className="space-y-1.5">
-                   <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Véhicule affecté</Label>
-                   <Select value={vehicleId} onValueChange={setVehicleId}>
-                      <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Choisir véhicule" /></SelectTrigger>
-                      <SelectContent className="rounded-xl">{vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold">{v.vehicleNumber} ({v.vehicleType} — {v.totalSeats} pl.)</SelectItem>)}</SelectContent>
-                   </Select>
-                </div>
+            {dep.stops.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-dashed flex gap-3 overflow-x-auto pb-2">
+                {dep.stops.map((s, idx) => (
+                  <div key={idx} className="flex items-center gap-2 shrink-0 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                    <MapPin size={10} className="text-primary" />
+                    <div className="leading-none">
+                      <p className="text-[10px] font-black uppercase text-slate-700">{s.cityName}</p>
+                      <p className="text-[8px] font-bold text-slate-400 mt-0.5">{s.arrivalTime} • {s.priceFromStart}F</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+          </div>
+        ))}
+      </div>
 
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="rounded-[2.5rem] p-8 max-w-2xl border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+          <DialogHeader><DialogTitle className="text-2xl font-black italic uppercase">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
+          
+          <div className="space-y-6 mt-6">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Date de départ</Label>
-                <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Heure de départ</Label>
-                <Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
-              </div>
+               <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Itinéraire Principal</Label>
+                  <Select value={routeId} onValueChange={setRouteId} disabled={!!editId}>
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Trajet" /></SelectTrigger>
+                    <SelectContent>{routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold">{r.departureCity} → {r.arrivalCity}</SelectItem>)}</SelectContent>
+                  </Select>
+               </div>
+               <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Véhicule</Label>
+                  <Select value={vehicleId} onValueChange={setVehicleId} disabled={!!editId}>
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Véhicule" /></SelectTrigger>
+                    <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold">{v.vehicleNumber} ({v.vehicleType})</SelectItem>)}</SelectContent>
+                  </Select>
+               </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100">
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xs font-black uppercase flex items-center gap-2 text-slate-600"><Clock size={16}/> Escales intermédiaires</h3>
+                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-8 rounded-xl font-bold border-2 text-[10px] px-3">
+                    <Plus size={14} className="mr-1" /> AJOUTER ARRÊT
+                  </Button>
+               </div>
+               <div className="space-y-3">
+                  {stops.map((stop, index) => (
+                    <div key={index} className="grid grid-cols-[1.5fr_1fr_1fr_40px] gap-2 items-end animate-in fade-in slide-in-from-right-2">
+                      <div className="space-y-1">
+                        <Select value={stop.cityId} onValueChange={(v) => updateStop(index, 'cityId', v)}>
+                          <SelectTrigger className="h-10 rounded-xl bg-white border-none text-xs font-bold shadow-sm"><SelectValue placeholder="Ville" /></SelectTrigger>
+                          <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <Input type="time" value={stop.arrivalTime} onChange={e => updateStop(index, 'arrivalTime', e.target.value)} className="h-10 rounded-xl border-none shadow-sm font-bold text-xs" />
+                      <Input type="number" placeholder="Prix" value={stop.priceFromStart} onChange={e => updateStop(index, 'priceFromStart', e.target.value)} className="h-10 rounded-xl border-none shadow-sm font-bold text-xs" />
+                      <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-10 w-10 text-red-400"><X size={16}/></Button>
+                    </div>
+                  ))}
+                  {stops.length === 0 && <p className="text-[10px] text-center text-slate-400 font-bold uppercase italic py-2">Pas d'arrêts</p>}
+               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 border-t pt-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                  {currentVehicleType === 'TRAIN' ? 'Prix 2ème Classe' : 'Prix Standard / Éco'}
-                </Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Prix Standard / 2ème Cl.</Label>
                 <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-primary text-lg" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Heure d'arrivée (Est.)</Label>
-                <Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-slate-500" />
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Date Départ</Label>
+                <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
               </div>
             </div>
 
-            {/* OPTIONS MULTI-CLASSES (BATEAU OU TRAIN) */}
-            {isMultiClass && (
-              <div className="grid grid-cols-2 gap-4 p-5 bg-primary/5 rounded-3xl border-2 border-primary/10 animate-in fade-in zoom-in-95">
+            {(currentVehicleType === 'BOAT' || currentVehicleType === 'TRAIN') && (
+              <div className="grid grid-cols-2 gap-4 p-5 bg-primary/5 rounded-3xl border-2 border-primary/10">
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-primary ml-1">
-                    {currentVehicleType === 'TRAIN' ? 'Prix 1ère Classe' : 'Prix Business'}
-                  </Label>
-                  <Input type="number" placeholder="Facultatif" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/20 font-bold" />
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Prix 1ère Classe' : 'Prix Business'}</Label>
+                  <Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/10 font-bold" />
                 </div>
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-primary ml-1">
-                    {currentVehicleType === 'TRAIN' ? 'Prix Prestige / VIP' : 'Prix Salon VIP'}
-                  </Label>
-                  <Input type="number" placeholder="Facultatif" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/20 font-bold" />
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Prix Prestige' : 'Prix Salon VIP'}</Label>
+                  <Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/10 font-bold" />
                 </div>
               </div>
             )}
 
-            {editId && (
-              <div className="space-y-1.5 border-t pt-4 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">État actuel</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {['Programmé', 'Embarquement', 'Parti', 'Arrivé', 'Annulé'].map(s => <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <Button onClick={handleSave} disabled={saving} className="w-full h-16 rounded-3xl font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest mt-4">
-              {saving ? <RefreshCw className="animate-spin h-6 w-6" /> : <Save className="mr-2 h-6 w-6" />}
-              {editId ? 'METTRE À JOUR' : 'CRÉER LE VOYAGE'}
+            <Button onClick={handleSave} disabled={saving} className="w-full h-16 rounded-3xl font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest">
+              {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2" />}
+              {editId ? 'METTRE À JOUR' : 'VALIDER LE TRAJET'}
             </Button>
           </div>
         </DialogContent>
@@ -374,12 +350,12 @@ export default function AgencyDepartures() {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    'Programmé': 'bg-blue-100 text-blue-800 border-blue-200',
-    'Embarquement': 'bg-orange-100 text-orange-800 border-orange-200',
-    'Parti': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    'Arrivé': 'bg-green-100 text-green-800 border-green-200',
-    'Annulé': 'bg-red-100 text-red-800 border-red-200',
-  };
-  return <span className={`inline-block px-3 py-0.5 rounded-full text-[9px] font-black uppercase border ml-2 ${colors[status] || 'bg-muted border-slate-200'}`}>{status}</span>;
+    const colors: Record<string, string> = {
+      'Programmé': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Embarquement': 'bg-orange-100 text-orange-800 border-orange-200',
+      'Parti': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      'Arrivé': 'bg-green-100 text-green-800 border-green-200',
+      'Annulé': 'bg-red-100 text-red-800 border-red-200',
+    };
+    return <span className={`inline-block px-3 py-0.5 rounded-full text-[9px] font-black uppercase border ml-2 ${colors[status] || 'bg-muted'}`}>{status}</span>;
 }
