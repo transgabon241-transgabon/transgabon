@@ -84,7 +84,7 @@ export default function AgencyDepartures() {
           to:cities!to_id(name), 
           vehicle:vehicles(registration),
           trip_stops(city_id, arrival_time, price_from_start, cities(name))
-        `) // <--- IL FAUT ABSOLUMENT trip_stops ICI
+        `)
         .eq('company_id', user.companyId)
         .order('departure_date', { ascending: true });
 
@@ -109,7 +109,7 @@ export default function AgencyDepartures() {
             cityName: s.cities?.name,
             arrivalTime: s.arrival_time,
             priceFromStart: s.price_from_start
-        }))
+        })).sort((a:any, b:any) => a.stop_order - b.stop_order)
       })));
 
       const { data: rD } = await supabase.from('routes').select('*');
@@ -139,7 +139,7 @@ export default function AgencyDepartures() {
       const tripData = {
         departure_date: depDate,
         departure_time: depTime,
-        arrival_time: arrTime,
+        arrival_time: arrTime || null,
         price: Number(price),
         class_vip_price: vipPrice ? Number(vipPrice) : null,
         class_business_price: businessPrice ? Number(businessPrice) : null,
@@ -149,15 +149,11 @@ export default function AgencyDepartures() {
       let tripId = editId;
 
       if (editId) {
-        // 1. Mise à jour du trajet
-        const { error: updateErr } = await supabase.from('trips').update(tripData).eq('id', editId);
-        if (updateErr) throw updateErr;
-
-        // 2. Suppression des anciens arrêts pour remettre les nouveaux
-        const { error: delErr } = await supabase.from('trip_stops').delete().eq('trip_id', editId);
-        if (delErr) throw delErr;
+        const { error: tripErr } = await supabase.from('trips').update(tripData).eq('id', editId);
+        if (tripErr) throw tripErr;
+        // Supprimer les anciens arrêts
+        await supabase.from('trip_stops').delete().eq('trip_id', editId);
       } else {
-        // 1. Création du nouveau trajet
         const route = routes.find(r => r.id === routeId);
         const vehicle = vehicles.find(v => v.id === vehicleId);
         const { data: fC } = await supabase.from('cities').select('id').ilike('name', route!.departureCity).single();
@@ -179,42 +175,43 @@ export default function AgencyDepartures() {
         tripId = newTrip.id;
       }
 
-      // 2. ENREGISTREMENT DES ARRÊTS (C'est ici que ça se joue)
-      if (stops.length > 0 && tripId) {
-        const stopsToInsert = stops.map((s, index) => ({
+      // --- FILTRAGE ET INSERTION DES ARRÊTS ---
+      const validStops = stops.filter(s => s.cityId && s.cityId !== "");
+      
+      if (validStops.length > 0 && tripId) {
+        const stopsToInsert = validStops.map((s, index) => ({
           trip_id: tripId,
           city_id: s.cityId,
-          arrival_time: s.arrivalTime || null,
+          arrival_time: s.arrivalTime || null, // Convertir "" en null
           price_from_start: Number(s.priceFromStart) || 0,
           stop_order: index + 1
         }));
 
         const { error: stopsErr } = await supabase.from('trip_stops').insert(stopsToInsert);
-        if (stopsErr) throw stopsErr; // Si les arrêts ne s'enregistrent pas, on part dans le catch !
+        if (stopsErr) throw stopsErr;
       }
 
       setShowForm(false);
       resetForm();
-      loadData();
-      toast.success('Voyage et arrêts enregistrés avec succès !');
-    } catch (e: any) {
-      console.error("ERREUR:", e);
-      toast.error("Erreur lors de la sauvegarde : " + (e.message || "Problème BDD"));
-    } finally {
-      setSaving(false);
+      await loadData();
+      toast.success('Voyage et escales enregistrés');
+    } catch (e: any) { 
+      console.error(e);
+      toast.error(e.message || "Erreur lors de la sauvegarde"); 
     }
+    finally { setSaving(false); }
   };
 
   const resetForm = () => {
     setEditId(null); setRouteId(''); setVehicleId(''); setDepDate(''); setDepTime(''); setArrTime('');
-    setPrice(''); setVipPrice(''); setBusinessPrice(''); setStops([]);
+    setPrice(''); setVipPrice(''); setBusinessPrice(''); setStops([]); setStatus('');
   };
 
   const currentVehicleType = editId ? departures.find(d => d.id === editId)?.type : vehicles.find(v => v.id === vehicleId)?.typeCode;
   const currentItems = useMemo(() => departures.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage), [departures, currentPage]);
   const totalPages = Math.ceil(departures.length / itemsPerPage);
 
-  if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full"/></div>;
+  if (loading && departures.length === 0) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full"/></div>;
 
   return (
     <div className="max-w-6xl mx-auto p-4 text-left">
@@ -243,7 +240,7 @@ export default function AgencyDepartures() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     <span className="text-primary font-black px-2 py-0.5 bg-primary/5 rounded border border-primary/10 text-[10px] uppercase">{dep.registration}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">{new Date(dep.departureDate).toLocaleDateString('fr-FR')} • {dep.departureTime}</span>
+                    <span className="text-xs font-bold text-muted-foreground">{new Date(dep.departureDate).toLocaleDateString('fr-FR')} • {dep.departureTime}</span>
                   </div>
                 </div>
               </div>
@@ -254,15 +251,14 @@ export default function AgencyDepartures() {
                  </div>
                  <Button variant="outline" size="icon" onClick={() => { 
                      setEditId(dep.id); setDepDate(dep.departureDate); setDepTime(dep.departureTime);
-                     setArrTime(dep.arrivalTime); setPrice(String(dep.price)); setVipPrice(String(dep.vipPrice));
-                     setBusinessPrice(String(dep.businessPrice)); setStops(dep.stops); setStatus(dep.status); setShowForm(true);
+                     setArrTime(dep.arrivalTime || ''); setPrice(String(dep.price)); setVipPrice(String(dep.vipPrice));
+                     setBusinessPrice(String(dep.businessPrice)); setStops(dep.stops || []); setStatus(dep.status); setShowForm(true);
                  }} className="rounded-xl border-2"><Pencil size={18} /></Button>
                  <Link to={`/agency/passengers/${dep.id}`}><Button variant="outline" size="icon" className="rounded-xl border-2"><Users size={18} /></Button></Link>
               </div>
             </div>
 
-            {/* ESCALES DANS LA LISTE */}
-            {dep.stops.length > 0 && (
+            {dep.stops && dep.stops.length > 0 && (
               <div className="mt-4 pt-4 border-t border-dashed flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {dep.stops.map((s, idx) => (
                   <div key={idx} className="flex items-center gap-2 shrink-0 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
@@ -279,40 +275,41 @@ export default function AgencyDepartures() {
         ))}
       </div>
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      <Dialog open={showForm} onOpenChange={(o) => { if(!o) resetForm(); setShowForm(o); }}>
         <DialogContent className="rounded-[2.5rem] p-8 max-w-2xl border-none shadow-2xl overflow-y-auto max-h-[90vh]">
           <DialogHeader><DialogTitle className="text-2xl font-black italic uppercase">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
           
           <div className="space-y-6 mt-6">
-            <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Trajet Principal</Label>
-                  <Select value={routeId} onValueChange={setRouteId} disabled={!!editId}>
-                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
-                    <SelectContent className="rounded-xl">{routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold">{r.departureCity} → {r.arrivalCity}</SelectItem>)}</SelectContent>
-                  </Select>
-               </div>
-               <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Véhicule</Label>
-                  <Select value={vehicleId} onValueChange={setVehicleId} disabled={!!editId}>
-                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Choisir matériel" /></SelectTrigger>
-                    <SelectContent className="rounded-xl">{vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold">{v.vehicleNumber} ({v.vehicleType})</SelectItem>)}</SelectContent>
-                  </Select>
-               </div>
-            </div>
+            {!editId && (
+                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Itinéraire Principal</Label>
+                    <Select value={routeId} onValueChange={setRouteId}>
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold shadow-inner"><SelectValue placeholder="Trajet" /></SelectTrigger>
+                        <SelectContent>{routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold">{r.departureCity} → {r.arrivalCity}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Véhicule</Label>
+                    <Select value={vehicleId} onValueChange={setVehicleId}>
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold shadow-inner"><SelectValue placeholder="Véhicule" /></SelectTrigger>
+                        <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold">{v.vehicleNumber} ({v.vehicleType})</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+                </div>
+            )}
 
-            {/* SECTION ESCALES INTERMÉDIAIRES */}
             <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xs font-black uppercase flex items-center gap-2 text-slate-600"><Clock size={16}/> Escales intermédiaires</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-8 rounded-xl font-bold border-2 text-[10px] px-3">
+                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-8 rounded-xl font-bold border-2 text-[10px] px-3 bg-white">
                     <Plus size={14} className="mr-1" /> AJOUTER ARRÊT
                   </Button>
                </div>
                <div className="space-y-3">
                   {stops.map((stop, index) => (
                     <div key={index} className="grid grid-cols-[1.5fr_1fr_1fr_40px] gap-2 items-end animate-in fade-in slide-in-from-right-2">
-                      <div className="space-y-1">
+                      <div className="space-y-1 text-left">
                         <Select value={stop.cityId} onValueChange={(v) => updateStop(index, 'cityId', v)}>
                           <SelectTrigger className="h-10 rounded-xl bg-white border-none text-xs font-bold shadow-sm"><SelectValue placeholder="Ville" /></SelectTrigger>
                           <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
@@ -320,7 +317,7 @@ export default function AgencyDepartures() {
                       </div>
                       <Input type="time" value={stop.arrivalTime} onChange={e => updateStop(index, 'arrivalTime', e.target.value)} className="h-10 rounded-xl border-none shadow-sm font-bold text-xs" />
                       <Input type="number" placeholder="Prix" value={stop.priceFromStart} onChange={e => updateStop(index, 'priceFromStart', e.target.value)} className="h-10 rounded-xl border-none shadow-sm font-bold text-xs" />
-                      <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-10 w-10 text-red-400"><X size={16}/></Button>
+                      <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-10 w-10 text-red-400 hover:bg-red-50 rounded-full transition-colors"><X size={16}/></Button>
                     </div>
                   ))}
                   {stops.length === 0 && <p className="text-[10px] text-center text-slate-400 font-bold uppercase italic py-2">Aucun arrêt intermédiaire configuré</p>}
@@ -328,30 +325,35 @@ export default function AgencyDepartures() {
             </div>
 
             <div className="grid grid-cols-2 gap-4 border-t pt-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                    {currentVehicleType === 'TRAIN' ? 'Prix 2ème Classe' : 'Prix Standard / Éco'}
-                </Label>
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Prix Standard / 2ème Cl.</Label>
                 <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-primary text-lg" />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Date Départ</Label>
                 <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Heure de départ</Label>
+                    <Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
+                </div>
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Heure d'arrivée terminus</Label>
+                    <Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-slate-400" />
+                </div>
+            </div>
+
             {(currentVehicleType === 'BOAT' || currentVehicleType === 'TRAIN') && (
               <div className="grid grid-cols-2 gap-4 p-5 bg-primary/5 rounded-3xl border-2 border-primary/10">
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-primary ml-1">
-                      {currentVehicleType === 'TRAIN' ? 'Prix 1ère Classe' : 'Prix Business'}
-                  </Label>
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Prix 1ère Classe' : 'Prix Business'}</Label>
                   <Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/10 font-bold" />
                 </div>
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-primary ml-1">
-                      {currentVehicleType === 'TRAIN' ? 'Prix Prestige / VIP' : 'Prix Salon VIP'}
-                  </Label>
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Prix Prestige' : 'Prix Salon VIP'}</Label>
                   <Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-11 rounded-xl bg-white border-primary/10 font-bold" />
                 </div>
               </div>
@@ -361,8 +363,8 @@ export default function AgencyDepartures() {
               <div className="space-y-1.5 border-t pt-4 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">État actuel du trajet</Label>
                 <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold shadow-inner"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl shadow-2xl">
                     {['Programmé', 'Embarquement', 'Parti', 'Arrivé', 'Annulé'].map(s => <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -370,8 +372,8 @@ export default function AgencyDepartures() {
             )}
 
             <Button onClick={handleSave} disabled={saving} className="w-full h-16 rounded-3xl font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest active:scale-95 transition-all">
-              {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2" />}
-              {editId ? 'METTRE À JOUR LE VOYAGE' : 'CONFIRMER LA PROGRAMMATION'}
+              {saving ? <RefreshCw className="animate-spin h-6 w-6" /> : <Save className="mr-2 h-6 w-6" />}
+              {editId ? 'METTRE À JOUR LE VOYAGE' : 'VALIDER LA PROGRAMMATION'}
             </Button>
           </div>
         </DialogContent>
