@@ -88,10 +88,10 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
           <div className="max-w-2xl mx-auto text-center mb-10">
             <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight italic uppercase tracking-tighter">
-              Voyagez à travers le Gabon en toute simplicité
+              Voyagez et Expédiez vos colis à travers le Gabon en toute simplicité
             </h1>
             <p className="text-lg md:text-xl opacity-90 leading-relaxed font-medium">
-              Réservez vos billets de train, bateau et bus en ligne. Comparez, réservez, payez — sans vous déplacer.
+              Réservez vos billets de train, bateau et bus en ligne, envoyez et suivez vos colis en temps réel. Comparez, réservez, et  payez en ligne, sans vous déplacer.
             </p>
           </div>
 
