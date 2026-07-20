@@ -88,7 +88,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
           <div className="max-w-2xl mx-auto text-center mb-10">
             <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight italic uppercase tracking-tighter">
-              Voyagez. Expédiez. Suivez
+              Voyagez - Expédiez - Suivez
             </h1>
             <p className="text-lg md:text-xl opacity-90 leading-relaxed font-medium">
               TransGabon-Connect simplifie vos déplacements et l'envoi de vos colis à travers tout le Gabon. Réservez vos billets, expédiez vos colis et suivez leur acheminement en temps réel, le tout depuis une seule application.
