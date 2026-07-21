@@ -31,7 +31,6 @@ type TripDetails = {
   excessPrice: number;
 };
 
-// Structure d'un bagage déclaré
 type DeclaredLuggage = {
   id: string;
   label: string;
@@ -57,7 +56,6 @@ export default function BookingConfirmPage() {
   const [phone, setPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
 
-  // États pour la déclaration des bagages
   const [luggages, setLuggages] = useState<DeclaredLuggage[]>([]);
   const [tempLabel, setTempLabel] = useState("");
   const [tempWeight, setTempWeight] = useState("");
@@ -99,7 +97,7 @@ export default function BookingConfirmPage() {
     loadDetails();
   }, [departureId]);
 
-  // AJOUTER UN BAGAGE À LA LISTE
+  // FONCTION CORRIGÉE : addLuggage au lieu de addStop
   const addLuggage = () => {
     if (!tempLabel || !tempWeight) return toast.error("Précisez l'objet et son poids");
     const newLuggage: DeclaredLuggage = {
@@ -116,7 +114,6 @@ export default function BookingConfirmPage() {
     setLuggages(luggages.filter(l => l.id !== id));
   };
 
-  // CALCULS FINANCIERS
   const totalWeight = useMemo(() => luggages.reduce((sum, l) => sum + l.weight, 0), [luggages]);
   
   const luggageTotal = useMemo(() => {
@@ -152,15 +149,13 @@ export default function BookingConfirmPage() {
 
       if (error || !res?.success) throw new Error(error?.message || res?.error);
 
-      // Enregistrement des bagages déclarés
       if (luggages.length > 0) {
         const luggageEntries = luggages.map(l => ({
           booking_id: res.booking_id,
           label: l.label,
           quantity: 1,
-          total_price: 0 // Le prix sera validé en agence après pesée réelle
+          total_price: 0 
         }));
-        // On ajoute aussi une ligne récapitulative pour l'excédent payé s'il y en a un
         if (luggageTotal > 0) {
             luggageEntries.push({
                 booking_id: res.booking_id,
@@ -211,7 +206,7 @@ export default function BookingConfirmPage() {
           </div>
       </div>
 
-      {/* --- SECTION DÉCLARATION BAGAGES (MODE LIBRE) --- */}
+      {/* SECTION BAGAGES (Saisie libre) */}
       <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-xl space-y-6">
         <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary"><Package size={20} /></div>
@@ -221,7 +216,6 @@ export default function BookingConfirmPage() {
             </div>
         </div>
 
-        {/* Formulaire d'ajout rapide */}
         <div className="space-y-3 p-4 bg-slate-50 rounded-3xl border border-slate-100">
             <div className="grid grid-cols-1 gap-3">
                 <Input 
@@ -241,18 +235,18 @@ export default function BookingConfirmPage() {
                         />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">KG</span>
                     </div>
-                    <Button onClick={addStop} type="button" className="h-11 px-6 rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase">
+                    {/* APPEL À LA FONCTION addLuggage ICI */}
+                    <Button onClick={addLuggage} type="button" className="h-11 px-6 rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase">
                         <Plus size={16} className="mr-2" /> Ajouter
                     </Button>
                 </div>
             </div>
         </div>
 
-        {/* Liste des objets ajoutés */}
         <div className="space-y-2">
             {luggages.map((lug) => (
                 <div key={lug.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-2xl animate-in fade-in slide-in-from-right-2">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 text-left">
                         <Scale size={14} className="text-primary" />
                         <span className="text-xs font-bold text-slate-700 uppercase">{lug.label}</span>
                     </div>
@@ -278,28 +272,22 @@ export default function BookingConfirmPage() {
         <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
             <Calculator className="absolute -right-4 -bottom-4 h-24 w-24 opacity-10" />
             <div className="space-y-2 relative z-10 text-left">
-                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60">
-                    <span>Billet Voyage</span>
-                    <span>{ticketPrice.toLocaleString()} F</span>
-                </div>
+                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60"><span>Billet</span><span>{ticketPrice.toLocaleString()} F</span></div>
                 {luggageTotal > 0 && (
                     <div className="flex justify-between text-[10px] font-bold uppercase text-primary animate-pulse">
-                        <span>Excédent Bagages ({totalWeight}kg)</span>
+                        <span>Excédent ({totalWeight}kg)</span>
                         <span>+{luggageTotal.toLocaleString()} F</span>
                     </div>
                 )}
                 <div className="h-px bg-white/10 my-4 border-t border-dashed" />
                 <div className="flex justify-between items-center">
                     <p className="text-xs font-black uppercase text-primary">Total à régler</p>
-                    <p className="text-4xl font-black tracking-tighter text-white">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
+                    <p className="text-4xl font-black tracking-tighter">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
                 </div>
-                <p className="text-[8px] font-bold text-slate-400 mt-4 uppercase italic">
-                    * {trip?.freeWeight}kg sont inclus gratuitement dans votre billet.
-                </p>
+                <p className="text-[8px] font-bold text-slate-400 mt-4 uppercase italic">* {trip?.freeWeight}kg inclus gratuitement.</p>
             </div>
         </div>
 
-        {/* MÉTHODES PAIEMENT */}
         <div className="grid gap-3">
           {PAYMENT_METHODS.map(pm => (
             <button
