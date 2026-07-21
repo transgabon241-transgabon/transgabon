@@ -15,6 +15,13 @@ import {
   Crown, Gem, RefreshCw, Train, Bus, MapPin, Package, Plus, Minus, Calculator, Scale 
 } from 'lucide-react';
 
+// --- DEFINITION DES CONSTANTES (CRUCIAL : DOIT ÊTRE ICI) ---
+const PAYMENT_METHODS = [
+  { value: 'airtel_money', label: 'Airtel Money', icon: Smartphone },
+  { value: 'moov_money', label: 'Moov Money', icon: Smartphone },
+  { value: 'agency', label: 'Paiement en agence', icon: Building2 },
+] as const;
+
 type TripDetails = {
   id: string;
   companyId: string;
@@ -44,10 +51,9 @@ export default function BookingConfirmPage() {
   const [phone, setPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
 
-  // États Bagages
   const [availableLuggageTypes, setAvailableLuggageTypes] = useState<any[]>([]);
   const [selectedLuggages, setSelectedLuggages] = useState<Record<string, number>>({});
-  const [estimatedWeight, setEstimatedWeight] = useState("0"); // Pour le train
+  const [estimatedWeight, setEstimatedWeight] = useState("0");
 
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
@@ -92,22 +98,18 @@ export default function BookingConfirmPage() {
     loadDetails();
   }, [departureId]);
 
-  // CALCULS FINANCIERS
   const luggageTotal = useMemo(() => {
-    // 1. Calcul par articles (Bus/Bateau)
     const itemsTotal = availableLuggageTypes.reduce((sum, type) => {
       const qty = selectedLuggages[type.id] || 0;
       return sum + (type.price * qty);
     }, 0);
 
-    // 2. Calcul par poids (Train)
     let weightTotal = 0;
     if (trip?.type === 'TRAIN') {
         const weight = parseFloat(estimatedWeight) || 0;
         const excess = Math.max(0, weight - (trip.freeWeight || 30));
         weightTotal = excess * (trip.excessPrice || 500);
     }
-
     return itemsTotal + weightTotal;
   }, [selectedLuggages, availableLuggageTypes, estimatedWeight, trip]);
 
@@ -145,10 +147,7 @@ export default function BookingConfirmPage() {
 
       if (error || !res?.success) throw new Error(error?.message || res?.error);
 
-      // Enregistrement des bagages
       const luggageEntries: any[] = [];
-      
-      // Ajout des articles
       Object.entries(selectedLuggages).filter(([_, qty]) => qty > 0).forEach(([typeId, qty]) => {
         const type = availableLuggageTypes.find(t => t.id === typeId);
         luggageEntries.push({
@@ -159,13 +158,12 @@ export default function BookingConfirmPage() {
         });
       });
 
-      // Ajout du poids (si excédent train)
-      if (trip?.type === 'TRAIN' && parseFloat(estimatedWeight) > trip.freeWeight) {
+      if (trip?.type === 'TRAIN' && parseFloat(estimatedWeight) > (trip.freeWeight || 0)) {
         luggageEntries.push({
             booking_id: res.booking_id,
             label: `Excédent Poids (${estimatedWeight}kg)`,
             quantity: 1,
-            total_price: luggageTotal // Dans ce cas le total luggage vient du poids
+            total_price: luggageTotal
         });
       }
 
@@ -186,10 +184,7 @@ export default function BookingConfirmPage() {
   return (
     <div className="container mx-auto px-4 py-10 max-w-lg text-left space-y-8 animate-in fade-in duration-500">
       
-      <div className="space-y-1">
-        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900">Finaliser</h1>
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Récapitulatif & Paiement</p>
-      </div>
+      <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Finaliser ma place</h1>
 
       {/* RECAP BILLET */}
       <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
@@ -203,7 +198,6 @@ export default function BookingConfirmPage() {
             </div>
             <Badge className="bg-slate-900 text-white font-black px-4 py-1.5 rounded-full text-[10px]">SIÈGE {seat}</Badge>
           </div>
-
           <div className="space-y-3 p-4 bg-slate-50 rounded-3xl border border-slate-100">
             <div className="flex items-center gap-3">
                 <MapPin size={16} className="text-primary" />
@@ -216,12 +210,10 @@ export default function BookingConfirmPage() {
           </div>
       </div>
 
-      {/* --- SECTION BAGAGES DYNAMIQUE --- */}
+      {/* SECTION BAGAGES */}
       <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-xl">
         <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <Package size={20} />
-            </div>
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary"><Package size={20} /></div>
             <div>
                 <h3 className="font-black text-sm text-slate-900 uppercase tracking-tighter">Mes Bagages</h3>
                 <p className="text-[9px] font-bold text-slate-400 uppercase">Déclarez vos suppléments</p>
@@ -229,48 +221,35 @@ export default function BookingConfirmPage() {
         </div>
 
         {trip?.type === 'TRAIN' ? (
-            /* INTERFACE POIDS POUR LE TRAIN */
-            <div className="space-y-6">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Estimation du poids total</Label>
-                    <div className="flex items-center justify-center gap-3">
-                        <Scale className="text-primary" size={24} />
-                        <Input 
-                            type="number" 
-                            value={estimatedWeight} 
-                            onChange={(e) => setEstimatedWeight(e.target.value)}
-                            className="w-24 h-12 text-center font-black text-xl border-none bg-white shadow-inner rounded-xl"
-                        />
-                        <span className="font-black text-slate-400">KG</span>
+            <div className="space-y-6 text-center">
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 mb-3 block">Poids total estimé</Label>
+                    <div className="flex items-center justify-center gap-4">
+                        <Scale className="text-primary" size={28} />
+                        <Input type="number" value={estimatedWeight} onChange={(e) => setEstimatedWeight(e.target.value)} className="w-24 h-14 text-center font-black text-2xl border-none bg-white shadow-inner rounded-xl" />
+                        <span className="font-black text-slate-400 text-xl">KG</span>
                     </div>
                 </div>
-                <div className="px-2 space-y-1">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">Franchise : {trip.freeWeight}kg Gratuits</p>
-                    <p className="text-[9px] font-bold text-primary uppercase">Supplément : {trip.excessPrice} F / kg sup.</p>
-                </div>
+                <p className="text-[9px] font-bold text-slate-400 uppercase">Inclus : {trip.freeWeight}kg • Sup : {trip.excessPrice}F/kg</p>
             </div>
         ) : (
-            /* INTERFACE ARTICLES POUR LE BUS */
             <div className="space-y-4">
                 {availableLuggageTypes.length > 0 ? (
                     availableLuggageTypes.map((type) => (
                         <div key={type.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                             <div>
                                 <p className="font-black text-xs text-slate-700 uppercase">{type.label}</p>
-                                <p className="text-[10px] font-bold text-primary">{type.price.toLocaleString()} F / unité</p>
+                                <p className="text-[10px] font-bold text-primary">{type.price.toLocaleString()} F</p>
                             </div>
                             <div className="flex items-center gap-3">
-                                <button onClick={() => updateLuggageQty(type.id, -1)} className="h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center"><Minus size={14} /></button>
+                                <button onClick={() => updateLuggageQty(type.id, -1)} className="h-9 w-9 rounded-xl bg-white border flex items-center justify-center"><Minus size={16} /></button>
                                 <span className="font-black text-sm w-4 text-center">{selectedLuggages[type.id] || 0}</span>
-                                <button onClick={() => updateLuggageQty(type.id, 1)} className="h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center"><Plus size={14} /></button>
+                                <button onClick={() => updateLuggageQty(type.id, 1)} className="h-9 w-9 rounded-xl bg-white border flex items-center justify-center"><Plus size={16} /></button>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="text-center py-4 space-y-2">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase italic">Aucun tarif pré-défini</p>
-                        <p className="text-[9px] text-slate-400">Vous pourrez régler vos bagages directement au guichet lors du pesage.</p>
-                    </div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase italic text-center py-4">Pas de suppléments prédéfinis</p>
                 )}
             </div>
         )}
@@ -281,23 +260,16 @@ export default function BookingConfirmPage() {
         <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
             <Calculator className="absolute -right-4 -bottom-4 h-24 w-24 opacity-10" />
             <div className="space-y-2 relative z-10">
-                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60">
-                    <span>Billet ({selectedClass.replace('_',' ')}) :</span>
-                    <span>{ticketPrice.toLocaleString()} F</span>
-                </div>
-                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60">
-                    <span>Suppléments Bagages :</span>
-                    <span>{luggageTotal.toLocaleString()} F</span>
-                </div>
+                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60"><span>Billet</span><span>{ticketPrice.toLocaleString()} F</span></div>
+                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60"><span>Bagages</span><span>{luggageTotal.toLocaleString()} F</span></div>
                 <div className="h-px bg-white/10 my-4 border-t border-dashed" />
                 <div className="flex justify-between items-center">
-                    <p className="text-xs font-black uppercase text-primary tracking-widest">Total à régler</p>
-                    <p className="text-4xl font-black tracking-tighter text-white">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
+                    <p className="text-xs font-black uppercase text-primary">Total</p>
+                    <p className="text-4xl font-black tracking-tighter">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
                 </div>
             </div>
         </div>
 
-        {/* MÉTHODES PAIEMENT */}
         <div className="grid gap-3">
           {PAYMENT_METHODS.map(pm => (
             <button
@@ -308,12 +280,10 @@ export default function BookingConfirmPage() {
               }`}
             >
               <div className="flex items-center gap-4 text-left">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${paymentMethod === pm.value ? 'bg-primary text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>
-                   <pm.icon size={20} />
-                </div>
-                <span className="font-black uppercase text-xs text-slate-700 tracking-tight">{pm.label}</span>
+                <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${paymentMethod === pm.value ? 'bg-primary text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}><pm.icon size={22} /></div>
+                <span className="font-black uppercase text-[11px] text-slate-700 tracking-tight">{pm.label}</span>
               </div>
-              {paymentMethod === pm.value && <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center text-white shadow-sm"><Check size={14} strokeWidth={4} /></div>}
+              {paymentMethod === pm.value && <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center text-white"><Check size={14} strokeWidth={4} /></div>}
             </button>
           ))}
         </div>
@@ -324,7 +294,7 @@ export default function BookingConfirmPage() {
           disabled={submitting || !paymentMethod}
         >
           {submitting ? <RefreshCw className="animate-spin mr-3" /> : <CreditCard className="mr-3 h-7 w-7" />}
-          {submitting ? 'TRAITEMENT...' : 'VALIDER MA PLACE'}
+          {submitting ? 'TRAITEMENT...' : 'RÉSERVER MA PLACE'}
         </Button>
       </div>
     </div>
