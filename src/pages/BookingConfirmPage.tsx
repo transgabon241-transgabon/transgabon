@@ -281,7 +281,7 @@ export default function BookingConfirmPage() {
                 )}
                 <div className="h-px bg-white/10 my-4 border-t border-dashed" />
                 <div className="flex justify-between items-center">
-                    <p className="text-xs font-black uppercase text-primary">Total à régler</p>
+                    <p className="text-xs font-black uppercase text-primary">Total</p>
                     <p className="text-4xl font-black tracking-tighter">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
                 </div>
                 <p className="text-[8px] font-bold text-slate-400 mt-4 uppercase italic">* {trip?.freeWeight}kg inclus gratuitement.</p>
