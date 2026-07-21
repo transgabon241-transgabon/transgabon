@@ -10,20 +10,31 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Smartphone, Building2, Check, CreditCard, Ship, Crown, Gem, RefreshCw, Train, Bus, MapPin } from 'lucide-react';
+import { 
+  Smartphone, Building2, Check, CreditCard, Ship, 
+  Crown, Gem, RefreshCw, Train, Bus, MapPin, Package, Plus, Minus, Calculator 
+} from 'lucide-react';
 
 type TripDetails = {
   id: string;
+  companyId: string;
   companyName: string;
-  vehicleNumber: string;
+  type: string;
   registration: string;
-  type: string; // BUS, TRAIN, BOAT
+};
+
+// Types pour la sélection des bagages
+type LuggageSelection = {
+  id: string;
+  label: string;
+  price: number;
+  quantity: number;
 };
 
 const PAYMENT_METHODS = [
-  { value: 'airtel_money', label: 'Airtel Money', icon: Smartphone, color: 'text-red-500' },
-  { value: 'moov_money', label: 'Moov Money', icon: Smartphone, color: 'text-blue-500' },
-  { value: 'agency', label: 'Paiement en agence', icon: Building2, color: 'text-orange-500' },
+  { value: 'airtel_money', label: 'Airtel Money', icon: Smartphone },
+  { value: 'moov_money', label: 'Moov Money', icon: Smartphone },
+  { value: 'agency', label: 'Paiement en agence', icon: Building2 },
 ] as const;
 
 export default function BookingConfirmPage() {
@@ -32,22 +43,28 @@ export default function BookingConfirmPage() {
   const navigate = useNavigate();
   const { user, isLoading, loginWithRedirect } = useAuth();
 
-  // RÉCUPÉRATION DES INFOS DEPUIS L'URL (calculées en amont)
+  // Infos provenant de SeatSelection
   const seat = params.get('seat') || '';
   const selectedClass = params.get('class') || 'STANDARD';
-  const finalPrice = Number(params.get('price')) || 0;
+  const ticketPrice = Number(params.get('price')) || 0;
   const destinationName = params.get('to') || '';
   
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  
+  // États Formulaire
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
 
+  // États Bagages
+  const [availableLuggageTypes, setAvailableLuggageTypes] = useState<any[]>([]);
+  const [selectedLuggages, setSelectedLuggages] = useState<Record<string, number>>({});
+
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
-  }, [isLoading, user, loginWithRedirect]);
+  }, [isLoading, user]);
 
   useEffect(() => {
     if (user) {
@@ -58,199 +75,236 @@ export default function BookingConfirmPage() {
 
   useEffect(() => {
     if (!departureId) return;
-    setLoading(true);
-
-    const loadTripDetails = async () => {
+    const loadDetails = async () => {
       try {
-        const { data: d, error } = await supabase
+        const { data: d } = await supabase
           .from('trips')
-          .select('*, company:companies(name), vehicle:vehicles(registration)')
+          .select('*, company:companies(*), vehicle:vehicles(registration)')
           .eq('id', departureId)
           .single();
 
-        if (d && !error) {
+        if (d) {
           setTrip({
             id: d.id,
+            companyId: d.company_id,
             companyName: d.company?.name || 'Compagnie',
-            vehicleNumber: d.vehicle_number,
             registration: d.vehicle?.registration || '—',
             type: d.type
           });
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    loadTripDetails();
+          // Charger les tarifs bagages de cette compagnie
+          const { data: luggageRates } = await supabase
+            .from('company_luggage_settings')
+            .select('*')
+            .eq('company_id', d.company_id);
+          if (luggageRates) setAvailableLuggageTypes(luggageRates);
+        }
+      } finally { setLoading(false); }
+    };
+    loadDetails();
   }, [departureId]);
 
-  // Formattage lisible de la classe
-  const classLabel = useMemo(() => {
-    const labels: Record<string, string> = {
-      'VIP': 'Salon VIP',
-      'BUSINESS': 'Classe Business',
-      '1ERE_CLASSE': '1ère Classe',
-      '2EME_CLASSE': '2ème Classe',
-      'ECO': 'Classe Économique',
-      'STANDARD': 'Classe Standard'
-    };
-    return labels[selectedClass] || selectedClass;
-  }, [selectedClass]);
+  // CALCULS FINANCIERS
+  const luggageTotal = useMemo(() => {
+    return availableLuggageTypes.reduce((sum, type) => {
+      const qty = selectedLuggages[type.id] || 0;
+      return sum + (type.price * qty);
+    }, 0);
+  }, [selectedLuggages, availableLuggageTypes]);
+
+  const finalTotal = ticketPrice + luggageTotal;
+
+  // Gestion quantité bagages
+  const updateLuggageQty = (id: string, delta: number) => {
+    setSelectedLuggages(prev => ({
+      ...prev,
+      [id]: Math.max(0, (prev[id] || 0) + delta)
+    }));
+  };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !phone.trim() || !paymentMethod || !departureId || !seat) {
-      toast.error('Veuillez remplir tous les champs.');
-      return;
-    }
-
+    if (!name || !phone || !paymentMethod) return toast.error('Informations incomplètes');
     setSubmitting(true);
 
     try {
       const nameParts = name.trim().split(/\s+/);
-      const firstName = nameParts[0] || '';
+      const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || '—';
 
-      let mappedMethod: 'AIRTEL_MONEY' | 'MOOV_MONEY' | 'AGENCE' = 'AGENCE';
-      if (paymentMethod === 'airtel_money') mappedMethod = 'AIRTEL_MONEY';
-      else if (paymentMethod === 'moov_money') mappedMethod = 'MOOV_MONEY';
-
-      // Appel RPC Supabase (On envoie le finalPrice reçu de l'URL)
-      const { data, error } = await supabase.rpc('create_booking_transaction', {
+      // 1. Créer la réservation principale
+      const { data: res, error } = await supabase.rpc('create_booking_transaction', {
         p_trip_id: departureId,
-        p_user_id: user?.id || null,
+        p_user_id: user?.id,
         p_contact_phone: phone,
-        p_contact_email: user?.email || null,
+        p_contact_email: user?.email,
         p_passenger_first_name: firstName,
         p_passenger_last_name: lastName,
         p_seat_number: seat,
-        p_payment_method: mappedMethod,
-        p_total_amount: finalPrice,
-        p_arrival_city_name: destinationName, 
-        p_class_type: selectedClass           
+        p_payment_method: paymentMethod.toUpperCase(),
+        p_total_amount: ticketPrice, // Prix du billet uniquement
+        p_arrival_city_name: destinationName,
+        p_class_type: selectedClass
       });
 
-      if (error || !data?.success) throw new Error(error?.message || data?.error);
+      if (error || !res?.success) throw new Error(error?.message || res?.error);
 
-      toast.success('Réservation confirmée !');
-      navigate(`/ticket/${data.booking_id}`);
+      // 2. Enregistrer les bagages sélectionnés
+      const luggageEntries = Object.entries(selectedLuggages)
+        .filter(([_, qty]) => qty > 0)
+        .map(([typeId, qty]) => {
+          const type = availableLuggageTypes.find(t => t.id === typeId);
+          return {
+            booking_id: res.booking_id,
+            label: type.label,
+            quantity: qty,
+            total_price: type.price * qty,
+            passenger_id: null // Optionnel
+          };
+        });
+
+      if (luggageEntries.length > 0) {
+        await supabase.from('luggages').insert(luggageEntries);
+      }
+
+      toast.success('Voyage réservé !');
+      navigate(`/ticket/${res.booking_id}`);
     } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de la réservation');
+      toast.error(err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const TransportIcon = trip?.type === 'BOAT' ? Ship : trip?.type === 'TRAIN' ? Train : Bus;
+  const TransportIcon = trip?.type === 'TRAIN' ? Train : trip?.type === 'BOAT' ? Ship : Bus;
 
-  if (isLoading || !user) return null;
+  if (loading) return <div className="max-w-lg mx-auto p-10"><Skeleton className="h-64 w-full rounded-[2.5rem]" /></div>;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-lg text-left">
-      <h1 className="text-3xl font-black italic mb-2 tracking-tight uppercase">Confirmation</h1>
-      <p className="text-muted-foreground mb-8 text-[10px] uppercase font-bold tracking-[0.2em]">Dernière étape avant votre voyage</p>
+    <div className="container mx-auto px-4 py-10 max-w-lg text-left space-y-8 animate-in fade-in duration-500">
+      
+      <div className="space-y-1">
+        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900">Finaliser</h1>
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Récapitulatif & Paiement</p>
+      </div>
 
-      {loading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-48 w-full rounded-[2.5rem]" />
-          <Skeleton className="h-32 w-full rounded-[2.5rem]" />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* RÉCAPITULATIF DU VOYAGE AMÉLIORÉ */}
-          {trip && (
-            <div className="bg-white border-2 border-primary/10 rounded-[2.5rem] p-8 shadow-2xl shadow-primary/5 relative overflow-hidden">
-               <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <p className="font-black text-primary uppercase text-[10px] tracking-widest mb-1">{trip.companyName}</p>
-                    <div className="flex items-center gap-2">
-                        <TransportIcon size={18} className="text-slate-400" />
-                        <p className="font-bold text-slate-800 italic uppercase text-sm">{trip.registration}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <Badge className="bg-slate-900 text-white border-none font-black px-4 py-1.5 rounded-full uppercase text-[10px]">
-                        Siège {seat}
-                    </Badge>
-                  </div>
-               </div>
-
-               <div className="space-y-3 mb-6">
-                  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <MapPin size={18} className="text-primary" />
-                    <div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-none">Destination finale</p>
-                        <p className="font-black text-slate-700 uppercase">{destinationName}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                    {selectedClass.includes('VIP') || selectedClass.includes('1ERE') ? <Gem size={18} className="text-primary" /> : <Check size={18} className="text-primary" />}
-                    <div>
-                        <p className="text-[9px] font-black text-primary/60 uppercase tracking-tighter leading-none">Confort choisi</p>
-                        <p className="font-black text-primary uppercase text-sm">{classLabel}</p>
-                    </div>
-                  </div>
-               </div>
-
-               <div className="flex justify-between items-center pt-6 border-t border-dashed border-slate-200">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Montant Total</p>
-                  <p className="text-4xl font-black text-primary tracking-tighter">{finalPrice.toLocaleString()} <span className="text-xs">F</span></p>
-               </div>
+      {/* RECAP BILLET */}
+      <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <p className="text-[10px] font-black text-primary uppercase mb-1 tracking-widest">{trip?.companyName}</p>
+              <div className="flex items-center gap-2">
+                <TransportIcon size={18} className="text-slate-400" />
+                <p className="font-bold text-slate-800 italic uppercase text-sm">{trip?.registration}</p>
+              </div>
             </div>
-          )}
-
-          {/* FORMULAIRE PASSAGER */}
-          <div className="space-y-4 bg-slate-50/50 p-6 rounded-[2.5rem] border-2 border-white">
-            <h3 className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Identité du voyageur</h3>
-            <div className="space-y-3">
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Prénom et Nom" className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
-                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Téléphone (+241)" className="h-12 rounded-xl border-2 border-slate-100 bg-white font-bold" />
-            </div>
+            <Badge className="bg-slate-900 text-white font-black px-4 py-1.5 rounded-full text-[10px]">SIÈGE {seat}</Badge>
           </div>
 
-          {/* MODES DE PAIEMENT */}
-          <div className="space-y-3">
-            <Label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Moyen de paiement</Label>
-            <div className="grid gap-3">
-              {PAYMENT_METHODS.map(pm => (
-                <button
-                  key={pm.value}
-                  type="button"
-                  onClick={() => setPaymentMethod(pm.value)}
-                  className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${
-                    paymentMethod === pm.value
-                      ? 'border-primary bg-primary/5 shadow-inner'
-                      : 'border-slate-100 bg-white hover:border-primary/20'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${paymentMethod === pm.value ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-slate-50 text-slate-400'}`}>
-                       <pm.icon size={22} />
-                    </div>
-                    <span className={`font-black uppercase text-xs tracking-tight ${paymentMethod === pm.value ? 'text-primary' : 'text-slate-600'}`}>{pm.label}</span>
-                  </div>
-                  {paymentMethod === pm.value && <Check className="text-primary" size={20} strokeWidth={4} />}
-                </button>
-              ))}
+          <div className="space-y-3 p-4 bg-slate-50 rounded-3xl border border-slate-100">
+            <div className="flex items-center gap-3">
+                <MapPin size={16} className="text-primary" />
+                <p className="font-black text-sm text-slate-700 uppercase">{destinationName}</p>
+            </div>
+            <div className="flex items-center gap-3 border-t border-slate-200 pt-3">
+                {selectedClass.includes('VIP') ? <Gem size={16} className="text-amber-500" /> : <Check size={16} className="text-primary" />}
+                <p className="font-black text-[11px] text-slate-500 uppercase tracking-tighter">{selectedClass.replace('_', ' ')}</p>
             </div>
           </div>
+      </div>
 
-          <Button
-            className="w-full h-20 rounded-[2rem] font-black text-2xl shadow-2xl shadow-primary/20 uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all mt-4"
-            onClick={handleSubmit}
-            disabled={submitting || !name || !phone || !paymentMethod || !trip}
-          >
-            {submitting ? <RefreshCw className="animate-spin mr-3" /> : <CreditCard className="mr-3 h-7 w-7" />}
-            {submitting ? 'TRAITEMENT...' : 'PAYER MAINTENANT'}
-          </Button>
-
-          <p className="text-[9px] text-center text-muted-foreground font-bold px-10 uppercase tracking-tighter opacity-60">
-            Paiement sécurisé par cryptage SSL. En validant, vous recevrez votre billet avec QR Code par email et dans votre historique.
-          </p>
+      {/* --- SECTION BAGAGES PASSAGER --- */}
+      <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-xl">
+        <div className="flex items-center gap-3 mb-6">
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                <Package size={20} />
+            </div>
+            <div>
+                <h3 className="font-black text-sm text-slate-900 uppercase tracking-tighter">Mes Bagages</h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase">Déclarez vos suppléments</p>
+            </div>
         </div>
-      )}
+
+        {availableLuggageTypes.length === 0 ? (
+            <p className="text-[10px] text-slate-400 italic">Aucun supplément bagage disponible pour ce trajet.</p>
+        ) : (
+            <div className="space-y-4">
+                {availableLuggageTypes.map((type) => (
+                    <div key={type.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div>
+                            <p className="font-black text-xs text-slate-700 uppercase">{type.label}</p>
+                            <p className="text-[10px] font-bold text-primary">{type.price.toLocaleString()} F / unité</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={() => updateLuggageQty(type.id, -1)}
+                                className="h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:scale-90"
+                            >
+                                <Minus size={14} />
+                            </button>
+                            <span className="font-black text-sm w-4 text-center">{selectedLuggages[type.id] || 0}</span>
+                            <button 
+                                onClick={() => updateLuggageQty(type.id, 1)}
+                                className="h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 transition-all active:scale-90"
+                            >
+                                <Plus size={14} />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+      </div>
+
+      {/* TOTAL ET PAIEMENT */}
+      <div className="space-y-6">
+        <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
+            <Calculator className="absolute -right-4 -bottom-4 h-24 w-24 opacity-10" />
+            <div className="space-y-2 relative z-10">
+                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60">
+                    <span>Billet Voyage :</span>
+                    <span>{ticketPrice.toLocaleString()} F</span>
+                </div>
+                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60">
+                    <span>Total Bagages :</span>
+                    <span>{luggageTotal.toLocaleString()} F</span>
+                </div>
+                <div className="h-px bg-white/10 my-4 border-t border-dashed" />
+                <div className="flex justify-between items-center">
+                    <p className="text-xs font-black uppercase text-primary">Total à régler</p>
+                    <p className="text-4xl font-black tracking-tighter">{finalTotal.toLocaleString()} <span className="text-sm">FCFA</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div className="grid gap-3">
+          {PAYMENT_METHODS.map(pm => (
+            <button
+              key={pm.value}
+              onClick={() => setPaymentMethod(pm.value)}
+              className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${
+                paymentMethod === pm.value ? 'border-primary bg-primary/5 shadow-inner' : 'border-slate-100 bg-white'
+              }`}
+            >
+              <div className="flex items-center gap-4 text-left">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${paymentMethod === pm.value ? 'bg-primary text-white' : 'bg-slate-50 text-slate-400'}`}>
+                   <pm.icon size={20} />
+                </div>
+                <span className="font-black uppercase text-xs text-slate-700 tracking-tight">{pm.label}</span>
+              </div>
+              {paymentMethod === pm.value && <Check className="text-primary" size={20} strokeWidth={4} />}
+            </button>
+          ))}
+        </div>
+
+        <Button
+          className="w-full h-20 rounded-[2rem] font-black text-2xl shadow-2xl shadow-primary/20 uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all"
+          onClick={handleSubmit}
+          disabled={submitting || !paymentMethod}
+        >
+          {submitting ? <RefreshCw className="animate-spin mr-3" /> : <CreditCard className="mr-3 h-7 w-7" />}
+          {submitting ? 'TRAITEMENT...' : 'VALIDER MON VOYAGE'}
+        </Button>
+      </div>
     </div>
   );
 }
