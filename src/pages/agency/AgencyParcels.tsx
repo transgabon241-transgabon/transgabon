@@ -27,9 +27,9 @@ import {
   MapPin,
   Phone,
   User,
-  Info,
   CreditCard,
-  Lock
+  Lock,
+  Wallet
 } from 'lucide-react'; 
 import { toast } from 'sonner';
 
@@ -49,7 +49,7 @@ type Parcel = {
   price: number;
   weightKg: number;
   quantity: number;
-  paymentStatus: string; // 'Payé' | 'À payer'
+  paymentStatus: string;
   transportType: string;
 };
 
@@ -78,6 +78,9 @@ export default function AgencyParcels() {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+
+  const userRole = user?.role;
+  const canCollectMoney = ['Administrateur', 'Agent', 'Caissier'].includes(userRole || '');
 
   const loadData = async () => {
     if (!user?.companyId) return;
@@ -162,6 +165,16 @@ export default function AgencyParcels() {
     } catch (e) { toast.error('Erreur de mise à jour'); }
   };
 
+  // NOUVEAU : ENCAISSER LE PAIEMENT FRET
+  const handleCollectPayment = async (id: string) => {
+    try {
+      const { error } = await supabase.from('parcels').update({ is_paid: true }).eq('id', id);
+      if (error) throw error;
+      toast.success("Paiement encaissé avec succès !");
+      loadData();
+    } catch (e) { toast.error("Erreur d'encaissement"); }
+  };
+
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
     return parcels.filter(p => 
@@ -182,13 +195,13 @@ export default function AgencyParcels() {
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-left">
           <div className="p-3 bg-slate-900 rounded-2xl shadow-lg text-primary">
             <Package size={28} />
           </div>
           <div>
-            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Logistique Fret</h1>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Validation des envois et pesées</p>
+            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Gestion du Fret</h1>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Logistique et Messagerie Nationale</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={loadData} className="rounded-xl font-black border-2 h-11 px-6 text-[10px] uppercase tracking-widest">
@@ -231,6 +244,8 @@ export default function AgencyParcels() {
             tariffs={tariffs} 
             onRefresh={loadData} 
             onUpdateStatus={handleUpdateStatus} 
+            onCollectPayment={handleCollectPayment}
+            canCollectMoney={canCollectMoney}
           />
         ))}
       </div>
@@ -247,7 +262,7 @@ export default function AgencyParcels() {
   );
 }
 
-function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
+function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPayment, canCollectMoney }: any) {
   const [pricingMode, setPricingMode] = useState(false);
   const [selectedTariff, setSelectedTariff] = useState<Tariff | null>(null);
   const [weight, setWeight] = useState(p.weightKg.toString());
@@ -267,9 +282,9 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
         price: calculatedPrice, 
         weight: parseFloat(weight) || 0,
         quantity: parseInt(quantity) || 1,
-        status: 'COLIS_ENREGISTRE' // On reste en attente, mais avec un prix
+        status: 'COLIS_ENREGISTRE' 
       }).eq('id', p.id);
-      toast.success("Tarification validée. Envoyez le client à la caisse.");
+      toast.success("Tarification enregistrée. Dirigez le client vers la caisse.");
       onRefresh();
       setPricingMode(false);
     } catch (e) { toast.error("Erreur"); }
@@ -284,11 +299,11 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
   };
 
   const nextStatus = getNextStatus(p.status);
-  const isUnpaid = p.paymentStatus !== 'Payé';
+  const isPaid = p.paymentStatus === 'Payé';
   const isPriced = p.price > 0;
   
-  // LOGIQUE DE BLOCAGE : On bloque si c'est la première étape et que ce n'est pas payé
-  const canProgress = !isUnpaid || p.status !== 'En attente';
+  // LOGIQUE DE BLOCAGE : On bloque si le colis est en attente mais non payé
+  const isBlocked = !isPaid && p.status === 'En attente';
 
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : Bus;
 
@@ -296,6 +311,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
     <div className={`bg-white border-2 border-slate-100 rounded-[2.5rem] p-6 hover:shadow-xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
       <div className="flex flex-col space-y-6">
         
+        {/* LIGNE 1 : INFOS DE BASE ET STATUT */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-4 text-left">
             <div className={`h-14 w-14 rounded-[1.25rem] flex items-center justify-center text-white shadow-lg ${p.transportType === 'BOAT' ? 'bg-blue-600' : p.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
@@ -305,114 +321,91 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono font-black text-primary text-sm uppercase tracking-tighter">{p.trackingNumber}</span>
                 <Badge className={`${STATUS_COLORS[p.status]} border-2 font-black uppercase text-[8px] h-5 px-2`}>{p.status}</Badge>
-                {/* BADGE DE PAIEMENT */}
-                <Badge className={`border-2 font-black uppercase text-[8px] h-5 px-2 ${p.paymentStatus === 'Payé' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                <Badge variant="outline" className={`border-2 font-black uppercase text-[8px] h-5 px-2 ${isPaid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                     {p.paymentStatus}
                 </Badge>
               </div>
               <p className="text-base font-black text-slate-900 uppercase italic leading-none">{p.description}</p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
              {nextStatus && !pricingMode && (
-                <div className="flex flex-col items-end gap-1">
-                    {!canProgress && isPriced && (
-                        <span className="text-[7px] font-black text-red-500 uppercase flex items-center gap-1 mb-1">
-                            <Lock size={10} /> En attente de paiement à la caisse
+                <div className="flex flex-col items-end">
+                    {isBlocked && isPriced && (
+                        <span className="text-[8px] font-black text-red-500 uppercase flex items-center gap-1 mb-1 animate-pulse">
+                            <Lock size={10} /> Paiement Requis
                         </span>
                     )}
                     <Button 
                         onClick={() => onUpdateStatus(p.id, nextStatus)} 
-                        disabled={!canProgress && isPriced}
+                        disabled={isBlocked}
                         size="sm" 
-                        className={`h-10 rounded-xl font-black text-[9px] uppercase tracking-widest px-5 ${!canProgress && isPriced ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 hover:bg-black text-white'}`}
+                        className={`h-10 rounded-xl font-black text-[9px] uppercase tracking-widest px-5 ${isBlocked ? 'bg-slate-100 text-slate-400' : 'bg-slate-900 hover:bg-black text-white'}`}
                     >
-                    Passer à : {nextStatus}
+                    Expédier : {nextStatus}
                     </Button>
                 </div>
              )}
-             <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-600 rounded-xl transition-all">
-                        <Trash2 size={18} />
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-[2.5rem]">
-                    <AlertDialogHeader><AlertDialogTitle className="font-black italic uppercase text-left">Supprimer ce colis ?</AlertDialogTitle></AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => supabase.from('parcels').delete().eq('id', p.id).then(()=>onRefresh())} className="bg-red-600 rounded-xl font-bold uppercase">OUI, SUPPRIMER</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-             </AlertDialog>
           </div>
         </div>
 
+        {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-100 text-left">
            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
-                 <User size={12} className="text-primary"/> Expéditeur
-              </p>
+              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2 tracking-widest"><User size={12} className="text-primary"/> Expéditeur</p>
               <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{p.senderName}</div>
-              <div className="flex items-center gap-2 text-xs font-bold text-primary">
-                 <Phone size={12} /> {p.senderPhone}
-              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-primary"><Phone size={12} /> {p.senderPhone}</div>
            </div>
 
            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
-                 <User size={12} className="text-emerald-500"/> Destinataire
-              </p>
+              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2 tracking-widest"><User size={12} className="text-emerald-500"/> Destinataire</p>
               <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{p.receiverName}</div>
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-600">
-                 <Phone size={12} /> {p.receiverPhone}
-              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-600"><Phone size={12} /> {p.receiverPhone}</div>
            </div>
 
            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
-                 <MapPin size={12} className="text-blue-500"/> Acheminement
-              </p>
+              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2 tracking-widest"><MapPin size={12} className="text-blue-500"/> Destination</p>
               <div className="flex items-center gap-3 font-black text-xs uppercase text-slate-700">
-                 <span className="bg-slate-100 px-2 py-1 rounded-lg">{p.departureCity}</span>
+                 <span>{p.departureCity}</span>
                  <ArrowRight size={14} className="text-slate-300" />
-                 <span className="bg-primary/10 text-primary px-2 py-1 rounded-lg">{p.arrivalCity}</span>
+                 <span className="text-primary">{p.arrivalCity}</span>
               </div>
            </div>
         </div>
 
+        {/* LIGNE 3 : LOGISTIQUE ET ACTIONS CAISSE */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-left">
            <div className="flex gap-8">
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-70 tracking-widest">Colisage</Label>
-                 <p className="font-black text-slate-900 text-sm">{p.quantity} UNITÉS / {(p.weightKg || 0).toLocaleString()} KG</p>
+                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-60 tracking-widest">Colisage</Label>
+                 <p className="font-black text-slate-900 text-sm">{p.quantity} PCS / {(p.weightKg || 0).toLocaleString()} KG</p>
               </div>
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-70 tracking-widest">Montant Fret</Label>
-                 <p className={`font-black text-xl tracking-tighter ${p.paymentStatus === 'Payé' ? 'text-emerald-600' : 'text-red-500'}`}>
+                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-70 tracking-widest">Montant à Encaisser</Label>
+                 <p className={`font-black text-xl tracking-tighter ${isPaid ? 'text-emerald-600' : 'text-red-500'}`}>
                     {(p.price || 0).toLocaleString()} F
                  </p>
               </div>
            </div>
 
-           <div className="relative">
-              {p.status === 'En attente' && (
+           <div className="flex items-center gap-3 relative">
+              {/* BOUTON PESÉE (Agent Fret) */}
+              {p.status === 'En attente' && !isPaid && (
                 <>
-                  <Button onClick={() => setPricingMode(true)} className="h-11 px-8 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100 gap-2 uppercase text-[10px] tracking-widest">
-                    <Scale size={16} /> Établir la pesée
+                  <Button onClick={() => setPricingMode(true)} className="h-11 px-8 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-lg gap-2 uppercase text-[10px] tracking-widest">
+                    <Scale size={16} /> Tarifer
                   </Button>
 
                   {pricingMode && (
                     <div className="absolute right-0 bottom-full mb-6 bg-white p-8 rounded-[2.5rem] border-2 border-primary/20 shadow-[0_25px_80px_rgba(0,0,0,0.3)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left">
                        <div className="flex justify-between items-center mb-6">
-                          <h4 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet de Pesée</h4>
+                          <h4 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet Pesée</h4>
                           <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full hover:bg-slate-50"><X size={18}/></Button>
                        </div>
                        
                        <div className="space-y-6">
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2">Type d'article / Grille</Label>
+                            <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2">Type de fret agence</Label>
                             <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
                                 <SelectTrigger className="h-12 rounded-xl border-none bg-slate-50 font-bold shadow-inner"><SelectValue placeholder="Choisir tarif..." /></SelectTrigger>
                                 <SelectContent className="rounded-2xl shadow-2xl">
@@ -422,22 +415,21 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                           </div>
 
                           <div className="grid grid-cols-3 gap-3">
-                             <div className="space-y-2">
-                                <Label className="text-[9px] font-black text-slate-900 opacity-70 ml-1">Qté</Label>
+                             <div className="space-y-2 text-left">
+                                <Label className="text-[9px] font-black text-slate-900 opacity-70">Qté</Label>
                                 <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-center shadow-inner" />
                              </div>
-                             <div className="space-y-2">
-                                <Label className="text-[9px] font-black text-slate-900 opacity-70 ml-1">Poids/KG</Label>
+                             <div className="space-y-2 text-left">
+                                <Label className="text-[9px] font-black text-slate-900 opacity-70">Poids/KG</Label>
                                 <Input 
                                   type="number" 
                                   disabled={selectedTariff && !selectedTariff.is_weight_based}
-                                  value={weight} 
-                                  onChange={e => setWeight(e.target.value)} 
+                                  value={weight} onChange={e => setWeight(e.target.value)} 
                                   className={`h-12 rounded-xl bg-slate-50 border-none font-black text-center shadow-inner ${selectedTariff && !selectedTariff.is_weight_based ? 'opacity-30' : ''}`} 
                                 />
                              </div>
-                             <div className="space-y-2">
-                                <Label className="text-[9px] font-black text-emerald-600 uppercase ml-1">Total</Label>
+                             <div className="space-y-2 text-left">
+                                <Label className="text-[9px] font-black text-emerald-600 uppercase">Total</Label>
                                 <div className="h-12 flex items-center justify-center font-black text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 text-xs">
                                   {(calculatedPrice || 0).toLocaleString()}
                                 </div>
@@ -450,6 +442,16 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                     </div>
                   )}
                 </>
+              )}
+
+              {/* BOUTON ENCAISSER (Caisse/Chef uniquement) */}
+              {!isPaid && isPriced && canCollectMoney && (
+                <Button 
+                    onClick={() => onCollectPayment(p.id)}
+                    className="h-11 px-8 rounded-2xl font-black bg-slate-900 hover:bg-black text-white shadow-lg gap-3 uppercase text-[10px] tracking-widest animate-in slide-in-from-right-4"
+                >
+                    <Wallet size={16} className="text-primary" /> Encaisser Cash
+                </Button>
               )}
            </div>
         </div>
