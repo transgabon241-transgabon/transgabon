@@ -98,6 +98,8 @@ export default function AgencyValidate() {
   const canCollectMoney = ['CAISSIER', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
   const canBoardPassengers = ['AGENCE_EMBARQUEMENT', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
 
+  // --- DANS AgencyValidate.tsx ---
+
   const handleValidate = async (forcedRef?: string) => {
     const targetRef = forcedRef || qrInput.trim();
     if (!targetRef) return;
@@ -110,37 +112,40 @@ export default function AgencyValidate() {
         if (parsed && parsed.ref) ref = parsed.ref.toUpperCase();
       } catch (e) {}
 
+      // VERSION CORRIGÉE : On utilise des noms de relations explicites
       const { data: b, error } = await supabase
         .from('bookings')
-        .select(`*, trip:trips(*, from:cities!from_id(name), to:cities!to_id(name), company:companies(*), vehicle:vehicles(registration)), passengers(*), luggages(*)`)
+        .select(`
+          *,
+          trip:trips (
+            *,
+            from_city:cities!from_id (name),
+            to_city:cities!to_id (name),
+            company:companies (*),
+            vehicle:vehicles (registration)
+          ),
+          passengers (*),
+          luggages (*)
+        `)
         .eq('reference', ref)
-        .single();
+        .maybeSingle(); // Utiliser maybeSingle pour éviter l'erreur si non trouvé
 
-      if (error || !b) {
+      if (error) {
+        console.error("Erreur Supabase:", error);
+        throw error;
+      }
+
+      if (!b) {
         setResult({ valid: false, message: 'Billet introuvable.' });
         setLoading(false);
         return;
       }
 
-      const { data: rates } = await supabase
-        .from('company_luggage_settings')
-        .select('label, price')
-        .eq('company_id', b.trip.company_id);
-
-      if (rates) {
-        setAgencyRates(rates);
-        if (rates.length > 0) setSelectedBusItem(rates[0]);
-      }
-
-      const classMapping: Record<string, string> = {
-        'VIP': 'Salon VIP',
-        'BUSINESS': 'Business',
-        '1ERE_CLASSE': '1ère Classe',
-        '2EME_CLASSE': '2ème Classe',
-        'ECO': 'Économique',
-        'STANDARD': 'Standard'
-      };
-
+      // ... reste du code (récupération des tarifs bagages, etc.)
+      // ATTENTION : vérifie les noms des propriétés suite au changement de la requête
+      // b.trip.from_city.name au lieu de b.trip.from.name
+      
+      // ... (Mise à jour du state Result)
       setResult({
         valid: b.status === 'PAYE',
         message: b.status === 'PAYE' ? 'Billet Validé' : 'Paiement Requis',
@@ -150,25 +155,15 @@ export default function AgencyValidate() {
           passengerName: `${b.passengers[0]?.first_name} ${b.passengers[0]?.last_name}`,
           passengerPhone: b.contact_phone,
           seatNumber: b.passengers.map((p: any) => p.seat_number).filter(Boolean).join(', ') || '—',
-          departureCity: b.trip.from.name,
-          arrivalCity: b.arrival_city_name || b.trip.to.name,
-          classLabel: classMapping[b.class_type] || 'Standard',
-          classCode: b.class_type,
-          paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
-          rawStatus: b.status,
-          passengers: b.passengers.map((p: any) => ({ ...p, firstName: p.first_name, lastName: p.last_name })),
-          tripType: b.trip.type,
-          registration: b.trip.vehicle?.registration || '—',
-          freeWeight: b.trip.company.default_free_weight_limit || 30,
-          excessPrice: b.trip.company.default_excess_weight_price || 500,
-          luggages: b.luggages || [],
-          companyId: b.trip.company_id,
-          amount: b.total_amount
+          departureCity: b.trip.from_city?.name || '—', // Corrigé ici
+          arrivalCity: b.arrival_city_name || b.trip.to_city?.name || '—', // Corrigé ici
+          classLabel: "Standard", // Tu peux remettre ton mapping ici
+          // ...
         }
       });
-      setCurrentPage(1);
+
     } catch (e) {
-      toast.error('Erreur serveur.');
+      toast.error('Erreur de validation');
     } finally {
       setLoading(false);
     }
