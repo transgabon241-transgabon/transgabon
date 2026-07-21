@@ -6,7 +6,15 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, CheckCircle, Printer, RefreshCw, Ship, Train, Bus, Hash, MapPin, Gem } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Printer, RefreshCw, Ship, Train, Bus, Hash, MapPin, Gem, Package } from 'lucide-react';
+
+// Type pour les bagages
+type Luggage = {
+  id: string;
+  label: string;
+  quantity: number;
+  total_price: number;
+};
 
 type MappedBooking = {
   id: string;
@@ -15,7 +23,7 @@ type MappedBooking = {
   passengerName: string;
   passengerPhone: string;
   departureCity: string;
-  arrivalCity: string; // Destination réelle
+  arrivalCity: string; 
   companyName: string;
   transportType: string;
   transportTypeCode: string;
@@ -29,6 +37,7 @@ type MappedBooking = {
   paymentMethod: string;
   paymentStatus: string;
   qrCodeData: string;
+  luggages: Luggage[]; // Ajouté
 };
 
 export default function TicketPage() {
@@ -52,7 +61,7 @@ export default function TicketPage() {
       try {
         const { data: b, error } = await supabase
           .from('bookings')
-          .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)), passengers(*)')
+          .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)), passengers(*), luggages(*)')
           .eq('id', bookingId)
           .single();
 
@@ -114,6 +123,7 @@ export default function TicketPage() {
             paymentMethod: methodLabel[b.payment_method] || b.payment_method,
             paymentStatus: b.status === 'PAYE' ? 'Réglé' : 'À régler',
             qrCodeData: qrPayload,
+            luggages: b.luggages || [] // Ajouté
           });
         }
       } catch (err) {
@@ -174,7 +184,6 @@ export default function TicketPage() {
 
         {/* QR Code Section */}
         <div className="p-8 flex flex-col items-center justify-center bg-white border-b-2 border-dashed border-slate-100 relative">
-          {/* Encoches de ticket */}
           <div className="absolute -left-4 top-full -translate-y-1/2 h-8 w-8 bg-slate-50 rounded-full border-r-2 border-slate-100 print:hidden" />
           <div className="absolute -right-4 top-full -translate-y-1/2 h-8 w-8 bg-slate-50 rounded-full border-l-2 border-slate-100 print:hidden" />
           
@@ -204,9 +213,27 @@ export default function TicketPage() {
                     {(booking.classCode === 'VIP' || booking.classCode === '1ERE_CLASSE') && <Gem size={14} />}
                     {booking.travelClass}
                 </div>
-            </InfoField>
+            </div>
 
-            <div className="col-span-2 grid grid-cols-3 gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            {/* SECTION BAGAGES AJOUTÉE */}
+            {booking.luggages.length > 0 && (
+              <div className="col-span-2 space-y-3 pt-4 border-t border-slate-100">
+                <div className="flex items-center gap-2 text-slate-400">
+                   <Package size={14} />
+                   <span className="text-[10px] font-black uppercase tracking-widest">Détail Bagages</span>
+                </div>
+                <div className="grid gap-2">
+                   {booking.luggages.map((lug) => (
+                     <div key={lug.id} className="flex justify-between items-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                        <span className="text-[11px] font-bold text-slate-600 uppercase">{lug.label}</span>
+                        <span className="text-[11px] font-black text-slate-900">x{lug.quantity}</span>
+                     </div>
+                   ))}
+                </div>
+              </div>
+            )}
+
+            <div className="col-span-2 grid grid-cols-3 gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 mt-4">
                <InfoField label="Date" value={new Date(booking.departureDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} />
                <InfoField label="Départ" value={booking.departureTime} />
                <InfoField label="Montant" value={`${booking.amount.toLocaleString()} F`} />
@@ -237,7 +264,7 @@ function InfoField({ label, value, children }: { label: string; value?: string; 
   return (
     <div className="space-y-1">
       <div className="text-[8px] font-black uppercase text-slate-400 tracking-widest">{label}</div>
-      <div className="text-sm font-bold text-slate-900 truncate uppercase">
+      <div className={`text-sm font-bold text-slate-900 truncate uppercase`}>
         {children || value || '—'}
       </div>
     </div>
