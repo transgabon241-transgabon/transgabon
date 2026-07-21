@@ -35,7 +35,7 @@ type Passenger = {
   passengerPhone: string;
   seatNumber: string;
   travelClass: string;
-  destination: string; // NOUVEAU
+  destination: string;
   paymentMethod: string;
   status: string;
   paymentStatus: string;
@@ -79,7 +79,6 @@ export default function AgencyPassengers() {
 
       if (tripError || !trip) throw new Error("Trajet introuvable.");
 
-      // Sécurité Agence
       if (user.companyId && trip.company_id !== user.companyId) {
         toast.error("Accès refusé");
         return;
@@ -113,15 +112,18 @@ export default function AgencyPassengers() {
             passengerPhone: b.contact_phone,
             seatNumber: p.seat_number || '—',
             travelClass: classMapping[b.class_type] || 'Std',
-            destination: b.arrival_city_name || trip.to.name, // On prend l'escale ou le terminus
+            destination: b.arrival_city_name || trip.to.name, // Escale ou terminus
             paymentMethod: b.payment_method === 'AGENCE' ? 'Cash' : b.payment_method.replace('_', ' '),
             status: b.status === 'PAYE' ? 'Confirmé' : 'En attente',
             paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
-            amount: Math.round(b.total_amount / (b.passengers?.length || 1)),
+            amount: Math.round((b.total_amount || 0) / (b.passengers?.length || 1)),
             boarded: p.boarded ?? false
           });
         });
       });
+
+      // TRI PAR NUMÉRO DE SIÈGE (Alpha-numérique)
+      passengersList.sort((a, b) => a.seatNumber.localeCompare(b.seatNumber, undefined, {numeric: true}));
 
       setData({
         companyName: trip.company.name,
@@ -154,7 +156,7 @@ export default function AgencyPassengers() {
         passengers: prev.passengers.map(p => p.id === passengerId ? { ...p, boarded: true } : p)
       } : null);
       toast.success("Passager à bord");
-    } catch (err) { toast.error("Erreur"); }
+    } catch (err) { toast.error("Erreur technique"); }
     finally { setBoardingId(null); }
   };
 
@@ -164,84 +166,106 @@ export default function AgencyPassengers() {
     return data.passengers.slice(start, start + itemsPerPage);
   }, [data, currentPage]);
 
-  const totalPages = Math.ceil((data?.passengers.length || 0) / itemsPerPage);
+  const stats = useMemo(() => {
+    if (!data) return { boarded: 0, total: 0 };
+    return {
+      boarded: data.passengers.filter(p => p.boarded).length,
+      total: data.passengers.length
+    };
+  }, [data]);
 
-  if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48" /><Skeleton className="h-64 w-full" /></div>;
+  const totalPages = Math.ceil((data?.passengers.length || 0) / itemsPerPage);
+  const TransportIcon = data?.transportType === 'TRAIN' ? Train : data?.transportType === 'BOAT' ? Ship : Bus;
+
+  if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48" /><Skeleton className="h-64 w-full rounded-3xl" /></div>;
   if (!data) return null;
 
   return (
-    <div className="text-foreground text-left p-4 max-w-6xl mx-auto">
+    <div className="text-foreground text-left p-4 max-w-6xl mx-auto animate-in fade-in duration-500">
+      
       {/* HEADER WEB */}
       <div className="print:hidden">
-        <Link to="/agency/departures" className="inline-flex items-center gap-1 text-xs font-bold uppercase text-muted-foreground hover:text-primary mb-4 transition-colors">
+        <Link to="/agency/departures" className="inline-flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 hover:text-primary mb-6 transition-all">
           <ArrowLeft size={12} /> Retour aux départs
         </Link>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8">
-          <div className="flex items-center gap-4">
-            <div className={`p-4 rounded-3xl shadow-xl ${data.transportType === 'BOAT' ? 'bg-blue-600' : data.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'} text-white`}>
-              {data.transportType === 'BOAT' ? <Ship size={32}/> : data.transportType === 'TRAIN' ? <Train size={32} /> : <Bus size={32} />}
+          <div className="flex items-center gap-5">
+            <div className={`p-5 rounded-[1.5rem] shadow-2xl ${data.transportType === 'BOAT' ? 'bg-blue-600' : data.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'} text-white`}>
+               <TransportIcon size={32} />
             </div>
             <div>
               <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Manifeste passagers</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2">
-                <Badge variant="outline" className="font-bold border-primary/20 text-primary">{data.departureCity} → {data.arrivalCity}</Badge>
-                <span className="flex items-center gap-1 text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded border uppercase">
+                <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5">{data.departureCity} ➔ {data.arrivalCity}</Badge>
+                <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border uppercase">
                    {data.vehicleRegistration}
                 </span>
               </div>
             </div>
           </div>
-          <Button onClick={() => window.print()} className="gap-2 font-black rounded-xl h-14 px-8 shadow-lg">
-            <Printer size={20} /> IMPRIMER LE MANIFESTE
-          </Button>
+          <div className="flex items-center gap-4">
+             <div className="bg-slate-100 p-4 rounded-2xl flex items-center gap-6">
+                <div className="text-center">
+                    <p className="text-[8px] font-black text-slate-400 uppercase">Présents</p>
+                    <p className="text-xl font-black text-emerald-600 leading-none">{stats.boarded}</p>
+                </div>
+                <div className="text-center">
+                    <p className="text-[8px] font-black text-slate-400 uppercase">Total</p>
+                    <p className="text-xl font-black text-slate-900 leading-none">{stats.total}</p>
+                </div>
+             </div>
+             <Button onClick={() => window.print()} className="gap-2 font-black rounded-xl h-14 px-8 shadow-xl">
+                <Printer size={20} /> IMPRIMER
+             </Button>
+          </div>
         </div>
       </div>
 
-      {/* HEADER IMPRESSION OFFICIELLE */}
+      {/* VERSION IMPRESSION OFFICIELLE */}
       <div className="hidden print:block mb-10 border-b-4 border-slate-900 pb-8 text-left">
-        <h1 className="text-4xl font-black uppercase text-slate-900">{data.companyName}</h1>
-        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Manifeste de Bord Officiel</p>
+        <h1 className="text-4xl font-black uppercase text-slate-900 leading-none">{data.companyName}</h1>
+        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-2">Manifeste de Bord Officiel — Certification de Transport</p>
         <div className="grid grid-cols-3 gap-10 mt-8 p-6 bg-slate-50 rounded-2xl border-2 border-slate-200">
            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase">Trajet Principal</p>
-              <p className="font-black text-lg">{data.departureCity} ➔ {data.arrivalCity}</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Trajet</p>
+              <p className="font-black text-lg uppercase">{data.departureCity} ➔ {data.arrivalCity}</p>
            </div>
            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase">Date & Heure</p>
-              <p className="font-black text-lg">{data.departureDate} • {data.departureTime}</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Date du Voyage</p>
+              <p className="font-black text-lg">{new Date(data.departureDate).toLocaleDateString('fr-FR')} • {data.departureTime}</p>
            </div>
            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase">Véhicule / Train</p>
-              <p className="font-black text-lg">{data.vehicleRegistration} ({data.departureCode})</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Appareil / Train</p>
+              <p className="font-black text-lg uppercase">{data.vehicleRegistration} ({data.departureCode})</p>
            </div>
         </div>
       </div>
 
-      {/* TABLEAU */}
-      <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-xl print:shadow-none print:border-slate-900 print:rounded-none">
+      {/* TABLEAU PREMIUM */}
+      <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-2xl print:shadow-none print:border-slate-900 print:rounded-none">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b-2 print:bg-slate-100">
             <tr>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-400">#</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-400">Nom du Passager</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-400">Siège</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-400">Classe</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-400">Destination</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-400 print:hidden">Validation</th>
-              <th className="hidden print:table-cell text-left p-5 font-black uppercase text-[10px] border-l-2">Émargement</th>
+              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">#</th>
+              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Passager</th>
+              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest text-center">Siège</th>
+              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Classe</th>
+              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Destination</th>
+              <th className="text-center p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest print:hidden">Contrôle</th>
+              <th className="hidden print:table-cell text-left p-5 font-black uppercase text-[10px] border-l-2">Signature</th>
             </tr>
           </thead>
           <tbody className="divide-y-2 divide-slate-50">
-            {(window.matchMedia('print').matches ? data.passengers : currentPassengers).map((p, i) => (
-              <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+            {currentPassengers.map((p, i) => (
+              <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                 <td className="p-5 text-slate-300 font-black">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
                 <td className="p-5">
-                    <p className="font-black text-slate-800 uppercase text-sm leading-none mb-1">{p.passengerName}</p>
+                    <p className="font-black text-slate-900 uppercase text-sm leading-none mb-1.5">{p.passengerName}</p>
                     <p className="text-[10px] font-mono text-primary font-bold">{p.bookingNumber}</p>
                 </td>
-                <td className="p-5">
-                   <div className="h-9 w-9 rounded-lg bg-slate-900 flex items-center justify-center text-white font-black text-xs">
+                <td className="p-5 text-center">
+                   <div className="inline-flex h-9 w-9 rounded-xl bg-slate-900 items-center justify-center text-white font-black text-xs shadow-md">
                       {p.seatNumber}
                    </div>
                 </td>
@@ -251,26 +275,26 @@ export default function AgencyPassengers() {
                    </Badge>
                 </td>
                 <td className="p-5">
-                   <div className="flex items-center gap-2 font-bold text-slate-700 uppercase text-xs">
+                   <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-[11px] tracking-tight">
                       <MapPin size={12} className="text-primary" />
                       {p.destination}
                    </div>
                 </td>
                 <td className="p-5 text-center print:hidden">
                    {p.boarded ? (
-                     <div className="flex items-center gap-2 text-emerald-600 font-black text-[10px]">
-                        <CheckCircle2 size={16} /> VALIDÉ
+                     <div className="flex items-center justify-center gap-2 text-emerald-600 font-black text-[9px] uppercase">
+                        <CheckCircle2 size={16} /> À BORD
                      </div>
                    ) : (
                      <Button 
                         size="sm" 
                         variant="outline" 
-                        className="h-9 text-[9px] font-black uppercase border-2 rounded-xl hover:bg-primary hover:text-white transition-all"
+                        className="h-9 text-[9px] font-black uppercase border-2 rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
                         onClick={() => handleBoardPassenger(p.id)}
                         disabled={boardingId === p.id}
                      >
                         {boardingId === p.id ? <RefreshCw className="animate-spin h-3 w-3" /> : <UserCheck size={14} className="mr-1" />}
-                        Embarquer
+                        Valider
                      </Button>
                    )}
                 </td>
@@ -283,16 +307,27 @@ export default function AgencyPassengers() {
         </table>
       </div>
 
-      {/* FOOTER STATS */}
-      <div className="mt-8 flex justify-between items-center print:border-t-2 print:border-slate-900 print:pt-4">
-         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden print:block">Document certifié TransGabon-Connect</p>
-         <div className="bg-slate-900 text-white px-8 py-4 rounded-3xl flex items-center gap-4 shadow-xl print:bg-white print:text-slate-900 print:p-0 print:shadow-none">
-            <Users size={24} className="text-primary" />
-            <div>
-               <p className="text-[10px] font-black uppercase text-primary/60 leading-none mb-1">Total Passagers</p>
-               <p className="text-2xl font-black">{data.passengers.length} Voyageurs</p>
-            </div>
-         </div>
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-8 print:hidden">
+          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border-2 bg-white shadow-sm"><ChevronLeft size={18} /></Button>
+          <div className="text-[10px] font-black uppercase text-slate-400 px-4">Page {currentPage} / {totalPages}</div>
+          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border-2 bg-white shadow-sm"><ChevronRight size={18} /></Button>
+        </div>
+      )}
+
+      <div className="mt-10 p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 print:bg-white print:text-slate-900 print:border-t-2 print:border-slate-900 print:rounded-none">
+        <div className="text-left space-y-1">
+          <p className="text-[10px] font-black uppercase text-primary tracking-[0.4em]">Certification TransGabon Connect</p>
+          <p className="text-xs font-medium opacity-60 italic">Ce document constitue le manifeste de bord légal pour les autorités de contrôle.</p>
+        </div>
+        <div className="text-2xl font-black uppercase tracking-tighter flex items-center gap-4">
+           <div className="text-right">
+                <p className="text-[10px] font-bold text-slate-400 opacity-60 leading-none">Total passagers</p>
+                <p>{data.passengers.length}</p>
+           </div>
+           <Users size={32} className="text-primary" />
+        </div>
       </div>
     </div>
   );

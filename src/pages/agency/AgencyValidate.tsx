@@ -98,8 +98,6 @@ export default function AgencyValidate() {
   const canCollectMoney = ['CAISSIER', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
   const canBoardPassengers = ['AGENCE_EMBARQUEMENT', 'AGENT', 'ADMINISTRATEUR', 'ADMIN'].includes(userRole || '');
 
-  // --- DANS AgencyValidate.tsx ---
-
   const handleValidate = async (forcedRef?: string) => {
     const targetRef = forcedRef || qrInput.trim();
     if (!targetRef) return;
@@ -112,7 +110,6 @@ export default function AgencyValidate() {
         if (parsed && parsed.ref) ref = parsed.ref.toUpperCase();
       } catch (e) {}
 
-      // VERSION CORRIGÉE : On utilise des noms de relations explicites
       const { data: b, error } = await supabase
         .from('bookings')
         .select(`
@@ -128,12 +125,9 @@ export default function AgencyValidate() {
           luggages (*)
         `)
         .eq('reference', ref)
-        .maybeSingle(); // Utiliser maybeSingle pour éviter l'erreur si non trouvé
+        .maybeSingle();
 
-      if (error) {
-        console.error("Erreur Supabase:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       if (!b) {
         setResult({ valid: false, message: 'Billet introuvable.' });
@@ -141,28 +135,53 @@ export default function AgencyValidate() {
         return;
       }
 
-      // ... reste du code (récupération des tarifs bagages, etc.)
-      // ATTENTION : vérifie les noms des propriétés suite au changement de la requête
-      // b.trip.from_city.name au lieu de b.trip.from.name
-      
-      // ... (Mise à jour du state Result)
+      const { data: rates } = await supabase
+        .from('company_luggage_settings')
+        .select('label, price')
+        .eq('company_id', b.trip.company_id);
+
+      if (rates) {
+        setAgencyRates(rates);
+        if (rates.length > 0) setSelectedBusItem(rates[0]);
+      }
+
+      const classMapping: Record<string, string> = {
+        'VIP': 'Salon VIP',
+        'BUSINESS': 'Business',
+        '1ERE_CLASSE': '1ère Classe',
+        '2EME_CLASSE': '2ème Classe',
+        'ECO': 'Économique',
+        'STANDARD': 'Standard'
+      };
+
       setResult({
         valid: b.status === 'PAYE',
         message: b.status === 'PAYE' ? 'Billet Validé' : 'Paiement Requis',
         booking: {
           id: b.id,
           bookingNumber: b.reference,
-          passengerName: `${b.passengers[0]?.first_name} ${b.passengers[0]?.last_name}`,
+          passengerName: `${b.passengers[0]?.first_name || ''} ${b.passengers[0]?.last_name || ''}`,
           passengerPhone: b.contact_phone,
-          seatNumber: b.passengers.map((p: any) => p.seat_number).filter(Boolean).join(', ') || '—',
-          departureCity: b.trip.from_city?.name || '—', // Corrigé ici
-          arrivalCity: b.arrival_city_name || b.trip.to_city?.name || '—', // Corrigé ici
-          classLabel: "Standard", // Tu peux remettre ton mapping ici
-          // ...
+          seatNumber: (b.passengers || []).map((p: any) => p.seat_number).filter(Boolean).join(', ') || '—',
+          departureCity: b.trip.from_city?.name || '—',
+          arrivalCity: b.arrival_city_name || b.trip.to_city?.name || '—',
+          classLabel: classMapping[b.class_type] || 'Standard',
+          classCode: b.class_type,
+          paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
+          rawStatus: b.status,
+          passengers: (b.passengers || []).map((p: any) => ({ ...p, firstName: p.first_name, lastName: p.last_name })),
+          tripType: b.trip.type,
+          registration: b.trip.vehicle?.registration || '—',
+          freeWeight: b.trip.company.default_free_weight_limit || 30,
+          excessPrice: b.trip.company.default_excess_weight_price || 500,
+          luggages: b.luggages || [],
+          companyId: b.trip.company_id,
+          amount: Number(b.total_amount) || 0
         }
       });
-
+      setCurrentPage(1);
     } catch (e) {
+      console.error(e);
       toast.error('Erreur de validation');
     } finally {
       setLoading(false);
@@ -220,7 +239,10 @@ export default function AgencyValidate() {
     return result.booking.passengers.slice(start, start + itemsPerPage);
   }, [result, currentPage]);
 
-  const luggageTotal = result?.booking?.luggages?.reduce((sum, l) => sum + Number(l.total_price || 0), 0) || 0;
+  const luggageTotal = useMemo(() => 
+    result?.booking?.luggages?.reduce((sum, l) => sum + Number(l.total_price || 0), 0) || 0
+  , [result]);
+
   const TransportIcon = result?.booking?.tripType === 'BOAT' ? Ship : result?.booking?.tripType === 'TRAIN' ? Train : Bus;
 
   return (
@@ -241,7 +263,7 @@ export default function AgencyValidate() {
           value={qrInput} 
           onChange={e => setQrInput(e.target.value)} 
           placeholder="RÉFÉRENCE OU SCAN QR..." 
-          className="h-14 rounded-2xl border-none bg-slate-50 font-black uppercase tracking-widest px-6 shadow-inner"
+          className="h-14 rounded-2xl border-none bg-slate-50 font-black uppercase tracking-widest px-6 shadow-inner focus-visible:ring-primary"
           onKeyDown={e => e.key === 'Enter' && handleValidate()} 
         />
         <Button onClick={() => handleValidate()} disabled={loading} className="h-14 w-14 rounded-2xl shadow-lg bg-primary">
@@ -262,7 +284,7 @@ export default function AgencyValidate() {
                 </div>
               </div>
               {(result.booking.classCode === 'VIP' || result.booking.classCode === '1ERE_CLASSE') && (
-                <div className="p-3 bg-amber-100 rounded-2xl text-amber-600 shadow-lg shadow-amber-100 animate-pulse">
+                <div className="p-3 bg-amber-100 rounded-2xl text-amber-600 shadow-lg animate-pulse">
                     <Gem size={28} />
                 </div>
               )}
@@ -279,7 +301,7 @@ export default function AgencyValidate() {
                     <TransportIcon size={20} />
                  </div>
                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none">Matériel / Immatriculation</span>
+                    <span className="text-[9px] font-black uppercase text-slate-900 opacity-70 tracking-widest leading-none">Matériel / Immatriculation</span>
                     <span className="font-mono text-sm font-black text-slate-900 uppercase mt-1">
                        {result.booking.registration}
                     </span>
@@ -294,17 +316,17 @@ export default function AgencyValidate() {
                  <Package size={14} /> Suppléments Bagages
                </h3>
                
-               {result.booking.luggages.length > 0 && (
+               {(result.booking.luggages || []).length > 0 && (
                  <div className="space-y-2 mb-6">
                     {result.booking.luggages.map(lug => (
                       <div key={lug.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10 text-xs font-bold backdrop-blur-sm">
                          <span className="text-slate-300">{lug.quantity}x {lug.label}</span>
-                         <span className="text-primary font-black">{(lug.total_price || 0).toLocaleString()} F</span>
+                         <span className="text-primary font-black">{(Number(lug.total_price) || 0).toLocaleString()} F</span>
                       </div>
                     ))}
                     <div className="flex justify-between p-4 bg-primary/10 rounded-xl border border-primary/20 font-black text-xs uppercase text-primary">
                       <span>Total Suppléments</span>
-                      <span>{(luggageTotal || 0).toLocaleString()} FCFA</span>
+                      <span>{(Number(luggageTotal) || 0).toLocaleString()} FCFA</span>
                     </div>
                  </div>
                )}
@@ -337,7 +359,7 @@ export default function AgencyValidate() {
 
             {/* SECTION EMBARQUEMENT */}
             <div className="space-y-4">
-               <h3 className="text-[10px] font-black uppercase flex items-center gap-2 text-slate-400 tracking-widest ml-4">
+               <h3 className="text-[10px] font-black uppercase flex items-center gap-2 text-slate-900 opacity-70 tracking-widest ml-4">
                  <Users size={14} /> Liste d'embarquement
                </h3>
                
@@ -383,7 +405,7 @@ export default function AgencyValidate() {
             <div className="bg-emerald-600 p-8 rounded-[2.5rem] shadow-2xl text-white flex items-center justify-between gap-6 animate-in slide-in-from-bottom-2">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none">Caisse Guichet</p>
-                <h4 className="text-2xl font-black uppercase italic mt-1 tracking-tighter">{(result.booking?.amount || 0).toLocaleString()} F</h4>
+                <h4 className="text-2xl font-black uppercase italic mt-1 tracking-tighter">{(Number(result.booking?.amount) || 0).toLocaleString()} F</h4>
               </div>
               <Button 
                 onClick={() => supabase.from('bookings').update({status:'PAYE'}).eq('id', result.booking?.id).then(()=>handleValidate(result.booking?.bookingNumber))} 
