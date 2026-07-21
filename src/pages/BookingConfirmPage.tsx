@@ -128,6 +128,8 @@ export default function BookingConfirmPage() {
         p_seat_number: seat,
         p_payment_method: mappedMethod,
         p_total_amount: finalPrice,
+        p_arrival_city_name: destinationName, 
+        p_class_type: selectedClass           
       });
 
       if (error || !data?.success) throw new Error(error?.message || data?.error);
