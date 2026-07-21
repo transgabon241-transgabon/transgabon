@@ -123,7 +123,7 @@ export default function AgencyParcels() {
         description: p.description || 'Sans description',
         departureCity: p.from?.name || '—',
         arrivalCity: p.to?.name || '—',
-        departureDate: p.created_at.slice(0, 10),
+        departureDate: p.created_at ? p.created_at.slice(0, 10) : '',
         senderName: p.sender_name,
         senderPhone: p.sender_phone,
         receiverName: p.receiver_name,
@@ -143,7 +143,7 @@ export default function AgencyParcels() {
 
   useEffect(() => { loadData(); }, [user, statusFilter]);
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
+  const handleUpdateStatus = async (id: string, newStatusDisplay: string) => {
     try {
       const dbStatusMap: Record<string, string> = {
         'Pris en charge': 'EN_ATTENTE_DEPART',
@@ -153,9 +153,9 @@ export default function AgencyParcels() {
         'Retourné': 'RETOURNE',
       };
 
-      const { error } = await supabase.from('parcels').update({ status: dbStatusMap[newStatus] }).eq('id', id);
+      const { error } = await supabase.from('parcels').update({ status: dbStatusMap[newStatusDisplay] }).eq('id', id);
       if (error) throw error;
-      toast.success(`Statut mis à jour : ${newStatus}`);
+      toast.success(`Statut mis à jour : ${newStatusDisplay}`);
       loadData();
     } catch (e) { toast.error('Erreur de mise à jour'); }
   };
@@ -173,7 +173,7 @@ export default function AgencyParcels() {
   const paginatedParcels = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
-  if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full rounded-[2rem]"/></div>;
+  if (loading && parcels.length === 0) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full rounded-[2rem]"/></div>;
 
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500">
@@ -194,7 +194,7 @@ export default function AgencyParcels() {
         </Button>
       </div>
 
-      {/* Barre de Recherche Premium */}
+      {/* Barre de Recherche */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-5 rounded-[2rem] border-2 border-slate-50 shadow-xl shadow-slate-200/50">
         <div className="md:col-span-3 relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
@@ -209,7 +209,7 @@ export default function AgencyParcels() {
           <SelectTrigger className="h-14 rounded-2xl border-2 font-black uppercase text-[10px] bg-slate-50">
             <SelectValue placeholder="Filtrer" />
           </SelectTrigger>
-          <SelectContent className="rounded-2xl font-bold">
+          <SelectContent className="rounded-xl font-bold">
             <SelectItem value="all">TOUS LES COLIS</SelectItem>
             <SelectItem value="En attente">EN ATTENTE</SelectItem>
             <SelectItem value="Pris en charge">PRIS EN CHARGE</SelectItem>
@@ -241,7 +241,7 @@ export default function AgencyParcels() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
+        <div className="flex items-center justify-center gap-4 mt-8 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
           <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronLeft size={18} /></Button>
           <span className="text-[10px] font-black uppercase text-slate-400 px-4">Page {currentPage} / {totalPages}</span>
           <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronRight size={18} /></Button>
@@ -279,25 +279,25 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
     } catch (e) { toast.error("Erreur"); }
   };
 
-  const nextStatus = (current: string) => {
+  // RÉSOLUTION DU BUG VERCEL : On utilise une fonction nommée explicite
+  const getNextStatus = (current: string) => {
     if (current === 'En attente') return 'Pris en charge';
     if (current === 'Pris en charge') return 'En transit';
     if (current === 'En transit') return 'Arrivé';
     if (current === 'Arrivé') return 'Livré';
     return null;
-  }(p.status);
+  };
 
+  const nextStatus = getNextStatus(p.status);
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : Bus;
 
   return (
-    // Note: On retire 'overflow-hidden' pour que le menu 'Tarifer' ne soit pas coupé
-    // On ajoute un z-index plus élevé quand le mode tarification est ouvert
     <div className={`bg-white border-2 border-slate-100 rounded-[2.5rem] p-6 hover:shadow-xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
       <div className="flex flex-col space-y-6">
         
         {/* LIGNE 1 : INFOS DE BASE ET STATUT */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-left">
             <div className={`h-14 w-14 rounded-[1.25rem] flex items-center justify-center text-white shadow-lg ${p.transportType === 'BOAT' ? 'bg-blue-600' : p.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
                <TransportIcon size={24} />
             </div>
@@ -317,7 +317,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
              )}
              <AlertDialog>
                 <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-600 rounded-xl transition-all">
                         <Trash2 size={18} />
                     </Button>
                 </AlertDialogTrigger>
@@ -332,9 +332,9 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
           </div>
         </div>
 
-        {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE (LA PARTIE ENRICHIE) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-100">
-           <div className="space-y-3">
+        {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE (PARTIE ENRICHIE) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-100 text-left">
+           <div className="space-y-2">
               <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
                  <User size={12} className="text-primary"/> Expéditeur
               </p>
@@ -344,7 +344,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
               </div>
            </div>
 
-           <div className="space-y-3">
+           <div className="space-y-2">
               <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
                  <User size={12} className="text-emerald-500"/> Destinataire
               </p>
@@ -354,7 +354,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
               </div>
            </div>
 
-           <div className="space-y-3">
+           <div className="space-y-2">
               <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
                  <MapPin size={12} className="text-blue-500"/> Acheminement
               </p>
@@ -363,16 +363,16 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                  <ArrowRight size={14} className="text-slate-300" />
                  <span className="bg-primary/10 text-primary px-2 py-1 rounded-lg">{p.arrivalCity}</span>
               </div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase italic">Prévu le : {p.departureDate}</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase italic mt-1">Dépôt le : {p.departureDate}</p>
            </div>
         </div>
 
         {/* LIGNE 3 : LOGISTIQUE ET TARIFER */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-left">
            <div className="flex gap-8">
               <div className="space-y-1">
                  <Label className="text-[9px] font-black uppercase text-slate-900 opacity-60 tracking-widest">Colisage</Label>
-                 <p className="font-black text-slate-900 text-sm">{p.quantity} PCS / {(p.weightKg || 0).toLocaleString()} KG</p>
+                 <p className="font-black text-slate-900 text-sm">{p.quantity} UNITÉS / {(p.weightKg || 0).toLocaleString()} KG</p>
               </div>
               <div className="space-y-1">
                  <Label className="text-[9px] font-black uppercase text-slate-900 opacity-60 tracking-widest">Montant Fret</Label>
@@ -388,15 +388,15 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                   </Button>
 
                   {pricingMode && (
-                    <div className="absolute right-0 bottom-full mb-6 bg-white p-8 rounded-[2.5rem] border-2 border-primary/20 shadow-[0_25px_80px_rgba(0,0,0,0.3)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300">
+                    <div className="absolute right-0 bottom-full mb-6 bg-white p-8 rounded-[2.5rem] border-2 border-primary/20 shadow-[0_25px_80px_rgba(0,0,0,0.3)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left">
                        <div className="flex justify-between items-center mb-6">
                           <h4 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet de Pesée</h4>
                           <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full hover:bg-slate-50"><X size={18}/></Button>
                        </div>
                        
                        <div className="space-y-6">
-                          <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2">Type d'article</Label>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2">Type d'article / Grille</Label>
                             <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
                                 <SelectTrigger className="h-12 rounded-xl border-none bg-slate-50 font-bold shadow-inner"><SelectValue placeholder="Choisir tarif..." /></SelectTrigger>
                                 <SelectContent className="rounded-2xl shadow-2xl">
@@ -405,7 +405,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                             </Select>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-3 text-left">
+                          <div className="grid grid-cols-3 gap-3">
                              <div className="space-y-2">
                                 <Label className="text-[9px] font-black text-slate-900 opacity-70 ml-1">Qté</Label>
                                 <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-center shadow-inner" />
@@ -423,7 +423,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                              <div className="space-y-2">
                                 <Label className="text-[9px] font-black text-emerald-600 uppercase ml-1">Total</Label>
                                 <div className="h-12 flex items-center justify-center font-black text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 text-xs">
-                                  {calculatedPrice.toLocaleString()}
+                                  {(calculatedPrice || 0).toLocaleString()}
                                 </div>
                              </div>
                           </div>
