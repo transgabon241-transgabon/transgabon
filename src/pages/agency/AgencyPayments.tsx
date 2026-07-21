@@ -75,8 +75,8 @@ export default function AgencyPayments() {
         // Mapping des méthodes de paiement
         const methodLabel: Record<string, string> = {
           AGENCE: 'Espèces',
-          AIRTEL_MONEY: 'Airtel Money',
-          MOOV_MONEY: 'Moov Money',
+          // AIRTEL_MONEY: 'Airtel Money',
+          // MOOV_MONEY: 'Moov Money',
         };
 
         // Mapping des classes (pour affichage élégant)

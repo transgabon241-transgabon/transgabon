@@ -59,8 +59,8 @@ type Tariff = {
 
 const PAYMENT_METHODS = [
   { id: 'AGENCE', label: 'Paiement en agence (Espèces)' },
-  { id: 'AIRTEL_MONEY', label: 'Airtel Money' },
-  { id: 'MOOV_MONEY', label: 'Moov Money' },
+  //{ id: 'AIRTEL_MONEY', label: 'Airtel Money' },
+  //{ id: 'MOOV_MONEY', label: 'Moov Money' },
 ];
 
 export default function SendParcelPage() {
@@ -91,7 +91,7 @@ export default function SendParcelPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ trackingNumber: string; price: number; method: string } | null>(null);
 
-  // Charger les villes
+   Charger les villes
   useEffect(() => {
     const fetchCities = async () => {
       const { data } = await supabase.from('cities').select('id, name').order('name');

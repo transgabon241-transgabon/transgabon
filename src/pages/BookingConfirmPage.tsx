@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 
 const PAYMENT_METHODS = [
-  { value: 'airtel_money', label: 'Airtel Money', icon: Smartphone },
-  { value: 'moov_money', label: 'Moov Money', icon: Smartphone },
+  // { value: 'airtel_money', label: 'Airtel Money', icon: Smartphone },
+  // { value: 'moov_money', label: 'Moov Money', icon: Smartphone },
   { value: 'agence', label: 'Paiement en agence', icon: Building2 }, 
 ] as const;
 

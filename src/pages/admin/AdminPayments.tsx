@@ -83,8 +83,8 @@ export default function AdminPayments() {
         const lead = b.passengers[0];
         const methodLabel: Record<string, string> = {
           AGENCE: 'Espèces',
-          AIRTEL_MONEY: 'Airtel Money',
-          MOOV_MONEY: 'Moov Money',
+          // AIRTEL_MONEY: 'Airtel Money',
+          // MOOV_MONEY: 'Moov Money',
         };
 
         return {
