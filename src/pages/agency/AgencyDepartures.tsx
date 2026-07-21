@@ -83,7 +83,7 @@ export default function AgencyDepartures() {
           from:cities!from_id(name), 
           to:cities!to_id(name), 
           vehicle:vehicles(registration),
-          trip_stops(city_id, arrival_time, price_from_start, stop_order, cities(name))
+          trip_stops(*, city:cities(name)) -- Jointure corrigée ici
         `)
         .eq('company_id', user.companyId)
         .order('departure_date', { ascending: true });
@@ -97,18 +97,19 @@ export default function AgencyDepartures() {
         departureDate: t.departure_date,
         departureTime: t.departure_time,
         arrivalTime: t.arrival_time,
-        price: Number(t.price) || 0, // Sécurité : conversion en nombre
+        price: Number(t.price) || 0,
         vipPrice: Number(t.class_vip_price) || 0,
         businessPrice: Number(t.class_business_price) || 0,
         totalSeats: t.seats_total || 0,
         bookingCount: (t.seats_total || 0) - (t.seats_left || 0),
         status: t.status || 'Programmé',
         type: t.type,
+        // On récupère le nom de la ville via la jointure 'city' définie plus haut
         stops: (t.trip_stops || []).map((s: any) => ({
             cityId: s.city_id,
-            cityName: s.cities?.name || 'Escale',
+            cityName: s.city?.name || 'Arrêt', 
             arrivalTime: s.arrival_time || '--:--',
-            priceFromStart: Number(s.price_from_start) || 0, // Sécurité : conversion en nombre
+            priceFromStart: Number(s.price_from_start) || 0,
             stop_order: s.stop_order
         })).sort((a:any, b:any) => a.stop_order - b.stop_order)
       })));
