@@ -27,7 +27,9 @@ import {
   MapPin,
   Phone,
   User,
-  Info
+  Info,
+  CreditCard,
+  Lock
 } from 'lucide-react'; 
 import { toast } from 'sonner';
 
@@ -47,7 +49,7 @@ type Parcel = {
   price: number;
   weightKg: number;
   quantity: number;
-  paymentStatus: string;
+  paymentStatus: string; // 'Payé' | 'À payer'
   transportType: string;
 };
 
@@ -185,8 +187,8 @@ export default function AgencyParcels() {
             <Package size={28} />
           </div>
           <div>
-            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Gestion du Fret</h1>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Logistique et Messagerie Nationale</p>
+            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Logistique Fret</h1>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Validation des envois et pesées</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={loadData} className="rounded-xl font-black border-2 h-11 px-6 text-[10px] uppercase tracking-widest">
@@ -231,12 +233,6 @@ export default function AgencyParcels() {
             onUpdateStatus={handleUpdateStatus} 
           />
         ))}
-        {paginatedParcels.length === 0 && (
-            <div className="p-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
-                <Package className="h-12 w-12 mx-auto text-slate-200 mb-2" />
-                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Aucun colis trouvé</p>
-            </div>
-        )}
       </div>
 
       {/* Pagination */}
@@ -271,15 +267,14 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
         price: calculatedPrice, 
         weight: parseFloat(weight) || 0,
         quantity: parseInt(quantity) || 1,
-        status: 'EN_ATTENTE_DEPART' 
+        status: 'COLIS_ENREGISTRE' // On reste en attente, mais avec un prix
       }).eq('id', p.id);
-      toast.success("Tarification validée");
+      toast.success("Tarification validée. Envoyez le client à la caisse.");
       onRefresh();
       setPricingMode(false);
     } catch (e) { toast.error("Erreur"); }
   };
 
-  // RÉSOLUTION DU BUG VERCEL : On utilise une fonction nommée explicite
   const getNextStatus = (current: string) => {
     if (current === 'En attente') return 'Pris en charge';
     if (current === 'Pris en charge') return 'En transit';
@@ -289,13 +284,18 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
   };
 
   const nextStatus = getNextStatus(p.status);
+  const isUnpaid = p.paymentStatus !== 'Payé';
+  const isPriced = p.price > 0;
+  
+  // LOGIQUE DE BLOCAGE : On bloque si c'est la première étape et que ce n'est pas payé
+  const canProgress = !isUnpaid || p.status !== 'En attente';
+
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : Bus;
 
   return (
     <div className={`bg-white border-2 border-slate-100 rounded-[2.5rem] p-6 hover:shadow-xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
       <div className="flex flex-col space-y-6">
         
-        {/* LIGNE 1 : INFOS DE BASE ET STATUT */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-4 text-left">
             <div className={`h-14 w-14 rounded-[1.25rem] flex items-center justify-center text-white shadow-lg ${p.transportType === 'BOAT' ? 'bg-blue-600' : p.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
@@ -305,15 +305,32 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono font-black text-primary text-sm uppercase tracking-tighter">{p.trackingNumber}</span>
                 <Badge className={`${STATUS_COLORS[p.status]} border-2 font-black uppercase text-[8px] h-5 px-2`}>{p.status}</Badge>
+                {/* BADGE DE PAIEMENT */}
+                <Badge className={`border-2 font-black uppercase text-[8px] h-5 px-2 ${p.paymentStatus === 'Payé' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                    {p.paymentStatus}
+                </Badge>
               </div>
               <p className="text-base font-black text-slate-900 uppercase italic leading-none">{p.description}</p>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
              {nextStatus && !pricingMode && (
-                <Button onClick={() => onUpdateStatus(p.id, nextStatus)} size="sm" className="h-10 rounded-xl font-black text-[9px] uppercase tracking-widest bg-slate-900 hover:bg-black px-5">
-                   Passer à : {nextStatus}
-                </Button>
+                <div className="flex flex-col items-end gap-1">
+                    {!canProgress && isPriced && (
+                        <span className="text-[7px] font-black text-red-500 uppercase flex items-center gap-1 mb-1">
+                            <Lock size={10} /> En attente de paiement à la caisse
+                        </span>
+                    )}
+                    <Button 
+                        onClick={() => onUpdateStatus(p.id, nextStatus)} 
+                        disabled={!canProgress && isPriced}
+                        size="sm" 
+                        className={`h-10 rounded-xl font-black text-[9px] uppercase tracking-widest px-5 ${!canProgress && isPriced ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 hover:bg-black text-white'}`}
+                    >
+                    Passer à : {nextStatus}
+                    </Button>
+                </div>
              )}
              <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -322,17 +339,16 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                     </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-[2.5rem]">
-                    <AlertDialogHeader><AlertDialogTitle className="font-black italic uppercase">Supprimer ce colis ?</AlertDialogTitle></AlertDialogHeader>
+                    <AlertDialogHeader><AlertDialogTitle className="font-black italic uppercase text-left">Supprimer ce colis ?</AlertDialogTitle></AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => supabase.from('parcels').delete().eq('id', p.id).then(()=>onRefresh())} className="bg-red-600 rounded-xl font-bold uppercase">SUPPRIMER</AlertDialogAction>
+                        <AlertDialogAction onClick={() => supabase.from('parcels').delete().eq('id', p.id).then(()=>onRefresh())} className="bg-red-600 rounded-xl font-bold uppercase">OUI, SUPPRIMER</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
              </AlertDialog>
           </div>
         </div>
 
-        {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE (PARTIE ENRICHIE) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-100 text-left">
            <div className="space-y-2">
               <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
@@ -363,20 +379,20 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                  <ArrowRight size={14} className="text-slate-300" />
                  <span className="bg-primary/10 text-primary px-2 py-1 rounded-lg">{p.arrivalCity}</span>
               </div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase italic mt-1">Dépôt le : {p.departureDate}</p>
            </div>
         </div>
 
-        {/* LIGNE 3 : LOGISTIQUE ET TARIFER */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-left">
            <div className="flex gap-8">
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-60 tracking-widest">Colisage</Label>
+                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-70 tracking-widest">Colisage</Label>
                  <p className="font-black text-slate-900 text-sm">{p.quantity} UNITÉS / {(p.weightKg || 0).toLocaleString()} KG</p>
               </div>
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-60 tracking-widest">Montant Fret</Label>
-                 <p className="font-black text-emerald-600 text-xl tracking-tighter">{(p.price || 0).toLocaleString()} F</p>
+                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-70 tracking-widest">Montant Fret</Label>
+                 <p className={`font-black text-xl tracking-tighter ${p.paymentStatus === 'Payé' ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {(p.price || 0).toLocaleString()} F
+                 </p>
               </div>
            </div>
 
@@ -428,7 +444,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
                              </div>
                           </div>
                           <Button onClick={handleFinalize} className="w-full h-14 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl bg-primary text-white transition-all active:scale-95">
-                            Valider le fret
+                            Valider le prix
                           </Button>
                        </div>
                     </div>

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { CalendarDays, MapPin, Ticket, X, Eye, Bus, Package, Ship, Train, Hash, Gem, ArrowRight } from 'lucide-react';
+import { CalendarDays, MapPin, Ticket, X, Eye, Bus, Package, Ship, Train, Hash, Gem, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -27,7 +27,7 @@ type Booking = {
   seatNumber: string;
   amount: number;
   paymentMethod: string;
-  classLabel: string; // NOUVEAU
+  classLabel: string;
 };
 
 type Parcel = {
@@ -49,6 +49,10 @@ export default function DashboardPage() {
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // --- ÉTATS POUR LA PAGINATION ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ redirectUrl: window.location.href });
   }, [isLoading, user, loginWithRedirect]);
@@ -59,7 +63,6 @@ export default function DashboardPage() {
 
     const loadDashboardData = async () => {
       try {
-        // 1. RÉCUPÉRATION DES RÉSERVATIONS
         const { data: bData } = await supabase
           .from('bookings')
           .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)), passengers(*)')
@@ -76,7 +79,7 @@ export default function DashboardPage() {
           status: b.status === 'PAYE' ? 'Confirmé' : b.status === 'ANNULE' ? 'Annulé' : b.status === 'REMBOURSE' ? 'Remboursé' : 'En attente',
           passengerName: b.passengers[0] ? `${b.passengers[0].first_name} ${b.passengers[0].last_name}` : 'Moi',
           departureCity: b.trip.from.name,
-          arrivalCity: b.arrival_city_name || b.trip.to.name, // GESTION ESCALE
+          arrivalCity: b.arrival_city_name || b.trip.to.name,
           companyName: b.trip.company.name,
           transportType: b.trip.type === 'TRAIN' ? 'Train' : b.trip.type === 'BOAT' ? 'Bateau' : 'Bus',
           transportTypeCode: b.trip.type,
@@ -90,7 +93,6 @@ export default function DashboardPage() {
 
         setBookings(formattedBookings);
 
-        // 2. RÉCUPÉRATION DES COLIS
         const { data: pData } = await supabase
           .from('parcels')
           .select('*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)')
@@ -138,7 +140,14 @@ export default function DashboardPage() {
 
   const today = new Date().toISOString().split('T')[0];
   const upcoming = bookings.filter(b => b.status === 'Confirmé' && b.departureDate >= today);
-  const past = bookings.filter(b => b.status !== 'Annulé' && (b.status === 'Terminé' || b.departureDate < today));
+  const past = bookings.filter(b => b.status !== 'Annulé' && b.status !== 'Remboursé' && (b.status === 'Terminé' || b.departureDate < today));
+  const cancelled = bookings.filter(b => b.status === 'Annulé' || b.status === 'Remboursé');
+
+  // --- LOGIQUE DE TRANCHAGE (SLICE) POUR PAGINATION ---
+  const paginate = (items: any[]) => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return items.slice(start, start + itemsPerPage);
+  };
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-5xl text-left space-y-10 animate-in fade-in duration-500">
@@ -165,13 +174,14 @@ export default function DashboardPage() {
         <StatItem label="Billets actifs" value={upcoming.length} icon={Ticket} color="text-primary" />
         <StatItem label="Colis envoyés" value={parcels.length} icon={Package} color="text-emerald-500" />
         <StatItem label="Voyages passés" value={past.length} icon={CalendarDays} color="text-blue-500" />
-        <StatItem label="Annulations" value={bookings.filter(b => b.status === 'Annulé').length} icon={X} color="text-red-400" />
+        <StatItem label="Annulations" value={cancelled.length} icon={X} color="text-red-400" />
       </div>
 
-      <Tabs defaultValue="upcoming" className="w-full">
+      <Tabs defaultValue="upcoming" className="w-full" onValueChange={() => setCurrentPage(1)}>
         <TabsList className="bg-slate-100 p-1.5 rounded-2xl h-14 w-fit mb-8">
           <TabsTrigger value="upcoming" className="rounded-xl px-6 font-black uppercase text-[10px]">À Venir ({upcoming.length})</TabsTrigger>
           <TabsTrigger value="past" className="rounded-xl px-6 font-black uppercase text-[10px]">Historique ({past.length})</TabsTrigger>
+          <TabsTrigger value="cancelled" className="rounded-xl px-6 font-black uppercase text-[10px]">Annulés ({cancelled.length})</TabsTrigger>
           <TabsTrigger value="parcels" className="rounded-xl px-6 font-black uppercase text-[10px]">Mes Colis ({parcels.length})</TabsTrigger>
         </TabsList>
 
@@ -179,20 +189,47 @@ export default function DashboardPage() {
             <div className="space-y-4"><Skeleton className="h-32 w-full rounded-[2rem]" /><Skeleton className="h-32 w-full rounded-[2rem]" /></div>
         ) : (
           <>
-            <TabsContent value="upcoming" className="space-y-4 animate-in slide-in-from-bottom-2">
-              <BookingList bookings={upcoming} onCancel={handleCancel} showActions />
+            <TabsContent value="upcoming" className="space-y-6">
+              <BookingList bookings={paginate(upcoming)} onCancel={handleCancel} showActions />
+              <PaginationControls currentPage={currentPage} totalItems={upcoming.length} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} />
             </TabsContent>
-            <TabsContent value="past" className="space-y-4 animate-in slide-in-from-bottom-2">
-              <BookingList bookings={past} />
+            <TabsContent value="past" className="space-y-6">
+              <BookingList bookings={paginate(past)} />
+              <PaginationControls currentPage={currentPage} totalItems={past.length} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} />
             </TabsContent>
-            <TabsContent value="parcels" className="space-y-4 animate-in slide-in-from-bottom-2">
-              <ParcelList parcels={parcels} />
+            <TabsContent value="cancelled" className="space-y-6">
+              <BookingList bookings={paginate(cancelled)} />
+              <PaginationControls currentPage={currentPage} totalItems={cancelled.length} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} />
+            </TabsContent>
+            <TabsContent value="parcels" className="space-y-6">
+              <ParcelList parcels={paginate(parcels)} />
+              <PaginationControls currentPage={currentPage} totalItems={parcels.length} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} />
             </TabsContent>
           </>
         )}
       </Tabs>
     </div>
   );
+}
+
+/**
+ * COMPOSANT : CONTRÔLES DE PAGINATION
+ */
+function PaginationControls({ currentPage, totalItems, itemsPerPage, onPageChange }: any) {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="flex items-center justify-center gap-4 mt-8 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
+            <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50">
+                <ChevronLeft size={18} />
+            </Button>
+            <span className="text-[10px] font-black uppercase text-slate-400">Page {currentPage} sur {totalPages}</span>
+            <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50">
+                <ChevronRight size={18} />
+            </Button>
+        </div>
+    );
 }
 
 /**
@@ -213,7 +250,7 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
                   <TransportIcon size={24} />
                </div>
                <div>
-                  <div className="flex items-center gap-2 font-black text-lg text-slate-800 uppercase tracking-tighter">
+                  <div className="flex items-center gap-2 font-black text-lg text-slate-800 uppercase tracking-tighter text-left">
                      {b.departureCity} <ArrowRight size={14} className="text-primary opacity-30" /> {b.arrivalCity}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -237,9 +274,9 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
                      <Button variant="ghost" className="h-11 w-11 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><X size={20}/></Button>
                    </AlertDialogTrigger>
                    <AlertDialogContent className="rounded-[2.5rem]">
-                     <AlertDialogHeader>
+                     <AlertDialogHeader className="text-left">
                        <AlertDialogTitle className="font-black italic uppercase">Annuler le voyage ?</AlertDialogTitle>
-                       <AlertDialogDescription className="font-medium">Cette action est soumise aux conditions de remboursement de {b.companyName}.</AlertDialogDescription>
+                       <AlertDialogDescription className="font-medium text-slate-600">Cette action est soumise aux conditions de remboursement de {b.companyName}.</AlertDialogDescription>
                      </AlertDialogHeader>
                      <AlertDialogFooter>
                        <AlertDialogCancel className="rounded-xl font-bold">RETOUR</AlertDialogCancel>
@@ -266,7 +303,7 @@ function ParcelList({ parcels }: { parcels: Parcel[] }) {
     <div className="grid gap-4">
       {parcels.map(p => (
         <div key={p.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-5 flex-1 w-full">
+          <div className="flex items-center gap-5 flex-1 w-full text-left">
              <div className="h-14 w-14 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-100">
                 <Package size={24} />
              </div>
