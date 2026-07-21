@@ -20,7 +20,8 @@ import {
   Hash,
   MapPin,
   TrendingUp,
-  Activity
+  Activity,
+  Package // Icone pour le fret
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -89,15 +90,30 @@ export default function AgencyDashboard() {
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-700">
       
-      {/* HEADER PREMIUM */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative overflow-hidden">
+      {/* HEADER PREMIUM AVEC ACCÈS FRET POUR LA CAISSIÈRE */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-8 rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
             <Activity size={120} />
         </div>
-        <div className="relative z-10">
+        <div className="relative z-10 flex-1">
           <p className="text-primary font-black uppercase text-[10px] tracking-[0.3em] mb-2">Console Agence</p>
           <h1 className="text-4xl font-black italic text-slate-900 tracking-tighter uppercase leading-none">{data.companyName || 'Mon Agence'}</h1>
-          <p className="text-sm font-bold text-slate-400 mt-2">Suivi des flux de transport en temps réel.</p>
+          <p className="text-sm font-bold text-slate-400 mt-2">Suivi des flux de transport et logistique.</p>
+        </div>
+
+        {/* BOUTON D'ACCÈS RAPIDE FRET (Pour Caissière & Agents) */}
+        <div className="relative z-10">
+            {['Agent', 'Caissier', 'Service Colis', 'Administrateur'].includes(user?.role || '') && (
+                <Link to="/agency/parcels">
+                    <Button className="rounded-2xl font-black bg-slate-900 text-white hover:bg-black h-14 px-8 gap-3 shadow-2xl transition-all active:scale-95">
+                        <Package size={20} className="text-primary" />
+                        <div className="flex flex-col items-start leading-none text-left">
+                            <span className="text-[10px] text-primary uppercase font-bold tracking-widest mb-1">Module</span>
+                            <span className="text-xs uppercase tracking-tighter">Logistique Fret</span>
+                        </div>
+                    </Button>
+                </Link>
+            )}
         </div>
       </div>
 
@@ -199,9 +215,6 @@ export default function AgencyDashboard() {
   );
 }
 
-/**
- * COMPOSANT : KPI CARD
- */
 function KPI({ icon: Icon, label, value, color, bg, sub }: any) {
   return (
     <div className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 shadow-sm flex items-center gap-5 group hover:scale-[1.02] transition-transform">
@@ -217,9 +230,6 @@ function KPI({ icon: Icon, label, value, color, bg, sub }: any) {
   );
 }
 
-/**
- * COMPOSANT : STATUS BADGE
- */
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     'Programmé': 'bg-blue-50 text-blue-600 border-blue-100',
@@ -236,9 +246,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-/**
- * SQUELETTE DE CHARGEMENT
- */
 function DashSkeleton() {
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-8">
