@@ -219,7 +219,7 @@ export default function BookingConfirmPage() {
         <div className="space-y-3 p-4 bg-slate-50 rounded-3xl border border-slate-100">
             <div className="grid grid-cols-1 gap-3">
                 <Input 
-                    placeholder="Qu'envoyez-vous ? (ex: Glacière, Sac...)" 
+                    placeholder="Déclarez vos bagages ici (ex: Glacière, Sac...)" 
                     value={tempLabel}
                     onChange={(e) => setTempLabel(e.target.value)}
                     className="h-11 bg-white border-none shadow-sm rounded-xl font-bold text-xs"
