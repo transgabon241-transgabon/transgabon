@@ -63,10 +63,22 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
   // LOGIQUE DE FILTRAGE DES ONGLETS PAR RÔLE
   const allowedItems = NAV_ITEMS.filter(item => {
     const role = user.role;
-    if (role === 'Agent Embarquement') return ['/agency/departures', '/agency/validate'].includes(item.path);
-    if (role === 'Service Colis') return ['/agency/parcels'].includes(item.path);
-    if (role === 'Caissier') return ['/agency/validate', '/agency/refunds', '/agency/payments'].includes(item.path);
-    return true; // Chef d'agence & Admin voient tout
+
+    if (role === 'Agent Embarquement') {
+        return ['/agency/departures', '/agency/validate'].includes(item.path);
+    }
+    
+    if (role === 'Service Colis') {
+        return ['/agency/parcels'].includes(item.path);
+    }
+    
+    if (role === 'Caissier') {
+      // AJOUT DE '/agency/parcels' ICI pour l'accès du caissier au fret
+      return ['/agency/validate', '/agency/refunds', '/agency/payments', '/agency/parcels'].includes(item.path);
+    }
+
+    // Le Chef d'agence (Agent) et l'Admin voient tout par défaut
+    return true;
   });
 
   return (
@@ -148,10 +160,8 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
       {/* MAIN CONTENT CANVAS */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
-            {/* Le "Canvas" blanc aux coins arrondis */}
             <div className="min-h-full w-full bg-white rounded-[2.5rem] shadow-sm border border-slate-200/50 p-6 md:p-10 relative">
                 
-                {/* Filigrane discret en fond de page (optionnel) */}
                 <div className="absolute bottom-0 right-0 p-10 opacity-[0.03] pointer-events-none select-none">
                     <ShieldCheck size={300} />
                 </div>
