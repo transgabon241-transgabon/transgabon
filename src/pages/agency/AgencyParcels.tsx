@@ -24,7 +24,10 @@ import {
   Bus,
   Train,
   X,
-  MapPin
+  MapPin,
+  Phone,
+  User,
+  Info
 } from 'lucide-react'; 
 import { toast } from 'sonner';
 
@@ -56,12 +59,12 @@ type Tariff = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  'En attente': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'Pris en charge': 'bg-blue-100 text-blue-800 border-blue-200',
-  'En transit': 'bg-orange-100 text-orange-800 border-orange-200',
-  'Arrivé': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  'Livré': 'bg-green-100 text-green-800 border-green-200',
-  'Retourné': 'bg-red-100 text-red-800 border-red-200',
+  'En attente': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  'Pris en charge': 'bg-blue-50 text-blue-700 border-blue-200',
+  'En transit': 'bg-orange-50 text-orange-700 border-orange-200',
+  'Arrivé': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Livré': 'bg-green-50 text-green-700 border-green-200',
+  'Retourné': 'bg-red-50 text-red-700 border-red-200',
 };
 
 export default function AgencyParcels() {
@@ -72,7 +75,7 @@ export default function AgencyParcels() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 6;
 
   const loadData = async () => {
     if (!user?.companyId) return;
@@ -125,14 +128,14 @@ export default function AgencyParcels() {
         senderPhone: p.sender_phone,
         receiverName: p.receiver_name,
         receiverPhone: p.receiver_phone,
-        price: p.price,
-        weightKg: p.weight,
+        price: p.price || 0,
+        weightKg: p.weight || 0,
         quantity: p.quantity || 1,
         paymentStatus: p.is_paid ? 'Payé' : 'À payer',
         transportType: p.trip?.type || 'BUS'
       })));
     } catch (e: any) {
-      toast.error('Erreur de chargement des colis');
+      toast.error('Erreur de chargement');
     } finally {
       setLoading(false);
     }
@@ -150,17 +153,11 @@ export default function AgencyParcels() {
         'Retourné': 'RETOURNE',
       };
 
-      const { error } = await supabase
-        .from('parcels')
-        .update({ status: dbStatusMap[newStatus] })
-        .eq('id', id);
-
+      const { error } = await supabase.from('parcels').update({ status: dbStatusMap[newStatus] }).eq('id', id);
       if (error) throw error;
       toast.success(`Statut mis à jour : ${newStatus}`);
       loadData();
-    } catch (e) {
-      toast.error('Erreur de mise à jour');
-    }
+    } catch (e) { toast.error('Erreur de mise à jour'); }
   };
 
   const filtered = useMemo(() => {
@@ -173,37 +170,46 @@ export default function AgencyParcels() {
     );
   }, [parcels, search]);
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginatedParcels = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full rounded-[2rem]"/></div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left space-y-6 animate-in fade-in duration-500">
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500">
+      
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-5 rounded-3xl border shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-primary rounded-xl text-white shadow-lg">
-            <Package size={24} />
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-slate-900 rounded-2xl shadow-lg text-primary">
+            <Package size={28} />
           </div>
-          <h1 className="text-xl font-black italic uppercase tracking-tight">Fret & Logistique</h1>
+          <div>
+            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Gestion du Fret</h1>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Logistique et Messagerie Nationale</p>
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={loadData} className="rounded-xl font-bold border-2 h-10 px-4">
+        <Button variant="outline" size="sm" onClick={loadData} className="rounded-xl font-black border-2 h-11 px-6 text-[10px] uppercase tracking-widest">
           <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
         </Button>
       </div>
 
-      {/* Filtres & Recherche */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-3xl border-2 border-slate-50 shadow-sm">
-        <div className="md:col-span-3 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input placeholder="Rechercher (Tracking, Nom, Ville destination)..." value={search} onChange={e => setSearch(e.target.value)} className="pl-11 h-11 rounded-2xl border-2 font-medium" />
+      {/* Barre de Recherche Premium */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-5 rounded-[2rem] border-2 border-slate-50 shadow-xl shadow-slate-200/50">
+        <div className="md:col-span-3 relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+          <Input 
+            placeholder="Rechercher par N° de suivi, Nom ou Destination..." 
+            value={search} 
+            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} 
+            className="pl-12 h-14 rounded-2xl border-2 border-slate-100 font-bold text-base shadow-inner" 
+          />
         </div>
         <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setCurrentPage(1); }}>
-          <SelectTrigger className="h-11 rounded-2xl border-2 font-black uppercase text-[10px] bg-slate-50">
+          <SelectTrigger className="h-14 rounded-2xl border-2 font-black uppercase text-[10px] bg-slate-50">
             <SelectValue placeholder="Filtrer" />
           </SelectTrigger>
-          <SelectContent className="rounded-xl font-bold">
+          <SelectContent className="rounded-2xl font-bold">
             <SelectItem value="all">TOUS LES COLIS</SelectItem>
             <SelectItem value="En attente">EN ATTENTE</SelectItem>
             <SelectItem value="Pris en charge">PRIS EN CHARGE</SelectItem>
@@ -215,7 +221,7 @@ export default function AgencyParcels() {
       </div>
 
       {/* Liste des colis */}
-      <div className="grid gap-4 relative">
+      <div className="space-y-4">
         {paginatedParcels.map(p => (
           <ParcelCard 
             key={p.id} 
@@ -235,10 +241,10 @@ export default function AgencyParcels() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8 bg-white p-2 rounded-2xl border-2 border-slate-50 w-fit mx-auto shadow-sm">
-          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-9 w-9"><ChevronLeft size={18} /></Button>
-          <span className="text-[10px] font-black uppercase text-slate-400">Page {currentPage} / {totalPages}</span>
-          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-9 w-9"><ChevronRight size={18} /></Button>
+        <div className="flex items-center justify-center gap-4 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
+          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronLeft size={18} /></Button>
+          <span className="text-[10px] font-black uppercase text-slate-400 px-4">Page {currentPage} / {totalPages}</span>
+          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronRight size={18} /></Button>
         </div>
       )}
     </div>
@@ -255,12 +261,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
     if (!selectedTariff) return 0;
     const qty = parseInt(quantity) || 1;
     const w = parseFloat(weight) || 0;
-
-    if (selectedTariff.is_weight_based) {
-      return qty * w * selectedTariff.price; // Logique : Nb Colis * Poids * Prix/kg
-    } else {
-      return qty * selectedTariff.price; // Logique : Nb Colis * Prix unitaire
-    }
+    return selectedTariff.is_weight_based ? qty * w * selectedTariff.price : qty * selectedTariff.price;
   }, [selectedTariff, weight, quantity]);
 
   const handleFinalize = async () => {
@@ -272,149 +273,169 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus }: any) {
         quantity: parseInt(quantity) || 1,
         status: 'EN_ATTENTE_DEPART' 
       }).eq('id', p.id);
-      toast.success("Pesée et tarification validées");
+      toast.success("Tarification validée");
       onRefresh();
       setPricingMode(false);
-    } catch (e) { toast.error("Erreur de sauvegarde"); }
+    } catch (e) { toast.error("Erreur"); }
   };
 
-  const getNextStatus = (current: string) => {
+  const nextStatus = (current: string) => {
     if (current === 'En attente') return 'Pris en charge';
     if (current === 'Pris en charge') return 'En transit';
     if (current === 'En transit') return 'Arrivé';
     if (current === 'Arrivé') return 'Livré';
     return null;
-  };
+  }(p.status);
 
-  const nextStatus = getNextStatus(p.status);
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : Bus;
 
   return (
-    <div className="bg-white border-2 border-slate-100 rounded-[2rem] p-5 hover:border-primary/20 transition-all group relative overflow-hidden">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    // Note: On retire 'overflow-hidden' pour que le menu 'Tarifer' ne soit pas coupé
+    // On ajoute un z-index plus élevé quand le mode tarification est ouvert
+    <div className={`bg-white border-2 border-slate-100 rounded-[2.5rem] p-6 hover:shadow-xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
+      <div className="flex flex-col space-y-6">
         
-        {/* Infos Colis & Transport */}
-        <div className="flex items-center gap-5 flex-1">
-          <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${p.transportType === 'BOAT' ? 'bg-blue-600' : p.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
-             <TransportIcon size={24} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono font-black text-primary text-xs uppercase tracking-tighter">{p.trackingNumber}</span>
-              <Badge className={`${STATUS_COLORS[p.status]} border-none font-black uppercase text-[8px] h-4 px-2`}>{p.status}</Badge>
+        {/* LIGNE 1 : INFOS DE BASE ET STATUT */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className={`h-14 w-14 rounded-[1.25rem] flex items-center justify-center text-white shadow-lg ${p.transportType === 'BOAT' ? 'bg-blue-600' : p.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
+               <TransportIcon size={24} />
             </div>
-            <p className="text-sm font-black text-slate-800 uppercase italic leading-tight">{p.description}</p>
-            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{p.senderName} ➔ {p.receiverName}</p>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-mono font-black text-primary text-sm uppercase tracking-tighter">{p.trackingNumber}</span>
+                <Badge className={`${STATUS_COLORS[p.status]} border-2 font-black uppercase text-[8px] h-5 px-2`}>{p.status}</Badge>
+              </div>
+              <p className="text-base font-black text-slate-900 uppercase italic leading-none">{p.description}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+             {nextStatus && !pricingMode && (
+                <Button onClick={() => onUpdateStatus(p.id, nextStatus)} size="sm" className="h-10 rounded-xl font-black text-[9px] uppercase tracking-widest bg-slate-900 hover:bg-black px-5">
+                   Passer à : {nextStatus}
+                </Button>
+             )}
+             <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                        <Trash2 size={18} />
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-[2.5rem]">
+                    <AlertDialogHeader><AlertDialogTitle className="font-black italic uppercase">Supprimer ce colis ?</AlertDialogTitle></AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => supabase.from('parcels').delete().eq('id', p.id).then(()=>onRefresh())} className="bg-red-600 rounded-xl font-bold uppercase">SUPPRIMER</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+             </AlertDialog>
           </div>
         </div>
 
-        {/* Itinéraire */}
-        <div className="flex items-center gap-4 text-xs font-bold text-slate-500 px-6 md:border-x border-dashed">
-           <div className="text-center">
-               <p className="text-[7px] text-slate-300 uppercase">Origine</p>
-               <span className="uppercase">{p.departureCity}</span>
+        {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE (LA PARTIE ENRICHIE) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-100">
+           <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
+                 <User size={12} className="text-primary"/> Expéditeur
+              </p>
+              <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{p.senderName}</div>
+              <div className="flex items-center gap-2 text-xs font-bold text-primary">
+                 <Phone size={12} /> {p.senderPhone}
+              </div>
            </div>
-           <ArrowRight size={14} className="text-primary/30" />
-           <div className="text-center">
-               <p className="text-[7px] text-slate-300 uppercase">Destination</p>
-               <span className="uppercase text-slate-900">{p.arrivalCity}</span>
+
+           <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
+                 <User size={12} className="text-emerald-500"/> Destinataire
+              </p>
+              <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{p.receiverName}</div>
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-600">
+                 <Phone size={12} /> {p.receiverPhone}
+              </div>
+           </div>
+
+           <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2">
+                 <MapPin size={12} className="text-blue-500"/> Acheminement
+              </p>
+              <div className="flex items-center gap-3 font-black text-xs uppercase text-slate-700">
+                 <span className="bg-slate-100 px-2 py-1 rounded-lg">{p.departureCity}</span>
+                 <ArrowRight size={14} className="text-slate-300" />
+                 <span className="bg-primary/10 text-primary px-2 py-1 rounded-lg">{p.arrivalCity}</span>
+              </div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase italic">Prévu le : {p.departureDate}</p>
            </div>
         </div>
 
-        {/* Logistique & Prix */}
-        <div className="flex items-center gap-8 px-4">
-           <div className="text-right">
-              <p className="text-[8px] font-black text-slate-300 uppercase">Logistique</p>
-              <p className="text-xs font-black text-slate-700">{p.quantity} PCS • {p.weightKg} KG</p>
+        {/* LIGNE 3 : LOGISTIQUE ET TARIFER */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+           <div className="flex gap-8">
+              <div className="space-y-1">
+                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-60 tracking-widest">Colisage</Label>
+                 <p className="font-black text-slate-900 text-sm">{p.quantity} PCS / {(p.weightKg || 0).toLocaleString()} KG</p>
+              </div>
+              <div className="space-y-1">
+                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-60 tracking-widest">Montant Fret</Label>
+                 <p className="font-black text-emerald-600 text-xl tracking-tighter">{(p.price || 0).toLocaleString()} F</p>
+              </div>
            </div>
-           <div className="text-right">
-              <p className="text-[8px] font-black text-emerald-300 uppercase">Montant</p>
-              <p className="text-lg font-black text-emerald-600 tracking-tighter">{p.price.toLocaleString()} F</p>
-           </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          {p.status === 'En attente' && (
-            <div className="relative">
-              <Button onClick={() => setPricingMode(true)} size="sm" className="h-10 gap-2 font-black bg-emerald-600 hover:bg-emerald-700 rounded-xl px-5 text-[10px] uppercase shadow-lg shadow-emerald-100">
-                <Scale size={16} /> Tarifer
-              </Button>
+           <div className="relative">
+              {p.status === 'En attente' && (
+                <>
+                  <Button onClick={() => setPricingMode(true)} className="h-11 px-8 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100 gap-2 uppercase text-[10px] tracking-widest">
+                    <Scale size={16} /> Établir la pesée
+                  </Button>
 
-              {pricingMode && (
-                <div className="absolute right-0 bottom-full mb-4 bg-white p-6 rounded-[2.5rem] border-2 border-primary/20 shadow-[0_25px_60px_rgba(0,0,0,0.25)] w-80 z-[100] animate-in fade-in slide-in-from-bottom-4">
-                   <div className="flex justify-between items-center mb-5">
-                      <h4 className="text-[10px] font-black uppercase text-slate-800 flex items-center gap-2"><Calculator size={14}/> Guichet Pesée</h4>
-                      <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-7 w-7 rounded-full"><X size={16}/></Button>
-                   </div>
-                   
-                   <div className="space-y-4">
-                      <div className="space-y-1.5 text-left">
-                        <Label className="text-[9px] font-black text-slate-400 uppercase ml-1">Type de marchandise / Grille</Label>
-                        <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
-                            <SelectTrigger className="h-11 rounded-xl font-bold text-xs bg-slate-50 border-none"><SelectValue placeholder="Choisir tarif..." /></SelectTrigger>
-                            <SelectContent className="rounded-xl font-bold border-none shadow-2xl">
-                              {tariffs.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                      </div>
+                  {pricingMode && (
+                    <div className="absolute right-0 bottom-full mb-6 bg-white p-8 rounded-[2.5rem] border-2 border-primary/20 shadow-[0_25px_80px_rgba(0,0,0,0.3)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300">
+                       <div className="flex justify-between items-center mb-6">
+                          <h4 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet de Pesée</h4>
+                          <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full hover:bg-slate-50"><X size={18}/></Button>
+                       </div>
+                       
+                       <div className="space-y-6">
+                          <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2">Type d'article</Label>
+                            <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
+                                <SelectTrigger className="h-12 rounded-xl border-none bg-slate-50 font-bold shadow-inner"><SelectValue placeholder="Choisir tarif..." /></SelectTrigger>
+                                <SelectContent className="rounded-2xl shadow-2xl">
+                                  {tariffs.map(t => <SelectItem key={t.id} value={t.id} className="font-bold">{t.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                          </div>
 
-                      <div className="grid grid-cols-3 gap-2 text-left">
-                         <div className="space-y-1.5">
-                            <Label className="text-[8px] font-black text-slate-400 uppercase ml-1">Qté</Label>
-                            <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-11 rounded-xl font-black text-center bg-slate-50 border-none shadow-inner" />
-                         </div>
-                         <div className="space-y-1.5">
-                            <Label className="text-[8px] font-black text-slate-400 uppercase ml-1">Poids/KG</Label>
-                            <Input 
-                              type="number" 
-                              disabled={selectedTariff && !selectedTariff.is_weight_based}
-                              value={weight} 
-                              onChange={e => setWeight(e.target.value)} 
-                              className={`h-11 rounded-xl font-black text-center bg-slate-50 border-none shadow-inner ${selectedTariff && !selectedTariff.is_weight_based ? 'opacity-30' : ''}`} 
-                            />
-                         </div>
-                         <div className="space-y-1.5">
-                            <Label className="text-[8px] font-black text-emerald-600 uppercase ml-1">Total</Label>
-                            <div className="h-11 flex items-center justify-center font-black text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 text-[11px]">
-                              {calculatedPrice.toLocaleString()}
-                            </div>
-                         </div>
-                      </div>
-                      <Button onClick={handleFinalize} className="w-full h-12 font-black text-[10px] rounded-xl shadow-lg mt-2 uppercase tracking-widest bg-primary">
-                        Confirmer {quantity} unité(s)
-                      </Button>
-                   </div>
-                </div>
+                          <div className="grid grid-cols-3 gap-3 text-left">
+                             <div className="space-y-2">
+                                <Label className="text-[9px] font-black text-slate-900 opacity-70 ml-1">Qté</Label>
+                                <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-center shadow-inner" />
+                             </div>
+                             <div className="space-y-2">
+                                <Label className="text-[9px] font-black text-slate-900 opacity-70 ml-1">Poids/KG</Label>
+                                <Input 
+                                  type="number" 
+                                  disabled={selectedTariff && !selectedTariff.is_weight_based}
+                                  value={weight} 
+                                  onChange={e => setWeight(e.target.value)} 
+                                  className={`h-12 rounded-xl bg-slate-50 border-none font-black text-center shadow-inner ${selectedTariff && !selectedTariff.is_weight_based ? 'opacity-30' : ''}`} 
+                                />
+                             </div>
+                             <div className="space-y-2">
+                                <Label className="text-[9px] font-black text-emerald-600 uppercase ml-1">Total</Label>
+                                <div className="h-12 flex items-center justify-center font-black text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 text-xs">
+                                  {calculatedPrice.toLocaleString()}
+                                </div>
+                             </div>
+                          </div>
+                          <Button onClick={handleFinalize} className="w-full h-14 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl bg-primary text-white transition-all active:scale-95">
+                            Valider le fret
+                          </Button>
+                       </div>
+                    </div>
+                  )}
+                </>
               )}
-            </div>
-          )}
-
-          {nextStatus && !pricingMode && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => onUpdateStatus(p.id, nextStatus)} 
-              className="h-10 font-black border-2 rounded-xl text-[9px] uppercase px-5 hover:bg-primary hover:text-white transition-all shadow-sm"
-            >
-               {nextStatus}
-            </Button>
-          )}
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-600 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
-                <Trash2 size={18} />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
-              <AlertDialogHeader><AlertDialogTitle className="font-black uppercase italic text-xl">Supprimer ce colis ?</AlertDialogTitle><AlertDialogDescription className="font-medium">L'annulation d'un envoi est définitive.</AlertDialogDescription></AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { supabase.from('parcels').delete().eq('id', p.id).then(()=>onRefresh()) }} className="bg-red-600 rounded-xl font-bold text-white uppercase">Supprimer</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+           </div>
         </div>
       </div>
     </div>
