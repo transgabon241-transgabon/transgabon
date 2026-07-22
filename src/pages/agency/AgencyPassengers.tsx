@@ -58,6 +58,7 @@ type Data = {
 export default function AgencyPassengers() {
   const { departureId } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [boardingId, setBoardingId] = useState<string | null>(null);
@@ -112,7 +113,7 @@ export default function AgencyPassengers() {
             passengerPhone: b.contact_phone,
             seatNumber: p.seat_number || '—',
             travelClass: classMapping[b.class_type] || 'Std',
-            destination: b.arrival_city_name || trip.to.name, // Escale ou terminus
+            destination: b.arrival_city_name || trip.to.name,
             paymentMethod: b.payment_method === 'AGENCE' ? 'Cash' : b.payment_method.replace('_', ' '),
             status: b.status === 'PAYE' ? 'Confirmé' : 'En attente',
             paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
@@ -122,7 +123,7 @@ export default function AgencyPassengers() {
         });
       });
 
-      // TRI PAR NUMÉRO DE SIÈGE (Alpha-numérique)
+      // TRI PAR SIÈGE
       passengersList.sort((a, b) => a.seatNumber.localeCompare(b.seatNumber, undefined, {numeric: true}));
 
       setData({
@@ -155,7 +156,7 @@ export default function AgencyPassengers() {
         ...prev,
         passengers: prev.passengers.map(p => p.id === passengerId ? { ...p, boarded: true } : p)
       } : null);
-      toast.success("Passager à bord");
+      toast.success("Embarquement validé");
     } catch (err) { toast.error("Erreur technique"); }
     finally { setBoardingId(null); }
   };
@@ -185,121 +186,120 @@ export default function AgencyPassengers() {
       
       {/* HEADER WEB */}
       <div className="print:hidden">
-        <Link to="/agency/departures" className="inline-flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 hover:text-primary mb-6 transition-all">
-          <ArrowLeft size={12} /> Retour aux départs
+        <Link to="/agency/departures" className="inline-flex items-center gap-3 text-sm font-black uppercase text-slate-900 opacity-60 hover:text-primary mb-8 transition-all tracking-widest">
+          <ArrowLeft size={18} /> Retour aux départs
         </Link>
 
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8">
-          <div className="flex items-center gap-5">
-            <div className={`p-5 rounded-[1.5rem] shadow-2xl ${data.transportType === 'BOAT' ? 'bg-blue-600' : data.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'} text-white`}>
-               <TransportIcon size={32} />
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 mb-10">
+          <div className="flex items-center gap-6">
+            <div className={`p-6 rounded-[2rem] shadow-2xl ${data.transportType === 'BOAT' ? 'bg-blue-600' : data.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'} text-white`}>
+               <TransportIcon size={40} />
             </div>
             <div>
-              <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Manifeste passagers</h1>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5">{data.departureCity} ➔ {data.arrivalCity}</Badge>
-                <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border uppercase">
+              <h1 className="text-4xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Manifeste passagers</h1>
+              <div className="flex flex-wrap items-center gap-4 mt-3">
+                <Badge variant="outline" className="font-black text-xs border-primary/20 text-primary bg-primary/5 px-4 py-1">{data.departureCity} ➔ {data.arrivalCity}</Badge>
+                <span className="text-sm font-black text-slate-400 bg-slate-100 px-3 py-1 rounded-xl border uppercase tracking-tighter">
                    {data.vehicleRegistration}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-             <div className="bg-slate-100 p-4 rounded-2xl flex items-center gap-6">
+          <div className="flex items-center gap-4 w-full lg:w-auto">
+             <div className="bg-white border-2 border-slate-100 p-5 rounded-[1.5rem] flex items-center gap-8 shadow-sm flex-1 lg:flex-none">
                 <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-400 uppercase">Présents</p>
-                    <p className="text-xl font-black text-emerald-600 leading-none">{stats.boarded}</p>
+                    <p className="text-[10px] font-black text-slate-900 opacity-60 uppercase tracking-widest mb-1">Présents</p>
+                    <p className="text-3xl font-black text-emerald-600 leading-none">{stats.boarded}</p>
                 </div>
                 <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-400 uppercase">Total</p>
-                    <p className="text-xl font-black text-slate-900 leading-none">{stats.total}</p>
+                    <p className="text-[10px] font-black text-slate-900 opacity-60 uppercase tracking-widest mb-1">Total</p>
+                    <p className="text-3xl font-black text-slate-900 leading-none">{stats.total}</p>
                 </div>
              </div>
-             <Button onClick={() => window.print()} className="gap-2 font-black rounded-xl h-14 px-8 shadow-xl">
-                <Printer size={20} /> IMPRIMER
+             <Button onClick={() => window.print()} className="gap-3 font-black rounded-2xl h-20 px-10 shadow-2xl text-base">
+                <Printer size={24} /> IMPRIMER
              </Button>
           </div>
         </div>
       </div>
 
       {/* VERSION IMPRESSION OFFICIELLE */}
-      <div className="hidden print:block mb-10 border-b-4 border-slate-900 pb-8 text-left">
-        <h1 className="text-4xl font-black uppercase text-slate-900 leading-none">{data.companyName}</h1>
-        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-2">Manifeste de Bord Officiel — Certification de Transport</p>
-        <div className="grid grid-cols-3 gap-10 mt-8 p-6 bg-slate-50 rounded-2xl border-2 border-slate-200">
+      <div className="hidden print:block mb-10 border-b-8 border-slate-900 pb-10 text-left">
+        <h1 className="text-6xl font-black uppercase text-slate-900 leading-none">{data.companyName}</h1>
+        <p className="text-lg font-bold text-slate-500 uppercase tracking-[0.3em] mt-4">Manifeste de Bord Officiel — Certification de Transport</p>
+        <div className="grid grid-cols-3 gap-12 mt-12 p-8 bg-slate-50 rounded-[2rem] border-4 border-slate-200">
            <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Trajet</p>
-              <p className="font-black text-lg uppercase">{data.departureCity} ➔ {data.arrivalCity}</p>
+              <p className="text-xs font-black text-slate-400 uppercase mb-2">Trajet</p>
+              <p className="font-black text-2xl uppercase">{data.departureCity} ➔ {data.arrivalCity}</p>
            </div>
            <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Date du Voyage</p>
-              <p className="font-black text-lg">{new Date(data.departureDate).toLocaleDateString('fr-FR')} • {data.departureTime}</p>
+              <p className="text-xs font-black text-slate-400 uppercase mb-2">Date du Voyage</p>
+              <p className="font-black text-2xl">{new Date(data.departureDate).toLocaleDateString('fr-FR')} • {data.departureTime}</p>
            </div>
            <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Appareil / Train</p>
-              <p className="font-black text-lg uppercase">{data.vehicleRegistration} ({data.departureCode})</p>
+              <p className="text-xs font-black text-slate-400 uppercase mb-2">Appareil / Train</p>
+              <p className="font-black text-2xl uppercase">{data.vehicleRegistration} ({data.departureCode})</p>
            </div>
         </div>
       </div>
 
-      {/* TABLEAU PREMIUM */}
-      <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-2xl print:shadow-none print:border-slate-900 print:rounded-none">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b-2 print:bg-slate-100">
+      {/* TABLEAU "HAUTE VISIBILITÉ" */}
+      <div className="border-2 border-slate-100 rounded-[3rem] overflow-hidden bg-white shadow-2xl print:shadow-none print:border-slate-900 print:rounded-none">
+        <table className="w-full text-base">
+          <thead className="bg-slate-50 border-b-4 border-slate-100 print:bg-slate-100">
             <tr>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">#</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Passager</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest text-center">Siège</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Classe</th>
-              <th className="text-left p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Destination</th>
-              <th className="text-center p-5 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest print:hidden">Contrôle</th>
-              <th className="hidden print:table-cell text-left p-5 font-black uppercase text-[10px] border-l-2">Signature</th>
+              <th className="text-left p-6 font-black uppercase text-xs text-slate-900 opacity-70 tracking-widest">#</th>
+              <th className="text-left p-6 font-black uppercase text-xs text-slate-900 opacity-70 tracking-widest">Nom du Passager</th>
+              <th className="text-center p-6 font-black uppercase text-xs text-slate-900 opacity-70 tracking-widest">Siège</th>
+              <th className="text-left p-6 font-black uppercase text-xs text-slate-900 opacity-70 tracking-widest">Classe</th>
+              <th className="text-left p-6 font-black uppercase text-xs text-slate-900 opacity-70 tracking-widest">Destination</th>
+              <th className="text-center p-6 font-black uppercase text-xs text-slate-900 opacity-70 tracking-widest print:hidden">Contrôle</th>
+              <th className="hidden print:table-cell text-left p-6 font-black uppercase text-xs border-l-4 border-slate-200">Signature</th>
             </tr>
           </thead>
-          <tbody className="divide-y-2 divide-slate-50">
+          <tbody className="divide-y-4 divide-slate-50">
             {currentPassengers.map((p, i) => (
-              <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
-                <td className="p-5 text-slate-300 font-black">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
-                <td className="p-5">
-                    <p className="font-black text-slate-900 uppercase text-sm leading-none mb-1.5">{p.passengerName}</p>
-                    <p className="text-[10px] font-mono text-primary font-bold">{p.bookingNumber}</p>
+              <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
+                <td className="p-6 text-slate-300 font-black text-lg">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
+                <td className="p-6">
+                    <p className="font-black text-slate-900 uppercase text-lg leading-tight mb-2">{p.passengerName}</p>
+                    <p className="text-xs font-mono text-primary font-bold tracking-widest">{p.bookingNumber}</p>
                 </td>
-                <td className="p-5 text-center">
-                   <div className="inline-flex h-9 w-9 rounded-xl bg-slate-900 items-center justify-center text-white font-black text-xs shadow-md">
+                <td className="p-6 text-center">
+                   <div className="inline-flex h-14 w-14 rounded-2xl bg-slate-900 items-center justify-center text-white font-black text-lg shadow-xl">
                       {p.seatNumber}
                    </div>
                 </td>
-                <td className="p-5">
-                   <Badge variant="outline" className={`text-[9px] font-black uppercase border-2 ${p.travelClass.includes('VIP') || p.travelClass.includes('1ERE') ? 'bg-amber-50 text-amber-600 border-amber-100' : 'text-slate-400'}`}>
+                <td className="p-6">
+                   <Badge variant="outline" className={`text-[10px] font-black uppercase border-2 px-3 py-1 ${p.travelClass.includes('VIP') || p.travelClass.includes('1ERE') ? 'bg-amber-50 text-amber-600 border-amber-200' : 'text-slate-500 border-slate-200'}`}>
                       {p.travelClass}
                    </Badge>
                 </td>
-                <td className="p-5">
-                   <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-[11px] tracking-tight">
-                      <MapPin size={12} className="text-primary" />
+                <td className="p-6">
+                   <div className="flex items-center gap-2 font-black text-slate-800 uppercase text-sm tracking-tighter">
+                      <MapPin size={16} className="text-primary" />
                       {p.destination}
                    </div>
                 </td>
-                <td className="p-5 text-center print:hidden">
+                <td className="p-6 text-center print:hidden">
                    {p.boarded ? (
-                     <div className="flex items-center justify-center gap-2 text-emerald-600 font-black text-[9px] uppercase">
-                        <CheckCircle2 size={16} /> À BORD
+                     <div className="flex items-center justify-center gap-2 text-emerald-600 font-black text-xs uppercase tracking-widest">
+                        <CheckCircle2 size={24} strokeWidth={3} /> VALIDÉ
                      </div>
                    ) : (
                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="h-9 text-[9px] font-black uppercase border-2 rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                        size="lg"
+                        className="h-14 font-black uppercase rounded-2xl hover:bg-slate-900 shadow-lg"
                         onClick={() => handleBoardPassenger(p.id)}
                         disabled={boardingId === p.id}
                      >
-                        {boardingId === p.id ? <RefreshCw className="animate-spin h-3 w-3" /> : <UserCheck size={14} className="mr-1" />}
-                        Valider
+                        {boardingId === p.id ? <RefreshCw className="animate-spin h-5 w-5" /> : <UserCheck size={20} className="mr-2" />}
+                        Embarquer
                      </Button>
                    )}
                 </td>
-                <td className="hidden print:table-cell p-5 border-l-2">
-                   <div className="h-6 w-32 border-b border-slate-300"></div>
+                <td className="hidden print:table-cell p-6 border-l-4 border-slate-100">
+                   <div className="h-10 w-48 border-b-2 border-slate-300"></div>
                 </td>
               </tr>
             ))}
@@ -307,26 +307,29 @@ export default function AgencyPassengers() {
         </table>
       </div>
 
-      {/* PAGINATION */}
+      {/* PAGINATION XXL */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8 print:hidden">
-          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border-2 bg-white shadow-sm"><ChevronLeft size={18} /></Button>
-          <div className="text-[10px] font-black uppercase text-slate-400 px-4">Page {currentPage} / {totalPages}</div>
-          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border-2 bg-white shadow-sm"><ChevronRight size={18} /></Button>
+        <div className="flex items-center justify-center gap-8 mt-12 print:hidden">
+          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-[1.5rem] h-16 w-16 border-4 bg-white shadow-xl hover:bg-slate-50 active:scale-90 transition-all"><ChevronLeft size={32} /></Button>
+          <div className="text-sm font-black uppercase text-slate-500 tracking-[0.3em] bg-white px-8 py-3 rounded-full border-2">PAGE {currentPage} <span className="mx-2 opacity-20">/</span> {totalPages}</div>
+          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-[1.5rem] h-16 w-16 border-4 bg-white shadow-xl hover:bg-slate-50 active:scale-90 transition-all"><ChevronRight size={32} /></Button>
         </div>
       )}
 
-      <div className="mt-10 p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 print:bg-white print:text-slate-900 print:border-t-2 print:border-slate-900 print:rounded-none">
-        <div className="text-left space-y-1">
-          <p className="text-[10px] font-black uppercase text-primary tracking-[0.4em]">Certification TransGabon Connect</p>
-          <p className="text-xs font-medium opacity-60 italic">Ce document constitue le manifeste de bord légal pour les autorités de contrôle.</p>
+      {/* FOOTER STATS XXL */}
+      <div className="mt-16 p-10 bg-slate-900 rounded-[3rem] text-white flex flex-col sm:flex-row justify-between items-center gap-8 print:bg-white print:text-slate-900 print:border-t-4 print:border-slate-900 print:rounded-none">
+        <div className="text-left space-y-2">
+          <p className="text-xs font-black uppercase text-primary tracking-[0.5em]">Certification TransGabon Connect</p>
+          <p className="text-sm font-medium opacity-60 italic max-w-md leading-relaxed">Le présent manifeste certifie la liste des passagers autorisés par l'autorité compétente à voyager à bord de cet appareil.</p>
         </div>
-        <div className="text-2xl font-black uppercase tracking-tighter flex items-center gap-4">
+        <div className="text-4xl font-black uppercase tracking-tighter flex items-center gap-6">
            <div className="text-right">
-                <p className="text-[10px] font-bold text-slate-400 opacity-60 leading-none">Total passagers</p>
+                <p className="text-xs font-bold text-slate-400 opacity-60 leading-none uppercase tracking-widest mb-1">Volume Voyageurs</p>
                 <p>{data.passengers.length}</p>
            </div>
-           <Users size={32} className="text-primary" />
+           <div className="p-5 bg-white/5 rounded-3xl border border-white/10">
+              <Users size={48} className="text-primary" />
+           </div>
         </div>
       </div>
     </div>

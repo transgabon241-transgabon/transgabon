@@ -7,11 +7,11 @@ function Label({ className, ...props }: React.ComponentProps<"label">) {
   return (
     <label
       data-slot="label"
-      // Remplace la ligne de classe par celle-ci :
       className={cn(
-        // On passe de slate-500 à slate-800 pour un contraste maximal
-        "flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-800 select-none leading-none",
-        "group-data-[disabled=true]:opacity-50 peer-disabled:opacity-50 ml-1",
+        // Agrandi à text-xs (12px) pour une lisibilité sans effort
+        // Ajout d'une marge basse (mb-2) pour ne pas coller à l'input
+        "flex items-center gap-2 text-xs font-black uppercase tracking-[0.15em] text-slate-900 select-none leading-none mb-2 ml-1 opacity-80",
+        "group-data-[disabled=true]:opacity-50 peer-disabled:opacity-50",
         className
       )}
       {...props}

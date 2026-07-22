@@ -37,7 +37,7 @@
   --ring: 152 55% 38%;
 
   /* --- RADIUS PREMIUM (SaaS Style) --- */
-  --radius: 1rem; /* On augmente la base à 16px */
+  --radius: 1.25rem;
 
   /* --- TYPOGRAPHIE --- */
   --font-sans: 'Inter', 'ui-sans-serif', 'system-ui', sans-serif;
@@ -119,4 +119,22 @@
 }
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+html {
+  /* On définit la taille de base plus grande */
+  font-size: 16px; 
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    /* On augmente l'interlignage (line-height) pour que le texte "respire" */
+    line-height: 1.6;
+  }
+
+  /* Force la taille sur tous les éléments de saisie pour éviter le zoom iOS */
+  input, select, textarea, button {
+    font-size: 16px;
+  }
 }
