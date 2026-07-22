@@ -36,7 +36,7 @@
   --ring: 158 94% 30%;
 
   /* --- RADIUS PREMIUM (SaaS Style) --- */
-  --radius: 1.10rem;
+  --radius: 1.0rem;
 
   /* --- TYPOGRAPHIE --- */
   --font-sans: 'Inter', 'ui-sans-serif', 'system-ui', sans-serif;
@@ -77,7 +77,7 @@
 /* --- LE SECRET DU CONFORT 125% --- */
 html {
   /* Définit la base de calcul (1rem) à 20px au lieu de 16px */
-  font-size: 105%; 
+  font-size: 100%; 
 }
 
 @layer base {
