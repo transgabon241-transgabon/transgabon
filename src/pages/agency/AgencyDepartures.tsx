@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Save, RefreshCw, Hash, MapPin, Clock, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 type TripStop = {
   cityId: string;
@@ -66,9 +67,17 @@ export default function AgencyDepartures() {
   const [businessPrice, setBusinessPrice] = useState('');
   const [status, setStatus] = useState('');
 
-  // VERIFICATION DES ROLES
+  // 1. DÉCLARATION DES VARIABLES DE CONTRÔLE (RÔLES ET TYPES)
   const isBoardingAgent = user?.role === 'Agent Embarquement';
   const canEdit = user?.role === 'Agent' || user?.role === 'Administrateur';
+
+  // 2. CALCUL DU TYPE DE VÉHICULE ACTUEL (Résout votre erreur)
+  const currentVehicleType = useMemo(() => {
+    if (editId) {
+      return departures.find(d => d.id === editId)?.type;
+    }
+    return vehicles.find(v => v.id === vehicleId)?.type;
+  }, [editId, vehicleId, departures, vehicles]);
 
   const loadData = async () => {
     if (!user?.companyId) return;
@@ -181,14 +190,23 @@ export default function AgencyDepartures() {
       }
 
       setShowForm(false);
+      resetForm();
       loadData();
       toast.success('Voyage enregistré');
     } catch (e: any) { toast.error("Erreur de sauvegarde"); }
     finally { setSaving(false); }
   };
 
-  const currentItems = useMemo(() => departures.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage), [departures, currentPage]);
-  const totalPages = Math.ceil(departures.length / itemsPerPage);
+  const resetForm = () => {
+    setEditId(null); setRouteId(''); setVehicleId(''); setDepDate(''); setDepTime(''); setArrTime('');
+    setPrice(''); setVipPrice(''); setBusinessPrice(''); setStops([]); setStatus('');
+  };
+
+  const openEdit = (dep: Departure) => {
+    setEditId(dep.id); setDepDate(dep.departureDate); setDepTime(dep.departureTime);
+    setArrTime(dep.arrivalTime || ''); setPrice(String(dep.price)); setVipPrice(String(dep.vipPrice));
+    setBusinessPrice(String(dep.businessPrice)); setStops(dep.stops || []); setStatus(dep.status); setShowForm(true);
+  };
 
   const addStop = () => setStops([...stops, { cityId: '', arrivalTime: '', priceFromStart: 0 }]);
   const removeStop = (idx: number) => setStops(stops.filter((_, i) => i !== idx));
@@ -198,16 +216,8 @@ export default function AgencyDepartures() {
     setStops(newStops);
   };
 
-  const openEdit = (dep: Departure) => {
-    setEditId(dep.id); setDepDate(dep.departureDate); setDepTime(dep.departureTime);
-    setArrTime(dep.arrivalTime || ''); setPrice(String(dep.price)); setVipPrice(String(dep.vipPrice));
-    setBusinessPrice(String(dep.businessPrice)); setStops(dep.stops || []); setStatus(dep.status); setShowForm(true);
-  };
-
-  const resetForm = () => {
-    setEditId(null); setRouteId(''); setVehicleId(''); setDepDate(''); setDepTime(''); setArrTime('');
-    setPrice(''); setVipPrice(''); setBusinessPrice(''); setStops([]); setStatus('');
-  };
+  const currentItems = useMemo(() => departures.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage), [departures, currentPage]);
+  const totalPages = Math.ceil(departures.length / itemsPerPage);
 
   if (loading && departures.length === 0) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full"/></div>;
 
@@ -237,7 +247,7 @@ export default function AgencyDepartures() {
                 <div className={`h-16 w-16 rounded-3xl flex items-center justify-center text-white shadow-lg shrink-0 ${dep.type === 'BOAT' ? 'bg-blue-600' : dep.type === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
                   {dep.type === 'BOAT' ? <Ship size={28} /> : dep.type === 'TRAIN' ? <Train size={28} /> : <Bus size={28} />}
                 </div>
-                <div className="overflow-hidden">
+                <div className="overflow-hidden text-left">
                   <div className="flex items-center gap-2 font-black text-xl text-slate-900 uppercase tracking-tighter truncate">
                     {dep.departureCity} <ArrowRight size={18} className="text-primary opacity-30" /> {dep.arrivalCity}
                   </div>
@@ -249,52 +259,47 @@ export default function AgencyDepartures() {
                 </div>
               </div>
 
-              {/* SECTION ACTIONS - FIXÉ POUR ÊTRE TOUJOURS VISIBLE */}
               <div className="flex items-center justify-between w-full lg:w-auto gap-6 border-t lg:border-none pt-4 lg:pt-0">
                  <div className="text-left lg:text-right">
-                    <p className="font-black text-primary text-2xl leading-none">{dep.price.toLocaleString()} F</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase mt-1.5 tracking-tighter">{dep.bookingCount}/{dep.totalSeats} PLACES RÉSERVÉES</p>
+                    <p className="font-black text-primary text-2xl leading-none">{(dep.price || 0).toLocaleString()} F</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase mt-1.5 tracking-tighter">{dep.bookingCount}/{dep.totalSeats} PLACES</p>
                  </div>
                  
                  <div className="flex items-center gap-2">
-                    {/* BOUTON MANIFESTE : Toujours visible pour le personnel */}
                     <Link to={`/agency/passengers/${dep.id}`}>
-                        <Button variant="outline" className="h-11 rounded-xl border-2 font-black text-[10px] uppercase gap-2 hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm">
+                        <Button variant="outline" className="h-11 rounded-xl border-2 font-black text-[10px] uppercase gap-2 hover:bg-primary hover:text-white transition-all">
                             <Users size={16} /> <span className="hidden sm:inline">Manifeste</span>
                         </Button>
                     </Link>
 
-                    {/* BOUTON MODIFIER : Visible uniquement pour Agent/Admin */}
                     {canEdit && (
-                        <Button variant="outline" onClick={() => openEdit(dep)} className="h-11 w-11 rounded-xl border-2 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all p-0 shadow-sm">
-                            <Pencil size={18} />
-                        </Button>
-                    )}
-
-                    {canEdit && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="outline" className="h-11 w-11 rounded-xl border-2 text-red-300 hover:text-red-600 hover:bg-red-50 hover:border-red-100 transition-all p-0 shadow-sm">
-                                    <Trash2 size={18} />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle className="font-black italic text-xl uppercase">Annuler le voyage ?</AlertDialogTitle>
-                                    <AlertDialogDescription className="font-medium text-slate-600">Cette action retirera le voyage de la vente et des manifestes.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel className="rounded-xl font-bold">RETOUR</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => supabase.from('trips').delete().eq('id', dep.id).then(()=>loadData())} className="bg-red-600 rounded-xl font-bold uppercase text-white">SUPPRIMER</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <>
+                            <Button variant="outline" onClick={() => openEdit(dep)} className="h-11 w-11 rounded-xl border-2 hover:bg-slate-900 hover:text-white transition-all p-0">
+                                <Pencil size={18} />
+                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" className="h-11 w-11 rounded-xl border-2 text-red-300 hover:text-red-600 hover:bg-red-50 transition-all p-0">
+                                        <Trash2 size={18} />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="rounded-[2.5rem]">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="font-black italic text-xl uppercase">Annuler le voyage ?</AlertDialogTitle>
+                                        <AlertDialogDescription className="font-medium">Action irréversible.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel className="rounded-xl font-bold">RETOUR</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => supabase.from('trips').delete().eq('id', dep.id).then(()=>loadData())} className="bg-red-600 rounded-xl font-bold uppercase text-white">SUPPRIMER</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </>
                     )}
                  </div>
               </div>
             </div>
 
-            {/* ESCALES DANS LA LISTE */}
             {dep.stops.length > 0 && (
               <div className="mt-6 pt-5 border-t border-dashed border-slate-100 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {dep.stops.map((s, idx) => (
@@ -302,7 +307,7 @@ export default function AgencyDepartures() {
                     <MapPin size={12} className="text-primary" />
                     <div className="leading-tight text-left">
                       <p className="text-[10px] font-black uppercase text-slate-900">{s.cityName}</p>
-                      <p className="text-[9px] font-bold text-slate-400 mt-0.5">{s.arrivalTime} • {s.priceFromStart.toLocaleString()}F</p>
+                      <p className="text-[9px] font-bold text-slate-400 mt-0.5">{s.arrivalTime} • {(s.priceFromStart || 0).toLocaleString()}F</p>
                     </div>
                   </div>
                 ))}
@@ -312,20 +317,6 @@ export default function AgencyDepartures() {
         ))}
       </div>
 
-      {/* PAGINATION */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
-          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50 transition-all"><ChevronLeft size={18}/></Button>
-          <div className="flex items-center gap-1 font-black text-[10px] uppercase text-slate-400 px-4">
-             <span className="text-primary">Page {currentPage}</span>
-             <span>/</span>
-             <span>{totalPages}</span>
-          </div>
-          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50 transition-all"><ChevronRight size={18}/></Button>
-        </div>
-      )}
-
-      {/* DIALOG FORMULAIRE */}
       <Dialog open={showForm} onOpenChange={(o) => { if(!o) resetForm(); setShowForm(o); }}>
         <DialogContent className="rounded-[2.5rem] p-10 max-w-2xl border-none shadow-2xl overflow-y-auto max-h-[90vh]">
           <DialogHeader><DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-left">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
@@ -334,7 +325,7 @@ export default function AgencyDepartures() {
             {!editId && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Itinéraire Autorisé</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Itinéraire</Label>
                         <Select value={routeId} onValueChange={setRouteId}>
                             <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-black text-xs px-6 shadow-inner focus:ring-primary"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-2xl">
@@ -343,7 +334,7 @@ export default function AgencyDepartures() {
                         </Select>
                     </div>
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Matériel Roulant</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Matériel</Label>
                         <Select value={vehicleId} onValueChange={setVehicleId}>
                             <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-black text-xs px-6 shadow-inner focus:ring-primary"><SelectValue placeholder="Choisir véhicule" /></SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-2xl">
@@ -354,17 +345,18 @@ export default function AgencyDepartures() {
                 </div>
             )}
 
+            {/* SECTION ESCALES INTERMÉDIAIRES */}
             <div className="p-6 bg-slate-50 rounded-[2.5rem] border-2 border-slate-100 shadow-inner">
                <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xs font-black uppercase flex items-center gap-2 text-slate-900 italic tracking-widest"><Clock size={16} className="text-primary"/> Escales intermédiaires</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-9 rounded-xl font-black border-2 text-[9px] px-4 bg-white shadow-sm hover:bg-primary hover:text-white hover:border-primary transition-all">
+                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-9 rounded-xl font-black border-2 text-[9px] px-4 bg-white shadow-sm hover:bg-primary hover:text-white transition-all">
                     <Plus size={14} className="mr-1" /> AJOUTER ARRÊT
                   </Button>
                </div>
                <div className="space-y-4">
                   {stops.map((stop, index) => (
                     <div key={index} className="grid grid-cols-[1.5fr_1fr_1fr_45px] gap-3 items-end animate-in fade-in slide-in-from-right-4 duration-300">
-                      <div className="space-y-1.5 text-left text-slate-900">
+                      <div className="space-y-1.5 text-left">
                         <Select value={stop.cityId} onValueChange={(v) => updateStop(index, 'cityId', v)}>
                           <SelectTrigger className="h-11 rounded-xl bg-white border-none text-[10px] font-black uppercase shadow-sm px-4"><SelectValue placeholder="Ville" /></SelectTrigger>
                           <SelectContent className="rounded-xl shadow-xl">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold text-xs">{c.name}</SelectItem>)}</SelectContent>
@@ -375,40 +367,41 @@ export default function AgencyDepartures() {
                       <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-11 w-11 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><X size={20}/></Button>
                     </div>
                   ))}
-                  {stops.length === 0 && <p className="text-[10px] text-center text-slate-400 font-bold uppercase italic py-6 tracking-widest opacity-60">Aucune escale configurée</p>}
                </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-dashed border-slate-100 pt-8">
-              <div className="space-y-2 text-left">
+            {/* PRIX ET DATE */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-dashed border-slate-100 pt-8 text-left">
+              <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Tarif Standard / 2ème Cl.</Label>
                 <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-14 rounded-2xl bg-slate-50 border-none font-black text-primary text-xl px-6 shadow-inner" />
               </div>
-              <div className="space-y-2 text-left">
+              <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Date du départ</Label>
                 <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-14 rounded-2xl bg-slate-50 border-none font-black text-sm px-6 shadow-inner" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2 text-left">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
+                <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1 italic">Heure de départ</Label>
                     <Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-14 rounded-2xl bg-slate-50 border-none font-black px-6 shadow-inner" />
                 </div>
-                <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1 italic">Arrivée au Terminus</Label>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1 italic">Arrivée Terminus</Label>
                     <Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-14 rounded-2xl bg-slate-50 border-none font-black px-6 shadow-inner text-slate-400" />
                 </div>
             </div>
 
+            {/* CLASSES SPÉCIFIQUES (DÉPEND DE currentVehicleType) */}
             {(currentVehicleType === 'BOAT' || currentVehicleType === 'TRAIN') && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10 animate-in zoom-in-95 text-left">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Tarif 1ère Classe' : 'Tarif Business'}</Label>
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Prix 1ère Classe' : 'Prix Business'}</Label>
                   <Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-12 rounded-xl bg-white border-primary/10 font-black text-primary px-5 shadow-sm" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-primary ml-1">Tarif Prestige / VIP</Label>
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1">{currentVehicleType === 'TRAIN' ? 'Prix Prestige' : 'Prix Salon VIP'}</Label>
                   <Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-12 rounded-xl bg-white border-primary/10 font-black text-primary px-5 shadow-sm" />
                 </div>
               </div>
