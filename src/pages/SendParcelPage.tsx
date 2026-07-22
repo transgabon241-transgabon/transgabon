@@ -91,7 +91,7 @@ export default function SendParcelPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ trackingNumber: string; price: number; method: string } | null>(null);
 
-   // Charger les villes
+  // Charger les villes
   useEffect(() => {
     const fetchCities = async () => {
       const { data } = await supabase.from('cities').select('id, name').order('name');

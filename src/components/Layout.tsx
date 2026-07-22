@@ -176,11 +176,11 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Link to="/terms" className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary">Conditions</Link>
           </div>
           <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.5em]">
-              République Gabonaise • {new Date().getFullYear()}
+              République Gabonaise. Tout droit reservé SHOOL-TECH   • {new Date().getFullYear()}
           </p>
         </div>
-      </footer>
-    </div>
+      </footer>   
+    </div> 
   );
 }
 
