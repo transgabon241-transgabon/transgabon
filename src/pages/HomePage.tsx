@@ -60,7 +60,7 @@ export default function HomePage() {
           .order('name', { ascending: true });
         if (data && !error) setDbCities(data.map(c => c.name));
       } catch (err) {
-        console.error("Erreur gares :", err);
+        console.error("Erreur de synchronisation gares :", err);
       }
     };
     fetchCities();
@@ -81,45 +81,43 @@ export default function HomePage() {
 
   return (
     <div className="text-foreground font-sans">
-      {/* --- HERO SECTION : HAUTE VISIBILITÉ --- */}
-      <section className="relative text-primary-foreground overflow-hidden min-h-[750px] flex items-center">
+      <section className="relative text-primary-foreground overflow-hidden min-h-[600px] flex items-center">
         <div className="absolute inset-0 z-0">
           <img src={heroBg} alt="Voyage Gabon" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-slate-900/95" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-slate-900/90" />
         </div>
 
-        <div className="container mx-auto px-4 py-20 relative z-10 mt-10">
-          <div className="max-w-4xl mx-auto text-center mb-16">
-            <Badge className="mb-6 bg-primary text-white border-none px-6 py-2 font-black uppercase text-[12px] tracking-[0.3em] shadow-2xl">
-                Plateforme Officielle • République Gabonaise
+        <div className="container mx-auto px-4 py-20 relative z-10">
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <Badge className="mb-4 bg-primary text-white border-none px-4 py-1 font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">
+                Plateforme Officielle • Gabon
             </Badge>
-            {/* Titre Massivement Agrandi */}
-            <h1 className="text-5xl md:text-8xl font-black mb-8 leading-[1.05] tracking-tighter italic uppercase text-white drop-shadow-2xl">
-              Le voyage <br />
-              <span className="text-primary">en un clic.</span>
+            <h1 className="text-4xl md:text-6xl font-black mb-6 leading-none tracking-tighter italic uppercase text-white">
+              Le voyage et le fret <span className="text-primary">en un clic.</span>
             </h1>
-            <p className="text-xl md:text-3xl opacity-90 leading-relaxed font-medium mb-12 text-slate-200 max-w-3xl mx-auto">
-              Réservez vos billets et suivez vos colis en toute simplicité.
+            <p className="text-lg md:text-xl opacity-90 leading-relaxed font-medium mb-8 text-slate-200">
+              Réservez vos billets (Bus, Train, Bateau) et gérez vos expéditions de colis à travers tout le Gabon. Simple, sécurisé et rapide.
             </p>
-            <div className="flex flex-wrap justify-center gap-6">
-                <Button onClick={() => navigate('/track')} variant="outline" size="lg" className="rounded-2xl font-black bg-white/10 border-white/20 text-white hover:bg-white/20 uppercase tracking-widest shadow-2xl">
+            <div className="flex flex-wrap justify-center gap-4">
+                <Button onClick={() => navigate('/track')} variant="outline" className="rounded-2xl font-black bg-white/10 border-white/20 text-white h-12 px-8 hover:bg-white/20 uppercase text-[10px] tracking-widest">
                     SUIVRE UN COLIS
                 </Button>
             </div>
           </div>
 
-          {/* BARRE DE RECHERCHE ULTRA-ACCESSIBLE */}
-          <div className="max-w-5xl mx-auto bg-slate-900/95 backdrop-blur-xl text-white rounded-[3rem] p-6 md:p-12 shadow-[0_30px_100px_rgba(0,0,0,0.6)] border border-white/10">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-8 items-end mb-10 text-left">
-              <div className="space-y-3">
-                <Label className="text-xs font-black uppercase tracking-[0.2em] text-primary ml-4 italic">Gare de Départ</Label>
+          {/* BARRE DE RECHERCHE SaaS - FIXÉ POUR ÉVITER LE BLANC AU CLIC */}
+          <div className="max-w-4xl mx-auto bg-slate-900/95 backdrop-blur-md text-white rounded-[2.5rem] p-5 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-white/10">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 items-end mb-8 text-left">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Ville de Départ</Label>
                 <Select value={from} onValueChange={setFrom}>
-                  <SelectTrigger className="h-20 rounded-[1.5rem] border-none !bg-white/10 !text-white text-xl font-black focus:ring-4 focus:ring-primary shadow-2xl">
-                    <SelectValue placeholder="D'où partez-vous ?" />
+                  {/* !bg-white/10 et !text-white forcent le style même en focus */}
+                  <SelectTrigger className="h-14 rounded-2xl border-none !bg-white/10 !text-white font-bold focus:ring-2 focus:ring-primary shadow-inner">
+                    <SelectValue placeholder="Départ" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-3xl bg-white text-slate-900">
+                  <SelectContent className="rounded-2xl bg-white text-slate-900">
                     {citiesList.filter(c => c !== to).map(c => (
-                      <SelectItem key={c} value={c} className="font-black uppercase text-sm py-4">{c}</SelectItem>
+                      <SelectItem key={c} value={c} className="font-bold uppercase text-xs cursor-pointer">{c}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -128,82 +126,122 @@ export default function HomePage() {
               <button 
                 type="button" 
                 onClick={swap} 
-                className="hidden md:flex items-center justify-center h-16 w-16 rounded-full bg-primary text-white shadow-2xl hover:rotate-180 transition-all duration-700 self-end mb-1 border-8 border-slate-900"
+                className="hidden md:flex items-center justify-center h-12 w-12 rounded-full bg-primary text-white shadow-lg hover:rotate-180 transition-all duration-500 self-end mb-1 border-4 border-slate-900"
               >
-                <ArrowRightLeft size={24} strokeWidth={3} />
+                <ArrowRightLeft className="h-5 w-5" />
               </button>
 
-              <div className="space-y-3">
-                <Label className="text-xs font-black uppercase tracking-[0.2em] text-primary ml-4 italic">Destination</Label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Destination</Label>
                 <Select value={to} onValueChange={setTo}>
-                  <SelectTrigger className="h-20 rounded-[1.5rem] border-none !bg-white/10 !text-white text-xl font-black focus:ring-4 focus:ring-primary shadow-2xl">
-                    <SelectValue placeholder="Où allez-vous ?" />
+                  <SelectTrigger className="h-14 rounded-2xl border-none !bg-white/10 !text-white font-bold focus:ring-2 focus:ring-primary shadow-inner">
+                    <SelectValue placeholder="Destination" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-3xl bg-white text-slate-900">
+                  <SelectContent className="rounded-2xl bg-white text-slate-900">
                     {citiesList.filter(c => c !== from).map(c => (
-                      <SelectItem key={c} value={c} className="font-black uppercase text-sm py-4">{c}</SelectItem>
+                      <SelectItem key={c} value={c} className="font-bold uppercase text-xs cursor-pointer">{c}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-8 items-end text-left">
-              <div className="space-y-3">
-                <Label className="text-xs font-black uppercase tracking-[0.2em] text-primary ml-4 italic">Date du voyage</Label>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-end text-left">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Date du voyage</Label>
                 <Input 
                   type="date" 
                   value={date} 
                   onChange={e => setDate(e.target.value)} 
                   min={today} 
-                  className="h-20 rounded-[1.5rem] border-none !bg-white/10 !text-white font-black text-2xl px-8 focus-visible:ring-4 focus-visible:ring-primary shadow-2xl color-scheme-dark" 
+                  className="h-14 rounded-2xl border-none !bg-white/10 !text-white font-black px-6 focus-visible:ring-2 focus-visible:ring-primary shadow-inner color-scheme-dark" 
                 />
               </div>
               <Button 
                 size="lg" 
-                className="w-full md:w-auto h-20 px-16 gap-4 font-black italic uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 bg-primary hover:bg-primary/90 text-white transition-all active:scale-95 text-lg" 
+                className="w-full md:w-auto h-14 px-12 gap-3 font-black italic uppercase tracking-widest shadow-xl shadow-primary/40 bg-primary hover:bg-primary/90 text-white transition-all active:scale-95" 
                 onClick={handleSearch} 
                 disabled={!from || !to || !date}
               >
-                <Search size={24} strokeWidth={3} /> RECHERCHER
+                <Search className="h-5 w-5" /> Rechercher départs
               </Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* --- SECTION SERVICES : TEXTE PLUS GROS --- */}
-      <section className="py-32 bg-white">
-        <div className="container mx-auto px-4 max-w-6xl">
-          <div className="text-center mb-24">
-            <h2 className="text-5xl font-black italic uppercase tracking-tight mb-6 text-slate-900 leading-none">Services & Logistique</h2>
-            <p className="text-slate-400 font-bold uppercase text-sm tracking-[0.4em]">Le réseau national accessible à tous</p>
+      {/* --- LE RESTE DE LA PAGE --- */}
+      <section className="py-24 bg-white">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-black italic uppercase tracking-tight mb-4 text-slate-900">Services Mobilité & Logistique</h2>
+            <div className="h-1.5 w-24 bg-primary mx-auto rounded-full" />
           </div>
           
-          <div className="grid md:grid-cols-2 gap-16 text-left">
-            <div className="p-12 bg-slate-50 rounded-[4rem] border-2 border-slate-100 hover:border-primary/20 transition-all group shadow-sm">
-              <div className="h-20 w-20 bg-primary rounded-3xl flex items-center justify-center text-white mb-10 shadow-xl group-hover:scale-110 transition-transform">
-                <Train size={40} />
+          <div className="grid md:grid-cols-2 gap-12 text-left">
+            <div className="p-10 bg-slate-50 rounded-[3rem] border-2 border-slate-100 hover:border-primary/20 transition-all group">
+              <div className="h-16 w-16 bg-primary rounded-2xl flex items-center justify-center text-white mb-8 shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
+                <Train size={32} />
               </div>
-              <h3 className="text-3xl font-black uppercase mb-6 tracking-tighter text-slate-900">Billetterie</h3>
-              <p className="text-lg text-slate-600 leading-relaxed font-medium">
-                Accédez aux horaires de la SETRAG, des navires et des bus. Réservez en <strong>VIP ou 1ère Classe</strong> et recevez votre ticket instantanément.
+              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-slate-900">Billetterie Multimodale</h3>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                Accédez aux horaires et tarifs de la SETRAG (Train), des navires maritimes et des agences de bus majeures. 
+                Réservez vos places en <strong>1ère Classe, Business ou VIP</strong> et recevez votre ticket numérique sécurisé instantanément.
               </p>
             </div>
             
-            <div className="p-12 bg-slate-50 rounded-[4rem] border-2 border-slate-100 hover:border-emerald-200 transition-all group shadow-sm">
-              <div className="h-20 w-20 bg-emerald-500 rounded-3xl flex items-center justify-center text-white mb-10 shadow-xl group-hover:scale-110 transition-transform">
-                <Package size={40} />
+            <div className="p-10 bg-slate-50 rounded-[3rem] border-2 border-slate-100 hover:border-emerald-200 transition-all group">
+              <div className="h-16 w-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-white mb-8 shadow-lg shadow-emerald-100 group-hover:scale-110 transition-transform">
+                <Package size={32} />
               </div>
-              <h3 className="text-3xl font-black uppercase mb-6 tracking-tighter text-slate-900">Fret & Colis</h3>
-              <p className="text-lg text-slate-600 leading-relaxed font-medium">
-                Envoyez vos marchandises partout au Gabon. Obtenez un <strong>bordereau de suivi</strong> et suivez l'acheminement en temps réel.
+              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-slate-900">Expédition Fret & Colis</h3>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                Notre solution de fret permet aux particuliers et entreprises d'envoyer des marchandises partout au Gabon. 
+                Enregistrez vos colis, obtenez un <strong>bordereau de suivi (Tracking)</strong> et soyez notifié à chaque étape du transport.
               </p>
             </div>
           </div>
         </div>
       </section>
-      
+
+      {/* --- SECTION TRANSPARENCE GOOGLE --- */}
+      <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-20 opacity-5 pointer-events-none">
+            <ShieldCheck size={400} />
+        </div>
+        
+        <div className="container mx-auto px-4 max-w-4xl text-center relative z-10">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 px-6 py-2 rounded-full mb-8">
+            <ShieldCheck size={20} />
+            <span className="text-xs font-black uppercase tracking-widest">Confiance & Sécurité des données</span>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-black italic uppercase mb-8 leading-tight">Pourquoi se connecter avec Google ?</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-left">
+            <div className="space-y-4 p-6 bg-white/5 rounded-3xl border border-white/10">
+              <CheckCircle2 className="text-primary h-8 w-8" />
+              <h4 className="font-black text-white uppercase text-sm tracking-tight">Accès Sécurisé</h4>
+              <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                Google OAuth nous permet de créer votre compte sans mot de passe complexe, garantissant une sécurité maximale.
+              </p>
+            </div>
+            <div className="space-y-4 p-6 bg-white/5 rounded-3xl border border-white/10">
+              <CheckCircle2 className="text-primary h-8 w-8" />
+              <h4 className="font-black text-white uppercase text-sm tracking-tight">Suivi Automatisé</h4>
+              <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                Nous utilisons votre email pour vous envoyer automatiquement vos <strong>billets de voyage</strong> et <strong>bordereaux de suivi</strong>.
+              </p>
+            </div>
+            <div className="space-y-4 p-6 bg-white/5 rounded-3xl border border-white/10">
+              <CheckCircle2 className="text-primary h-8 w-8" />
+              <h4 className="font-black text-white uppercase text-sm tracking-tight">Historique Centralisé</h4>
+              <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                Votre profil Google lie vos réservations passées et futures, vous permettant de gérer vos trajets en un seul endroit.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* --- TRANSPORT TYPES --- */}
       <section className="py-24 bg-slate-50">
         <div className="container mx-auto px-4 max-w-5xl">
