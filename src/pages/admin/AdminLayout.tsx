@@ -11,16 +11,14 @@ import {
   LogOut, 
   ArrowLeft, 
   Shield, 
-  MapPin, 
   ArrowLeftRight,
   Globe,
-  Settings,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-// Liste des onglets d'administration
 const NAV = [
   { path: '/admin', label: 'Tableau de bord', icon: LayoutDashboard },
   { path: '/admin/companies', label: 'Partenaires', icon: Building2 },
@@ -42,7 +40,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [isLoading, user, loginWithRedirect]);
 
   useEffect(() => {
-    // Vérification du rôle Administrateur
     if (user && user.role !== 'Administrateur') {
       navigate('/');
     }
@@ -50,49 +47,47 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   if (isLoading || !user) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-100 font-sans">
       
-      {/* SIDEBAR DESIGN SaaS */}
-      <aside className="md:w-72 bg-slate-900 text-white shrink-0 flex flex-col z-50 shadow-2xl">
+      {/* SIDEBAR ADMIN SOMBRE XXL */}
+      <aside className="md:w-80 bg-slate-900 text-white shrink-0 flex flex-col z-50 shadow-2xl">
         
-        {/* LOGO & BRANDING */}
-        <div className="p-8">
-          <Link to="/" className="flex items-center gap-2 text-slate-400 hover:text-primary mb-8 transition-colors group">
-            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> 
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Retour Site</span>
+        <div className="p-10">
+          <Link to="/" className="flex items-center gap-3 text-slate-400 hover:text-primary mb-10 transition-colors group">
+            <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" /> 
+            <span className="text-[11px] font-black uppercase tracking-[0.25em]">Site Public</span>
           </Link>
           
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                <Shield className="h-6 w-6 text-white" />
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                <Shield className="h-7 w-7 text-white" />
             </div>
             <div>
-                <h2 className="font-black text-xl tracking-tighter uppercase italic leading-none">Console</h2>
-                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">Administration</p>
+                <h2 className="font-black text-2xl tracking-tighter uppercase italic leading-none">Console</h2>
+                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1.5">Super Administration</p>
             </div>
           </div>
         </div>
 
-        {/* NAVIGATION */}
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {NAV.map(item => {
             const active = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center justify-between px-4 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 group ${
+                className={`flex items-center justify-between px-5 py-4 rounded-[1.25rem] text-[11px] font-black uppercase tracking-widest transition-all duration-300 group ${
                   active 
-                    ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' 
+                    ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-[1.02]' 
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                     <item.icon className={`h-5 w-5 ${active ? 'text-white' : 'text-slate-500 group-hover:text-primary'}`} />
                     {item.label}
                 </div>
@@ -102,39 +97,34 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        {/* USER FOOTER */}
-        <div className="p-6 mt-auto border-t border-white/5 bg-black/20">
-          <div className="flex items-center gap-3 mb-4">
-             <div className="h-10 w-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center font-black text-primary">
+        <div className="p-8 mt-auto border-t border-white/5 bg-black/20">
+          <div className="flex items-center gap-4 mb-6">
+             <div className="h-12 w-12 rounded-2xl bg-slate-800 border-2 border-white/10 flex items-center justify-center font-black text-primary text-lg">
                 {user.firstName?.charAt(0) || 'A'}
              </div>
              <div className="overflow-hidden">
-                <p className="text-xs font-black uppercase truncate">{user.firstName} {user.lastName}</p>
-                <Badge variant="outline" className="text-[7px] border-emerald-500/50 text-emerald-400 uppercase font-black px-1.5 py-0">Super Admin</Badge>
+                <p className="text-sm font-black uppercase truncate text-white leading-none">{user.firstName} {user.lastName}</p>
+                <Badge variant="outline" className="mt-2 border-emerald-500/50 text-emerald-400 uppercase font-black text-[7px] px-2 py-0.5">Super Admin</Badge>
              </div>
           </div>
           <Button 
             variant="ghost" 
-            size="sm" 
-            className="w-full justify-start gap-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 font-black text-[10px] uppercase tracking-widest h-11 rounded-xl" 
+            className="w-full justify-start gap-4 text-slate-500 hover:text-red-400 hover:bg-red-500/10 font-black text-[10px] uppercase tracking-[0.2em] h-14 rounded-2xl" 
             onClick={() => logout()}
           >
-            <LogOut className="h-4 w-4" /> Déconnexion
+            <LogOut size={20} /> Déconnexion Système
           </Button>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-            {/* Conteneur arrondi pour les pages internes */}
-            <div className="min-h-full w-full bg-white rounded-[2.5rem] shadow-sm border border-slate-200/50 p-6 md:p-10 relative overflow-hidden">
-                {/* Petit décor visuel en fond (optionnel) */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-10">
+            <div className="min-h-full w-full bg-white rounded-[3rem] shadow-sm border border-slate-200/50 p-8 md:p-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-20 opacity-[0.02] pointer-events-none">
-                    <Shield size={400} />
+                    <Shield size={500} />
                 </div>
-                
-                <div className="relative z-10">
+                <div className="relative z-10 animate-in fade-in slide-in-from-bottom-3 duration-700">
                     {children}
                 </div>
             </div>
