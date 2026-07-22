@@ -20,11 +20,10 @@
   --card: 0 0% 100%;
   --card-foreground: 224 71% 4%;
 
-  /* Vert Gabon Premium */
+  /* Vert Gabon Premium - Synchronisé avec le Logo */
   --primary: 158 94% 30%;
   --primary-foreground: 0 0% 100%;
   
-  /* Jaune/Ambre pour les alertes/escales */
   --secondary: 40 95% 55%;
   --secondary-foreground: 224 71% 4%;
 
@@ -34,7 +33,7 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
   
-  --ring: 152 55% 38%;
+  --ring: 158 94% 30%;
 
   /* --- RADIUS PREMIUM (SaaS Style) --- */
   --radius: 1.25rem;
@@ -45,7 +44,6 @@
 }
 
 @theme {
-  /* Couleurs */
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
@@ -63,7 +61,6 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
-  /* Rayons de bordure SaaS */
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -71,25 +68,32 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: 1.5rem;
   --radius-4xl: 2rem;
-  --radius-5xl: 2.5rem; /* Utilisé pour les grandes cartes Premium */
+  --radius-5xl: 2.5rem;
 
-  /* Ombres Premium */
   --shadow-premium: 0 20px 50px rgba(0, 0, 0, 0.08);
   --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07);
 }
 
-/* --- RÈGLES GLOBALES --- */
+/* --- LE SECRET DU CONFORT 125% --- */
+html {
+  /* Définit la base de calcul (1rem) à 20px au lieu de 16px */
+  font-size: 125%; 
+}
+
 @layer base {
   * {
     @apply border-border;
   }
   
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-slate-50 text-slate-900 antialiased;
+    /* Lissage du texte optimisé pour les grandes tailles */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
   }
 
-  /* Amélioration des barres de défilement (Scrollbars) */
+  /* Amélioration des barres de défilement */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -100,9 +104,14 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
   }
+
+  /* Force la taille sur les éléments de saisie pour éviter le zoom iOS */
+  input, select, textarea, button {
+    font-size: 1rem !important; /* Sera 20px grâce au html { 125% } */
+  }
 }
 
-/* Utilitaires pour le Fret et le Tracking */
+/* Utilitaires */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -111,7 +120,6 @@
   scrollbar-width: none;
 }
 
-/* Animation de flottement pour les icônes VIP */
 @keyframes float {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-5px); }
@@ -121,20 +129,16 @@
   animation: float 3s ease-in-out infinite;
 }
 
-html {
-  /* On définit la taille de base plus grande */
-  font-size: 16px; 
+/* Optimisation pour les très grands écrans (écrans 4K) */
+@media (min-width: 1920px) {
+  html {
+    font-size: 140%; /* Encore plus de confort sur les écrans géants */
+  }
 }
 
-@layer base {
-  body {
-    @apply bg-slate-50 text-slate-900 antialiased;
-    /* On augmente l'interlignage (line-height) pour que le texte "respire" */
-    line-height: 1.6;
-  }
-
-  /* Force la taille sur tous les éléments de saisie pour éviter le zoom iOS */
-  input, select, textarea, button {
-    font-size: 16px;
+/* Optimisation Mobile : on garde un fort confort */
+@media (max-width: 768px) {
+  html {
+    font-size: 115%; /* Un peu moins gros que sur PC pour ne pas saturer le petit écran */
   }
 }
