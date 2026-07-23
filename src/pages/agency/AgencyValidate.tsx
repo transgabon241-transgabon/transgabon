@@ -10,11 +10,11 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   CheckCircle, Search, RefreshCw, AlertCircle, Package, Ticket, 
-  Hash, Ship, Bus, Train, ArrowRight, Phone, Wallet, Plus, Scale, Gem, Calculator, Info
+  Hash, Ship, Bus, Train, ArrowRight, Phone, Wallet, Plus, Scale, Gem, Calculator, Info, Trash2
 } from 'lucide-react';
 
 export default function AgencyValidate() {
-  const { user } = useAuth();
+  const { user } = userAuth();
   const [qrInput, setQrInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -123,12 +123,24 @@ export default function AgencyValidate() {
     }
   };
 
+  // NOUVELLE FONCTION : SUPPRIMER UN BAGAGE (Si erreur client)
+  const handleDeleteLuggage = async (lugId: string) => {
+    try {
+      const { error } = await supabase.from('luggages').delete().eq('id', lugId);
+      if (error) throw error;
+      toast.success("Bagage retiré");
+      handleValidate(result.booking.bookingNumber);
+    } catch (e) {
+      toast.error("Erreur de suppression");
+    }
+  };
+
   const handleConfirmWeighing = async () => {
     if (!result?.booking) return;
     setLoading(true);
     try {
       const label = result.booking.tripType === 'TRAIN' 
-        ? `Excédent Pesée (${weightInput}kg)` 
+        ? `Pesée Agent (${weightInput}kg)` 
         : agencyRates.find(r => r.id === selectedRateId)?.label || "Supplément";
 
       const { error: lugError } = await supabase.from('luggages').insert([{
@@ -143,9 +155,9 @@ export default function AgencyValidate() {
 
       if (currentCalculation > 0) {
         await supabase.from('bookings').update({ status: 'ATTENTE' }).eq('id', result.booking.id);
-        toast.warning("Dette enregistrée : Envoi vers la caisse");
+        toast.warning("Excédent enregistré : Envoi vers la caisse");
       } else {
-        toast.success("Poids validé");
+        toast.success("Bagage conforme enregistré");
       }
 
       setWeightInput("");
@@ -181,11 +193,11 @@ export default function AgencyValidate() {
     <div className="max-w-2xl mx-auto p-2 sm:p-4 pb-20 space-y-4 animate-in fade-in duration-500">
       
       {/* HEADER COMPACT */}
-      <header className="flex items-center gap-3 bg-white p-4 rounded-[1.5rem] border-2 border-slate-100 shadow-sm w-full text-left">
+      <header className="flex items-center gap-3 bg-white p-4 rounded-[1.5rem] border-2 border-slate-100 shadow-sm w-full text-left text-slate-900">
         <div className="p-2 bg-slate-900 rounded-xl text-white shrink-0"><Scale size={20} /></div>
         <div className="min-w-0">
-          <h1 className="text-lg font-black italic tracking-tighter text-slate-900 uppercase leading-none">Console Pesage</h1>
-          <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-1 italic">Vérification & Taxe Bagages</p>
+          <h1 className="text-lg font-black italic tracking-tighter uppercase leading-none">Poste de Pesage</h1>
+          <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-1 italic">Contrôle & Validation Bagages</p>
         </div>
       </header>
 
@@ -218,29 +230,45 @@ export default function AgencyValidate() {
               <Badge variant="outline" className="shrink-0 border-primary/20 text-primary font-black text-[8px] uppercase">{result.booking.classLabel}</Badge>
             </div>
 
-            {/* TRAJET RÉCOMPACTÉ */}
-            <div className={`rounded-[1.2rem] p-4 mb-4 relative overflow-hidden shadow-md text-white ${result.booking.isEscale ? 'bg-amber-600' : 'bg-slate-900'}`}>
-                <div className="flex justify-between items-center gap-2 relative z-10">
-                    <div className="flex-1 min-w-0">
-                        <Label className="text-[8px] font-black uppercase text-white/50">Départ</Label>
-                        <p className="text-xs font-black uppercase truncate">{result.booking.departureCity}</p>
+            {/* --- LISTE DES BAGAGES ACTUELS (MODIFIABLE) --- */}
+            <div className="space-y-2 mb-4">
+                <h4 className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-2 px-2">
+                    <Package size={14} /> Articles enregistrés
+                </h4>
+                {result.booking.luggages.length === 0 ? (
+                    <div className="text-center py-4 bg-slate-50 rounded-xl border-2 border-dashed border-slate-100">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase italic">Aucun bagage déclaré</p>
                     </div>
-                    <ArrowRight size={14} className="text-white shrink-0" />
-                    <div className="flex-1 min-w-0 text-right">
-                        <Label className="text-[8px] font-black uppercase text-white/50">Arrivée</Label>
-                        <p className="text-xs font-black uppercase truncate">{result.booking.arrivalCity}</p>
+                ) : (
+                    <div className="space-y-1.5">
+                        {result.booking.luggages.map((lug: any) => (
+                            <div key={lug.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 group">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black text-slate-700 uppercase leading-none">{lug.label}</p>
+                                    <p className="text-[9px] font-bold text-primary mt-1">{(lug.total_price || 0).toLocaleString()} FCFA</p>
+                                </div>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => handleDeleteLuggage(lug.id)}
+                                    className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0"
+                                >
+                                    <Trash2 size={14} />
+                                </Button>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* --- CONSOLE DE PESÉE --- */}
-            <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 mb-4">
+            {/* --- CONSOLE DE PESÉE AGENT --- */}
+            <div className="bg-slate-900 p-4 rounded-2xl border-2 border-slate-800 mb-4 shadow-inner">
                 <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-2">
-                        <Scale size={14} className="text-primary" /> Poste de Pesage
+                    <h4 className="text-[9px] font-black uppercase text-white opacity-60 flex items-center gap-2">
+                        <Scale size={14} className="text-primary" /> Pesée & Rectification
                     </h4>
                     {result.booking.tripType === 'TRAIN' && (
-                        <Badge className="bg-blue-100 text-blue-700 border-none text-[8px] uppercase font-black">Franchise {result.booking.freeWeight}kg</Badge>
+                        <Badge className="bg-primary/20 text-primary border-none text-[8px] uppercase font-black">Franchise {result.booking.freeWeight}kg</Badge>
                     )}
                 </div>
 
@@ -253,19 +281,19 @@ export default function AgencyValidate() {
                                     placeholder="POIDS SUR BALANCE" 
                                     value={weightInput} 
                                     onChange={e => setWeightInput(e.target.value)} 
-                                    className="h-14 rounded-xl border-none bg-white font-black text-2xl text-center shadow-inner text-primary" 
+                                    className="h-14 rounded-xl border-none bg-white/5 text-white font-black text-2xl text-center shadow-inner" 
                                 />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-300 text-xs">KG</span>
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-white/20 text-xs tracking-widest">KG</span>
                             </div>
                             {weightInput && (
                                 <div className="grid grid-cols-2 gap-2 animate-in zoom-in-95">
-                                    <div className="bg-white p-2 rounded-xl border border-slate-200 text-center">
-                                        <p className="text-[7px] font-black uppercase text-slate-400">Excédent</p>
-                                        <p className="font-black text-slate-700 text-xs">{Math.max(0, parseFloat(weightInput) - result.booking.freeWeight).toFixed(1)} KG</p>
+                                    <div className="bg-white/5 p-2 rounded-xl text-center">
+                                        <p className="text-[7px] font-black uppercase text-white/40">Excédent</p>
+                                        <p className="font-black text-white text-xs">{Math.max(0, parseFloat(weightInput) - result.booking.freeWeight).toFixed(1)} KG</p>
                                     </div>
-                                    <div className="bg-primary/10 p-2 rounded-xl border border-primary/20 text-center">
-                                        <p className="text-[7px] font-black uppercase text-primary">Taxe</p>
-                                        <p className="font-black text-primary text-xs">{currentCalculation.toLocaleString()} F</p>
+                                    <div className="bg-primary p-2 rounded-xl text-center shadow-lg shadow-primary/20">
+                                        <p className="text-[7px] font-black uppercase text-black">À TAXER</p>
+                                        <p className="font-black text-black text-xs">{currentCalculation.toLocaleString()} F</p>
                                     </div>
                                 </div>
                             )}
@@ -275,15 +303,15 @@ export default function AgencyValidate() {
                              <select 
                                 value={selectedRateId} 
                                 onChange={e => setSelectedRateId(e.target.value)}
-                                className="w-full h-11 rounded-xl bg-white border-none px-4 text-[10px] font-black uppercase shadow-inner outline-none"
+                                className="w-full h-11 rounded-xl bg-white/5 border-none px-4 text-[10px] font-black uppercase text-white shadow-inner outline-none"
                             >
-                                <option value="">Choisir article...</option>
-                                {agencyRates.map(r => <option key={r.id} value={r.id}>{r.label} ({r.price} F)</option>)}
+                                <option value="" className="text-black">Choisir l'article...</option>
+                                {agencyRates.map(r => <option key={r.id} value={r.id} className="text-black">{r.label} ({r.price} F)</option>)}
                             </select>
                             <div className="flex gap-2">
-                                <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-11 rounded-xl border-none bg-white font-black text-center shadow-inner" />
-                                <div className="flex-1 flex items-center justify-end px-4 bg-primary/10 rounded-xl">
-                                    <p className="font-black text-primary text-xs">{currentCalculation.toLocaleString()} F</p>
+                                <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-11 rounded-xl border-none bg-white/5 text-white font-black text-center" />
+                                <div className="flex-1 flex items-center justify-end px-4 bg-primary rounded-xl">
+                                    <p className="font-black text-black text-xs">{currentCalculation.toLocaleString()} F</p>
                                 </div>
                             </div>
                         </div>
@@ -291,9 +319,9 @@ export default function AgencyValidate() {
 
                     <Button 
                         onClick={handleConfirmWeighing} 
-                        className="w-full h-11 rounded-xl font-black bg-slate-900 text-white uppercase text-[9px] gap-2 shadow-lg active:scale-95 transition-all"
+                        className="w-full h-12 rounded-xl font-black bg-primary text-black hover:bg-primary/90 uppercase text-[9px] gap-2 shadow-lg active:scale-95 transition-all"
                     >
-                        <Calculator size={14} /> Enregistrer le poids réel
+                        <Calculator size={14} /> Valider la pesée officielle
                     </Button>
                 </div>
             </div>
@@ -303,7 +331,7 @@ export default function AgencyValidate() {
                 <div className="bg-emerald-600 p-4 rounded-2xl shadow-xl text-white mb-4">
                     <div className="flex items-center gap-2 mb-3">
                         <Wallet size={16} className="opacity-70" />
-                        <h3 className="text-[10px] font-black uppercase italic">Encaisser au Guichet</h3>
+                        <h3 className="text-[10px] font-black uppercase italic">Dette à Encaisser</h3>
                     </div>
                     
                     <div className="bg-white/10 p-3 rounded-xl space-y-2 border border-white/20 text-[10px]">
@@ -313,13 +341,13 @@ export default function AgencyValidate() {
                         </div>
                         {result.booking.luggageAmount > 0 && (
                             <div className="flex justify-between font-bold uppercase">
-                                <span>Bagages/Excédents :</span>
+                                <span>Bagages (Total) :</span>
                                 <span className="text-amber-300">+{result.booking.luggageAmount.toLocaleString()} F</span>
                             </div>
                         )}
                         <div className="h-px bg-white/20 my-1" />
                         <div className="flex justify-between text-base font-black tracking-tighter">
-                            <span>TOTAL :</span>
+                            <span>RESTE À PAYER :</span>
                             <span>{result.booking.totalToPay.toLocaleString()} F</span>
                         </div>
                     </div>
@@ -329,28 +357,28 @@ export default function AgencyValidate() {
                             onClick={handleProcessPayment}
                             className="w-full h-12 bg-white text-emerald-700 rounded-xl font-black text-xs uppercase mt-4 shadow-lg active:scale-95 transition-all"
                         >
-                            VALIDER LE PAIEMENT
+                            ENCAISSER PAIEMENT
                         </Button>
                     ) : (
                         <div className="mt-3 flex items-center gap-2 justify-center text-[8px] font-black uppercase bg-black/20 p-2 rounded-lg italic">
-                            <Info size={12}/> Envoyer le passager à la caisse
+                            <Info size={12}/> Attente paiement en caisse
                         </div>
                     )}
                 </div>
             )}
 
-            {/* --- LISTE D'EMBARQUEMENT --- */}
+            {/* --- EMBARQUEMENT --- */}
             {result.valid && (
                 <div className="space-y-3">
                     <div className="flex items-center justify-between ml-2">
-                        <h3 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Embarquement</h3>
-                        <Badge className="bg-emerald-500 text-white border-none font-black text-[7px]">SOLDE OK</Badge>
+                        <h3 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Contrôle Accès</h3>
+                        <Badge className="bg-emerald-500 text-white border-none font-black text-[7px]">SOLDE RÉGLÉ</Badge>
                     </div>
                     <div className="space-y-2">
                         {result.booking.passengers.map((p: any) => (
                             <div key={p.id} className="flex items-center justify-between p-3 bg-white border-2 border-slate-100 rounded-xl">
-                                <div className="min-w-0 pr-2">
-                                    <p className="font-black text-xs text-slate-900 uppercase truncate leading-none">{p.first_name} {p.last_name}</p>
+                                <div className="min-w-0 pr-2 text-slate-900">
+                                    <p className="font-black text-xs uppercase truncate leading-none">{p.first_name} {p.last_name}</p>
                                     <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Siège {result.booking.seatNumber}</p>
                                 </div>
                                 {p.boarded ? (
@@ -376,8 +404,8 @@ export default function AgencyValidate() {
       {/* FOOTER VIDE */}
       {!result && (
         <div className="pt-20 text-center opacity-20">
-            <Ticket size={60} className="mx-auto mb-4" />
-            <p className="text-xs font-black uppercase tracking-[0.4em]">Scan ou Saisie Requis</p>
+            <Ticket size={60} className="mx-auto mb-4 text-slate-900" />
+            <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-900">En attente de scan</p>
         </div>
       )}
     </div>
