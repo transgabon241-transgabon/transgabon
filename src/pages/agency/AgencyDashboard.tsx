@@ -96,7 +96,7 @@ export default function AgencyDashboard() {
         </div>
         <div className="relative z-10">
           <p className="text-primary font-black uppercase text-[10px] tracking-[0.3em] mb-2">Console Agence</p>
-          <h1 className="text-4xl font-black italic text-slate-900 tracking-tighter uppercase leading-none">{data.companyName || 'Mon Agence'}</h1>
+          <h1 className="text-4xl font-black italic text-slate-100 tracking-tighter uppercase leading-none">{data.companyName || 'Mon Agence'}</h1>
           <p className="text-sm font-bold text-slate-400 mt-2">Suivi des flux de transport en temps réel.</p>
         </div>
       </div>
@@ -113,7 +113,7 @@ export default function AgencyDashboard() {
         {/* PROCHAINS DÉPARTS */}
         <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-900">
+            <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-100">
               <Clock className="h-4 w-4 text-primary" /> Planning Immédiat
             </h2>
             <Link to="/agency/departures">
@@ -146,7 +146,7 @@ export default function AgencyDashboard() {
                       </div>
                       
                       <div className="flex items-center justify-between">
-                         <div className="font-black text-slate-900 uppercase text-sm flex items-center gap-2">
+                         <div className="font-black text-slate-100 uppercase text-sm flex items-center gap-2">
                             {dep.departureCity} <ArrowRight size={14} className="text-slate-300" /> {dep.arrivalCity}
                          </div>
                          <p className="font-black text-primary text-xs uppercase">{dep.departureTime}</p>
@@ -160,7 +160,7 @@ export default function AgencyDashboard() {
 
         {/* DERNIÈRES VENTES */}
         <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
-          <h2 className="text-sm font-black uppercase tracking-widest mb-8 text-slate-900">Activité de Caisse</h2>
+          <h2 className="text-sm font-black uppercase tracking-widest mb-8 text-slate-100">Activité de Caisse</h2>
           
           {(!data.recentBookings || data.recentBookings.length === 0) ? (
              <div className="p-12 text-center border-2 border-dashed rounded-3xl bg-slate-50">
@@ -172,10 +172,10 @@ export default function AgencyDashboard() {
                  <div key={b.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-md transition-all">
                     <div className="flex flex-col">
                        <span className="font-mono text-[10px] font-black text-primary">{b.bookingNumber}</span>
-                       <span className="font-bold text-slate-900 text-xs uppercase mt-1">{b.passengerName}</span>
+                       <span className="font-bold text-slate-100 text-xs uppercase mt-1">{b.passengerName}</span>
                     </div>
                     <div className="text-right">
-                       <p className="font-black text-slate-900 text-sm">{(b.amount || 0).toLocaleString()} F</p>
+                       <p className="font-black text-slate-100 text-sm">{(b.amount || 0).toLocaleString()} F</p>
                        <div className="flex items-center justify-end gap-1 mt-1">
                           <MapPin size={10} className="text-slate-300" />
                           <span className="text-[8px] font-black text-slate-400 uppercase">{b.destinationName || 'Terminus'}</span>
@@ -209,7 +209,7 @@ function KPI({ icon: Icon, label, value, color, bg, sub }: any) {
         <Icon className={`h-7 w-7 ${color}`} />
       </div>
       <div>
-        <p className="text-[10px] font-black uppercase text-slate-900 opacity-70 tracking-widest leading-none mb-2">{label}</p>
+        <p className="text-[10px] font-black uppercase text-slate-100 opacity-70 tracking-widest leading-none mb-2">{label}</p>
         <div className={`text-2xl font-black tracking-tighter leading-none ${color}`}>{value}</div>
         <p className="text-[9px] font-bold text-slate-300 mt-2 uppercase italic">{sub}</p>
       </div>

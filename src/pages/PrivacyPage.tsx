@@ -30,7 +30,7 @@ export default function PrivacyPage() {
             <Badge variant="premium" className="px-3 py-1 mb-2">
                 Conformité Loi N°001/2011
             </Badge>
-            <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-slate-900 uppercase leading-none">
+            <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-slate-100 uppercase leading-none">
               Protection des Données
             </h1>
           </div>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
         {/* 1. DISPOSITIONS GÉNÉRALES */}
         <section className="bg-slate-50 p-10 rounded-[2.5rem] border-2 border-white shadow-sm relative overflow-hidden text-left">
           <div className="absolute top-0 right-0 w-2 h-full bg-primary" />
-          <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase italic flex items-center gap-3">
+          <h2 className="text-2xl font-black text-slate-100 mb-6 uppercase italic flex items-center gap-3">
             <FileText className="h-6 w-6 text-primary" /> 1. Cadre Réglementaire
           </h2>
           <p className="font-medium mb-4">
@@ -58,11 +58,11 @@ export default function PrivacyPage() {
 
         {/* 2. BASE JURIDIQUE ET FINALITÉ */}
         <section className="px-6">
-          <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase italic flex items-center gap-3 text-left">
+          <h2 className="text-2xl font-black text-slate-100 mb-6 uppercase italic flex items-center gap-3 text-left">
             <ShieldCheck className="h-6 w-6 text-primary" /> 2. Fondement du Traitement
           </h2>
           <div className="space-y-6">
-            <p className="font-medium italic text-slate-900">
+            <p className="font-medium italic text-slate-100">
                Le traitement de vos données repose sur les bases juridiques suivantes :
             </p>
             <div className="grid md:grid-cols-2 gap-4">
@@ -103,7 +103,7 @@ export default function PrivacyPage() {
 
         {/* 4. DROITS DE LA PERSONNE CONCERNÉE */}
         <section className="px-6">
-          <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase italic flex items-center gap-3 text-left">
+          <h2 className="text-2xl font-black text-slate-100 mb-6 uppercase italic flex items-center gap-3 text-left">
             <Scale className="h-6 w-6 text-primary" /> 4. Exercice de vos Droits
           </h2>
           <p className="mb-6 font-medium">
@@ -128,7 +128,7 @@ export default function PrivacyPage() {
 
         {/* 5. DESTINATAIRES ET TRANSFERTS */}
         <section className="px-6 border-l-4 border-slate-100">
-          <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase italic flex items-center gap-3 text-left">
+          <h2 className="text-2xl font-black text-slate-100 mb-6 uppercase italic flex items-center gap-3 text-left">
             <Globe className="h-6 w-6 text-primary" /> 5. Destinataires et Hébergement
           </h2>
           <p className="text-sm font-medium mb-4 italic text-slate-500">
@@ -148,7 +148,7 @@ export default function PrivacyPage() {
 
         {/* 6. SÉCURITÉ TECHNIQUE */}
         <section className="px-6">
-           <h2 className="text-xl font-black text-slate-900 mb-4 uppercase flex items-center gap-2 text-left">
+           <h2 className="text-xl font-black text-slate-100 mb-4 uppercase flex items-center gap-2 text-left">
              <Database className="h-5 w-5 text-primary" /> 6. Intégrité des systèmes
            </h2>
            <p className="text-sm font-medium leading-relaxed">
@@ -179,7 +179,7 @@ export default function PrivacyPage() {
 function RightItem({ title, desc }: { title: string; desc: string }) {
     return (
         <div className="p-5 bg-white border-2 border-slate-50 rounded-2xl shadow-sm hover:border-primary/20 transition-all text-left">
-            <h4 className="font-black text-slate-900 uppercase text-[11px] mb-1 tracking-tight">{title}</h4>
+            <h4 className="font-black text-slate-100 uppercase text-[11px] mb-1 tracking-tight">{title}</h4>
             <p className="text-[11px] font-medium text-slate-500 leading-tight">{desc}</p>
         </div>
     );

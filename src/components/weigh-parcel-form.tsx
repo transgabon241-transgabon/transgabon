@@ -79,7 +79,7 @@ export function WeighParcelForm({
             <Calculator size={20} />
          </div>
          <div>
-            <h3 className="font-black text-slate-900 uppercase text-xs tracking-tighter leading-none">Contrôle de pesée</h3>
+            <h3 className="font-black text-slate-100 uppercase text-xs tracking-tighter leading-none">Contrôle de pesée</h3>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Validation physique du fret</p>
          </div>
       </div>

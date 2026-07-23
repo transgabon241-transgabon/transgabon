@@ -214,7 +214,7 @@ export default function SendParcelPage() {
             <div className="h-20 w-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
               <CheckCircle2 size={40} />
             </div>
-            <h1 className="text-3xl font-black italic uppercase text-slate-900 tracking-tighter leading-none">Expédition Enregistrée</h1>
+            <h1 className="text-3xl font-black italic uppercase text-slate-100 tracking-tighter leading-none">Expédition Enregistrée</h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Bordereau de suivi généré avec succès</p>
           </div>
   
@@ -263,7 +263,7 @@ export default function SendParcelPage() {
               <div className="bg-slate-50 rounded-[2rem] p-6 flex items-center justify-between border border-slate-100">
                  <div className="text-left flex-1">
                     <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Point de Départ</p>
-                    <p className="font-black text-base text-slate-900 uppercase">{selectedTrip.departureCity}</p>
+                    <p className="font-black text-base text-slate-100 uppercase">{selectedTrip.departureCity}</p>
                  </div>
                  <div className="flex flex-col items-center gap-1 px-6">
                     <div className="flex items-center gap-2 w-full">
@@ -275,7 +275,7 @@ export default function SendParcelPage() {
                  </div>
                  <div className="text-right flex-1">
                     <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Destination</p>
-                    <p className="font-black text-base text-slate-900 uppercase">{selectedTrip.arrivalCity}</p>
+                    <p className="font-black text-base text-slate-100 uppercase">{selectedTrip.arrivalCity}</p>
                  </div>
               </div>
 
@@ -284,23 +284,23 @@ export default function SendParcelPage() {
                  <div className="space-y-4">
                     <div>
                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Expéditeur</Label>
-                        <p className="font-black text-sm text-slate-900 uppercase">{senderName}</p>
+                        <p className="font-black text-sm text-slate-100 uppercase">{senderName}</p>
                         <p className="flex items-center gap-1.5 text-xs font-bold text-primary mt-1"><Phone size={12}/> {senderPhone}</p>
                     </div>
                     <div>
                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Transporteur</Label>
-                        <p className="font-black text-sm text-slate-900 uppercase">{selectedTrip.companyName}</p>
+                        <p className="font-black text-sm text-slate-100 uppercase">{selectedTrip.companyName}</p>
                     </div>
                  </div>
                  <div className="space-y-4 text-right md:text-left">
                     <div>
                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Destinataire</Label>
-                        <p className="font-black text-sm text-slate-900 uppercase">{receiverName}</p>
+                        <p className="font-black text-sm text-slate-100 uppercase">{receiverName}</p>
                         <p className="flex items-center justify-end md:justify-start gap-1.5 text-xs font-bold text-primary mt-1"><Phone size={12}/> {receiverPhone}</p>
                     </div>
                     <div>
                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Type de Fret</Label>
-                        <p className="font-black text-sm text-slate-900 uppercase">{selectedTariff?.label}</p>
+                        <p className="font-black text-sm text-slate-100 uppercase">{selectedTariff?.label}</p>
                     </div>
                  </div>
               </div>
@@ -352,7 +352,7 @@ export default function SendParcelPage() {
       <header className="flex items-center gap-4 bg-white p-5 rounded-3xl border-2 border-slate-50 shadow-sm w-full">
         <div className="p-3 bg-primary rounded-2xl text-white shadow-lg"><Package size={24} /></div>
         <div>
-          <h1 className="text-2xl font-black italic text-slate-900 uppercase tracking-tighter leading-none">Service de Fret</h1>
+          <h1 className="text-2xl font-black italic text-slate-100 uppercase tracking-tighter leading-none">Service de Fret</h1>
           <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Gabon Mobilité • Étape {step}/2</p>
         </div>
       </header>
@@ -363,21 +363,21 @@ export default function SendParcelPage() {
             <h2 className="font-black text-xs uppercase mb-6 flex items-center gap-2 text-primary tracking-widest"><MapPin size={16}/> Itinéraire de l'envoi</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <div className="space-y-1.5 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Départ</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Départ</Label>
                 <Select value={fromId} onValueChange={setFromId}>
                   <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Ville" /></SelectTrigger>
                   <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Arrivée</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Arrivée</Label>
                 <Select value={toId} onValueChange={setToId}>
                   <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Ville" /></SelectTrigger>
                   <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Date</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Date</Label>
                 <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-sm" min={new Date().toISOString().split('T')[0]} />
               </div>
             </div>
@@ -425,14 +425,14 @@ export default function SendParcelPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
             <div className="bg-card border-2 rounded-[2rem] p-6 space-y-4">
-              <h2 className="font-black text-[10px] uppercase text-slate-900 opacity-60 tracking-widest flex items-center gap-2"><User size={12}/> Expéditeur</h2>
+              <h2 className="font-black text-[10px] uppercase text-slate-100 opacity-60 tracking-widest flex items-center gap-2"><User size={12}/> Expéditeur</h2>
               <div className="space-y-3">
                 <Input value={senderName} onChange={e => setSenderName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
                 <Input value={senderPhone} onChange={e => setSenderPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
               </div>
             </div>
             <div className="bg-card border-2 rounded-[2rem] p-6 space-y-4 text-left">
-              <h2 className="font-black text-[10px] uppercase text-slate-900 opacity-60 tracking-widest flex items-center gap-2"><User size={12}/> Destinataire</h2>
+              <h2 className="font-black text-[10px] uppercase text-slate-100 opacity-60 tracking-widest flex items-center gap-2"><User size={12}/> Destinataire</h2>
               <div className="space-y-3">
                 <Input value={receiverName} onChange={e => setReceiverName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
                 <Input value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
@@ -443,7 +443,7 @@ export default function SendParcelPage() {
           <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 space-y-6 shadow-xl text-left">
             <div className="space-y-5">
               <div className="space-y-1.5 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Nature du colis</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Nature du colis</Label>
                 <div className="relative">
                   <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
                   <Input value={parcelTitle} onChange={e => setParcelTitle(e.target.value)} placeholder="Ex: 2 cartons de poisson..." className="h-14 rounded-2xl font-black pl-12 border-2 border-slate-100 shadow-inner" />
@@ -452,7 +452,7 @@ export default function SendParcelPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Type de fret agence</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Type de fret agence</Label>
                   <Select value={selectedTariffId} onValueChange={setSelectedTariffId}>
                     <SelectTrigger className="h-12 rounded-xl font-bold border-2 border-slate-100">
                         <SelectValue placeholder="Choisir tarif" />
@@ -467,7 +467,7 @@ export default function SendParcelPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Poids Estimé (kg)</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Poids Estimé (kg)</Label>
                   <Input type="number" step="0.5" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="h-12 rounded-xl font-black border-2 border-slate-100 shadow-inner" disabled={selectedTariffId !== "" && !selectedTariff?.is_weight_based} />
                 </div>
               </div>
@@ -486,7 +486,7 @@ export default function SendParcelPage() {
           </div>
 
           <div className="bg-card border-2 rounded-[2rem] p-6 shadow-sm text-left">
-            <h2 className="font-black text-[10px] uppercase text-slate-900 opacity-60 mb-4 tracking-widest">Règlement</h2>
+            <h2 className="font-black text-[10px] uppercase text-slate-100 opacity-60 mb-4 tracking-widest">Règlement</h2>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger className="h-12 rounded-xl font-black bg-slate-50 border-none px-5"><SelectValue placeholder="Mode de paiement souhaité" /></SelectTrigger>
               <SelectContent className="rounded-xl shadow-xl z-[200]">{PAYMENT_METHODS.map(m => <SelectItem key={m.id} value={m.id} className="font-bold">{m.label}</SelectItem>)}</SelectContent>

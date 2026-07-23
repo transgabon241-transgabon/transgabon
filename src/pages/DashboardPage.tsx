@@ -257,7 +257,7 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
             <div className="flex items-center gap-3 w-full md:w-auto shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 mt-1 sm:mt-0">
                <div className="text-left md:text-right md:mr-4 flex-1 md:flex-none">
                   <p className="text-[7px] sm:text-[8px] font-black text-slate-300 uppercase tracking-widest">Montant</p>
-                  <p className="font-black text-slate-900 text-sm sm:text-base">{b.amount.toLocaleString()} F</p>
+                  <p className="font-black text-slate-100 text-sm sm:text-base">{b.amount.toLocaleString()} F</p>
                </div>
                <Button onClick={() => navigate(`/ticket/${b.id}`)} variant="outline" className="flex-1 md:flex-none h-10 sm:h-11 rounded-lg sm:rounded-xl border-2 font-black text-[9px] sm:text-[10px] uppercase gap-2">
                  <Eye size={14} /> Billet
@@ -323,7 +323,7 @@ function StatItem({ label, value, icon: Icon, color }: any) {
   return (
     <div className="bg-white border-2 border-slate-100 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm hover:border-primary/20 transition-colors flex flex-col items-start">
       <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${color} mb-2 sm:mb-3`} />
-      <p className="text-xl sm:text-2xl font-black text-slate-900 leading-none mb-1">{value}</p>
+      <p className="text-xl sm:text-2xl font-black text-slate-100 leading-none mb-1">{value}</p>
       <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">{label}</p>
     </div>
   );

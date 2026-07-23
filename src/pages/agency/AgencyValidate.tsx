@@ -188,7 +188,7 @@ export default function AgencyValidate() {
     <div className="max-w-2xl mx-auto p-2 sm:p-4 pb-20 space-y-4 animate-in fade-in duration-500">
       
       {/* HEADER */}
-      <header className="flex items-center gap-3 bg-white p-4 rounded-[1.5rem] border-2 border-slate-100 shadow-sm w-full text-left text-slate-900">
+      <header className="flex items-center gap-3 bg-white p-4 rounded-[1.5rem] border-2 border-slate-100 shadow-sm w-full text-left text-slate-100">
         <div className="p-2 bg-emerald-600 rounded-xl text-white shrink-0"><UserCheck size={20} /></div>
         <div className="min-w-0">
           <h1 className="text-lg font-black italic tracking-tighter uppercase leading-none">Gestion Embarquement</h1>
@@ -219,7 +219,7 @@ export default function AgencyValidate() {
               <div className="flex items-center gap-3 min-w-0">
                 {result.valid ? <CheckCircle className="text-emerald-600 h-10 w-10 shrink-0" /> : <AlertCircle className="text-amber-600 h-10 w-10 shrink-0" />}
                 <div className="min-w-0">
-                  <h2 className="text-sm font-black uppercase tracking-tighter leading-none text-slate-900 truncate">{result.message}</h2>
+                  <h2 className="text-sm font-black uppercase tracking-tighter leading-none text-slate-100 truncate">{result.message}</h2>
                   <p className="text-[10px] font-black text-slate-500 mt-1 uppercase truncate">{result.booking.passengerName}</p>
                 </div>
               </div>
@@ -233,12 +233,12 @@ export default function AgencyValidate() {
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex-1">
                             <Label className="text-[8px] font-black uppercase text-slate-400 mb-1 block">Départ</Label>
-                            <p className="text-sm font-black text-slate-900 uppercase truncate">{result.booking.departureCity}</p>
+                            <p className="text-sm font-black text-slate-100 uppercase truncate">{result.booking.departureCity}</p>
                         </div>
                         <ArrowRight size={16} className="text-primary shrink-0" />
                         <div className="flex-1 text-right">
                             <Label className="text-[8px] font-black uppercase text-slate-400 mb-1 block">Destination</Label>
-                            <p className="text-sm font-black text-slate-900 uppercase truncate">{result.booking.arrivalCity}</p>
+                            <p className="text-sm font-black text-slate-100 uppercase truncate">{result.booking.arrivalCity}</p>
                         </div>
                     </div>
                     {result.booking.isEscale && (
@@ -314,13 +314,13 @@ export default function AgencyValidate() {
                                 onChange={e => setSelectedRateId(e.target.value)}
                                 className="w-full h-11 rounded-xl bg-white/5 border-none px-4 text-[10px] font-black uppercase text-white outline-none"
                             >
-                                <option value="" className="text-black">Ajouter Bagage...</option>
-                                {agencyRates.map(r => <option key={r.id} value={r.id} className="text-black">{r.label} ({r.price} F)</option>)}
+                                <option value="" className="text-white">Ajouter Bagage...</option>
+                                {agencyRates.map(r => <option key={r.id} value={r.id} className="text-white">{r.label} ({r.price} F)</option>)}
                             </select>
                             <div className="flex gap-2">
                                 <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-11 rounded-xl border-none bg-white/5 text-white font-black text-center shadow-inner" />
                                 <div className="flex-1 flex items-center justify-end px-4 bg-primary rounded-xl">
-                                    <p className="font-black text-black text-xs">{currentCalculation.toLocaleString()} F</p>
+                                    <p className="font-black text-white text-xs">{currentCalculation.toLocaleString()} F</p>
                                 </div>
                             </div>
                         </div>
@@ -328,7 +328,7 @@ export default function AgencyValidate() {
 
                     <Button 
                         onClick={handleConfirmWeighing} 
-                        className="w-full min-h-[3rem] h-auto py-2 px-2 rounded-xl font-black bg-primary text-black hover:bg-primary/90 uppercase text-[10px] sm:text-xs gap-2 shadow-lg active:scale-95 transition-all flex items-center justify-center text-center leading-tight whitespace-normal break-words"
+                        className="w-full min-h-[3rem] h-auto py-2 px-2 rounded-xl font-black bg-primary text-white hover:bg-primary/90 uppercase text-[10px] sm:text-xs gap-2 shadow-lg active:scale-95 transition-all flex items-center justify-center text-center leading-tight whitespace-normal break-words"
                     >
                         <CheckCircle size={18} className="shrink-0" /> 
                         <span>Confirmer & Valider la pesée</span>
@@ -388,7 +388,7 @@ export default function AgencyValidate() {
                         {result.booking.passengers.map((p: any) => (
                             <div key={p.id} className="flex items-center justify-between p-3 bg-white border-2 border-slate-100 rounded-xl transition-all">
                                 <div className="min-w-0 pr-2">
-                                    <p className="font-black text-xs text-slate-900 uppercase truncate leading-none">{p.first_name} {p.last_name}</p>
+                                    <p className="font-black text-xs text-slate-100 uppercase truncate leading-none">{p.first_name} {p.last_name}</p>
                                     <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 italic">Vérifier l'identité</p>
                                 </div>
                                 {p.boarded ? (
@@ -414,8 +414,8 @@ export default function AgencyValidate() {
       {/* FOOTER VIDE */}
       {!result && (
         <div className="pt-20 text-center opacity-20">
-            <Ticket size={60} className="mx-auto mb-4 text-slate-900" />
-            <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-900">Scan Requis pour Embarquer</p>
+            <Ticket size={60} className="mx-auto mb-4 text-slate-100" />
+            <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-100">Scan Requis pour Embarquer</p>
         </div>
       )}
     </div>

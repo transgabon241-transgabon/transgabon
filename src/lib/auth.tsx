@@ -178,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             <div className="text-center mb-8">
                 <img src={logo} alt="Logo" className="h-16 w-auto mx-auto mb-4 object-contain" />
-                <h3 className="text-2xl font-black italic tracking-tighter uppercase text-slate-900">
+                <h3 className="text-2xl font-black italic tracking-tighter uppercase text-slate-100">
                     {modalView === "signin" ? "Connexion" : "Inscription"}
                 </h3>
                 <p className="text-[9px] text-primary font-black uppercase tracking-[0.3em] mt-1">TransGabon-Connect</p>

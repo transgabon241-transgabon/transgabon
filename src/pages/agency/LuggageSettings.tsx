@@ -101,7 +101,7 @@ export default function LuggageSettings() {
     }
   };
 
-  if (loading) return <div className="flex flex-col items-center justify-center p-20 gap-4"><RefreshCw className="animate-spin h-10 w-10 text-primary" /><p className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Initialisation...</p></div>;
+  if (loading) return <div className="flex flex-col items-center justify-center p-20 gap-4"><RefreshCw className="animate-spin h-10 w-10 text-primary" /><p className="text-[10px] font-black uppercase text-slate-100 tracking-widest">Initialisation...</p></div>;
 
   return (
     <div className="max-w-2xl mx-auto w-full p-2 md:p-4 pb-20 space-y-8 text-left animate-in fade-in duration-500">
@@ -112,7 +112,7 @@ export default function LuggageSettings() {
           <Settings2 className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-black italic tracking-tighter text-slate-900 uppercase leading-none">Règles Bagages</h1>
+          <h1 className="text-2xl font-black italic tracking-tighter text-slate-100 uppercase leading-none">Règles Bagages</h1>
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 italic">Suppléments passagers</p>
         </div>
       </header>
@@ -134,7 +134,7 @@ export default function LuggageSettings() {
         <TabsContent value="bus" className="space-y-10 focus-visible:outline-none animate-in slide-in-from-bottom-2">
           <div className={`border-2 rounded-[2.5rem] p-6 md:p-8 shadow-xl transition-all duration-300 ${editingId ? 'bg-amber-50/20 border-amber-200' : 'bg-white border-slate-100 shadow-slate-100/50'}`}>
             <div className="flex justify-between items-center mb-6">
-                <h3 className={`text-[10px] font-black uppercase flex items-center gap-2 tracking-[0.2em] ${editingId ? 'text-amber-600' : 'text-slate-900 opacity-70'}`}>
+                <h3 className={`text-[10px] font-black uppercase flex items-center gap-2 tracking-[0.2em] ${editingId ? 'text-amber-600' : 'text-slate-100 opacity-70'}`}>
                     {editingId ? <Edit2 size={14}/> : <Zap size={14} className="text-amber-400" />}
                     {editingId ? "Édition" : "Nouveau forfait"}
                 </h3>
@@ -147,12 +147,12 @@ export default function LuggageSettings() {
             
             <div className="grid grid-cols-1 gap-5">
               <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Désignation (Ex: Glacière, Sac...)</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Désignation (Ex: Glacière, Sac...)</Label>
                 <Input placeholder="Nom du bagage..." className="h-14 rounded-2xl border-2 border-slate-100 bg-white px-5 text-sm font-bold focus:border-primary shadow-inner" value={newItem.label} onChange={e => setNewItem({...newItem, label: e.target.value})} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-1">Prix Fixe (F)</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Prix Fixe (F)</Label>
                     <Input type="number" className="h-14 rounded-2xl border-2 border-slate-100 bg-white px-5 font-black text-lg text-primary focus:border-primary shadow-inner" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
                 </div>
                 <div className="flex items-end">
@@ -167,7 +167,7 @@ export default function LuggageSettings() {
 
           <div className="space-y-4">
              <div className="flex items-center justify-between px-6">
-                <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-900 opacity-60 italic text-left">Tarifs en agence</h3>
+                <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-100 opacity-60 italic text-left">Tarifs en agence</h3>
                 <Badge variant="outline" className="text-[8px] font-black uppercase border-slate-200">{busItems.length} Articles</Badge>
              </div>
              
@@ -202,13 +202,13 @@ export default function LuggageSettings() {
 
             <div className="text-center relative z-10">
                <div className="h-16 w-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-blue-100"><Scale className="h-8 w-8" /></div>
-               <h3 className="text-2xl font-black text-slate-900 uppercase italic tracking-tighter">Politique de Pesée</h3>
+               <h3 className="text-2xl font-black text-slate-100 uppercase italic tracking-tighter">Politique de Pesée</h3>
                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-1">Applicable au Train et Transport Maritime</p>
             </div>
 
             <div className="space-y-8 text-left relative z-10">
               <div className="space-y-3">
-                <Label className="font-black text-[10px] uppercase text-slate-900 opacity-70 ml-6 tracking-widest">Franchise (Poids gratuit inclus)</Label>
+                <Label className="font-black text-[10px] uppercase text-slate-100 opacity-70 ml-6 tracking-widest">Franchise (Poids gratuit inclus)</Label>
                 <div className="relative group">
                    <Input type="number" value={trainSettings.free_limit} onChange={e => setTrainSettings({...trainSettings, free_limit: parseFloat(e.target.value)})} className="h-20 pl-10 pr-20 font-black text-4xl rounded-[2.5rem] border-none bg-slate-50 group-focus-within:bg-white transition-all shadow-inner" />
                    <span className="absolute right-10 top-1/2 -translate-y-1/2 font-black text-slate-300 text-2xl tracking-tighter uppercase">KG</span>
@@ -216,7 +216,7 @@ export default function LuggageSettings() {
               </div>
 
               <div className="space-y-3">
-                <Label className="font-black text-[10px] uppercase text-slate-900 opacity-70 ml-6 tracking-widest">Prix du KG supplémentaire</Label>
+                <Label className="font-black text-[10px] uppercase text-slate-100 opacity-70 ml-6 tracking-widest">Prix du KG supplémentaire</Label>
                 <div className="relative group">
                    <Input type="number" value={trainSettings.price_per_kg} onChange={e => setTrainSettings({...trainSettings, price_per_kg: parseFloat(e.target.value)})} className="h-20 pl-10 pr-36 font-black text-4xl rounded-[2.5rem] border-none bg-slate-50 group-focus-within:bg-white transition-all shadow-inner" />
                    <span className="absolute right-10 top-1/2 -translate-y-1/2 font-black text-slate-300 text-xs tracking-widest uppercase">FCFA / KG</span>

@@ -200,7 +200,7 @@ export default function AgencyParcels() {
             <Package size={28} />
           </div>
           <div>
-            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Gestion du Fret</h1>
+            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-slate-100 leading-none">Gestion du Fret</h1>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Logistique et Messagerie Nationale</p>
           </div>
         </div>
@@ -325,7 +325,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                     {p.paymentStatus}
                 </Badge>
               </div>
-              <p className="text-base font-black text-slate-900 uppercase italic leading-none">{p.description}</p>
+              <p className="text-base font-black text-slate-100 uppercase italic leading-none">{p.description}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -352,19 +352,19 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
         {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-100 text-left">
            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2 tracking-widest"><User size={12} className="text-primary"/> Expéditeur</p>
+              <p className="text-[10px] font-black uppercase text-slate-100 opacity-60 flex items-center gap-2 tracking-widest"><User size={12} className="text-primary"/> Expéditeur</p>
               <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{p.senderName}</div>
               <div className="flex items-center gap-2 text-xs font-bold text-primary"><Phone size={12} /> {p.senderPhone}</div>
            </div>
 
            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2 tracking-widest"><User size={12} className="text-emerald-500"/> Destinataire</p>
+              <p className="text-[10px] font-black uppercase text-slate-100 opacity-60 flex items-center gap-2 tracking-widest"><User size={12} className="text-emerald-500"/> Destinataire</p>
               <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{p.receiverName}</div>
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-600"><Phone size={12} /> {p.receiverPhone}</div>
            </div>
 
            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-900 opacity-60 flex items-center gap-2 tracking-widest"><MapPin size={12} className="text-blue-500"/> Destination</p>
+              <p className="text-[10px] font-black uppercase text-slate-100 opacity-60 flex items-center gap-2 tracking-widest"><MapPin size={12} className="text-blue-500"/> Destination</p>
               <div className="flex items-center gap-3 font-black text-xs uppercase text-slate-700">
                  <span>{p.departureCity}</span>
                  <ArrowRight size={14} className="text-slate-300" />
@@ -377,11 +377,11 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-left">
            <div className="flex gap-8">
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-60 tracking-widest">Colisage</Label>
-                 <p className="font-black text-slate-900 text-sm">{p.quantity} PCS / {(p.weightKg || 0).toLocaleString()} KG</p>
+                 <Label className="text-[9px] font-black uppercase text-slate-100 opacity-60 tracking-widest">Colisage</Label>
+                 <p className="font-black text-slate-100 text-sm">{p.quantity} PCS / {(p.weightKg || 0).toLocaleString()} KG</p>
               </div>
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-900 opacity-70 tracking-widest">Montant à Encaisser</Label>
+                 <Label className="text-[9px] font-black uppercase text-slate-100 opacity-70 tracking-widest">Montant à Encaisser</Label>
                  <p className={`font-black text-xl tracking-tighter ${isPaid ? 'text-emerald-600' : 'text-red-500'}`}>
                     {(p.price || 0).toLocaleString()} F
                  </p>
@@ -399,13 +399,13 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                   {pricingMode && (
                     <div className="absolute right-0 bottom-full mb-6 bg-white p-8 rounded-[2.5rem] border-2 border-primary/20 shadow-[0_25px_80px_rgba(0,0,0,0.3)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left">
                        <div className="flex justify-between items-center mb-6">
-                          <h4 className="text-[11px] font-black uppercase text-slate-900 flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet Pesée</h4>
+                          <h4 className="text-[11px] font-black uppercase text-slate-100 flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet Pesée</h4>
                           <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full hover:bg-slate-50"><X size={18}/></Button>
                        </div>
                        
                        <div className="space-y-6">
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2">Type de fret agence</Label>
+                            <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-2">Type de fret agence</Label>
                             <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
                                 <SelectTrigger className="h-12 rounded-xl border-none bg-slate-50 font-bold shadow-inner"><SelectValue placeholder="Choisir tarif..." /></SelectTrigger>
                                 <SelectContent className="rounded-2xl shadow-2xl">
@@ -416,11 +416,11 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
 
                           <div className="grid grid-cols-3 gap-3">
                              <div className="space-y-2 text-left">
-                                <Label className="text-[9px] font-black text-slate-900 opacity-70">Qté</Label>
+                                <Label className="text-[9px] font-black text-slate-100 opacity-70">Qté</Label>
                                 <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-center shadow-inner" />
                              </div>
                              <div className="space-y-2 text-left">
-                                <Label className="text-[9px] font-black text-slate-900 opacity-70">Poids/KG</Label>
+                                <Label className="text-[9px] font-black text-slate-100 opacity-70">Poids/KG</Label>
                                 <Input 
                                   type="number" 
                                   disabled={selectedTariff && !selectedTariff.is_weight_based}

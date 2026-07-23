@@ -178,7 +178,7 @@ export default function AgencyPassengers() {
       
       {/* HEADER WEB */}
       <div className="print:hidden">
-        <Link to="/agency/departures" className="inline-flex items-center gap-3 text-xs font-black uppercase text-slate-900 opacity-60 hover:text-primary mb-6 transition-all tracking-widest">
+        <Link to="/agency/departures" className="inline-flex items-center gap-3 text-xs font-black uppercase text-slate-100 opacity-60 hover:text-primary mb-6 transition-all tracking-widest">
           <ArrowLeft size={16} /> <span className="hidden sm:inline">Retour aux départs</span>
         </Link>
 
@@ -188,7 +188,7 @@ export default function AgencyPassengers() {
                <TransportIcon className="h-6 w-6 md:h-10 md:w-10" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Manifeste</h1>
+              <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-slate-100 leading-none">Manifeste</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Badge variant="outline" className="font-black text-[10px] border-primary/20 text-primary bg-primary/5 px-2 py-0.5">{data.departureCity} ➔ {data.arrivalCity}</Badge>
                 <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border uppercase tracking-tighter">
@@ -200,12 +200,12 @@ export default function AgencyPassengers() {
           <div className="flex items-center gap-3 w-full lg:w-auto">
              <div className="bg-white border-2 border-slate-100 p-3 md:p-5 rounded-[1.25rem] md:rounded-[1.5rem] flex items-center gap-4 md:gap-8 shadow-sm flex-1 lg:flex-none">
                 <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-900 opacity-60 uppercase tracking-widest mb-1">Présents</p>
+                    <p className="text-[8px] font-black text-slate-100 opacity-60 uppercase tracking-widest mb-1">Présents</p>
                     <p className="text-xl md:text-3xl font-black text-emerald-600 leading-none">{stats.boarded}</p>
                 </div>
                 <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-900 opacity-60 uppercase tracking-widest mb-1">Total</p>
-                    <p className="text-xl md:text-3xl font-black text-slate-900 leading-none">{stats.total}</p>
+                    <p className="text-[8px] font-black text-slate-100 opacity-60 uppercase tracking-widest mb-1">Total</p>
+                    <p className="text-xl md:text-3xl font-black text-slate-100 leading-none">{stats.total}</p>
                 </div>
              </div>
              <Button onClick={() => window.print()} className="gap-3 font-black rounded-xl h-14 md:h-20 px-6 md:px-10 shadow-xl text-xs md:text-base flex-1 md:flex-none">
@@ -221,12 +221,12 @@ export default function AgencyPassengers() {
           <table className="w-full text-base min-w-[600px]"> {/* min-w force le tableau à ne pas s'écraser */}
             <thead className="bg-slate-50 border-b-4 border-slate-100 print:bg-slate-100">
               <tr>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">#</th>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Passager</th>
-                <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Siège</th>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest hidden sm:table-cell">Classe</th>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest">Destination</th>
-                <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-900 opacity-70 tracking-widest print:hidden">Contrôle</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest">#</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest">Passager</th>
+                <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest">Siège</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest hidden sm:table-cell">Classe</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest">Destination</th>
+                <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest print:hidden">Contrôle</th>
                 <th className="hidden print:table-cell text-left p-6 font-black uppercase text-[10px] border-l-4 border-slate-200">Signature</th>
               </tr>
             </thead>
@@ -235,7 +235,7 @@ export default function AgencyPassengers() {
                 <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="p-4 md:p-6 text-slate-300 font-black text-sm md:text-lg">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
                   <td className="p-4 md:p-6">
-                      <p className="font-black text-slate-900 uppercase text-sm md:text-lg leading-tight mb-1">{p.passengerName}</p>
+                      <p className="font-black text-slate-100 uppercase text-sm md:text-lg leading-tight mb-1">{p.passengerName}</p>
                       <p className="text-[10px] font-mono text-primary font-bold tracking-widest hidden sm:block">{p.bookingNumber}</p>
                   </td>
                   <td className="p-4 md:p-6 text-center">
@@ -288,7 +288,7 @@ export default function AgencyPassengers() {
       )}
 
       {/* FOOTER XXL */}
-      <div className="mt-10 md:mt-16 p-6 md:p-10 bg-slate-900 rounded-[2rem] md:rounded-[3rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 print:bg-white print:text-slate-900 print:border-t-4 print:border-slate-900 print:rounded-none">
+      <div className="mt-10 md:mt-16 p-6 md:p-10 bg-slate-900 rounded-[2rem] md:rounded-[3rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 print:bg-white print:text-slate-100 print:border-t-4 print:border-slate-900 print:rounded-none">
         <div className="text-left space-y-2">
           <p className="text-[10px] font-black uppercase text-primary tracking-[0.4em]">Certification TransGabon Connect</p>
           <p className="text-[9px] md:text-sm font-medium opacity-60 italic max-w-md leading-relaxed">Liste officielle des passagers autorisés.</p>

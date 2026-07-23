@@ -115,7 +115,7 @@ export default function HomePage() {
                   <SelectTrigger className="h-14 rounded-2xl border-none !bg-white/10 !text-white font-bold focus:ring-2 focus:ring-primary shadow-inner">
                     <SelectValue placeholder="Départ" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-2xl bg-white text-slate-900">
+                  <SelectContent className="rounded-2xl bg-white text-slate-100">
                     {citiesList.filter(c => c !== to).map(c => (
                       <SelectItem key={c} value={c} className="font-bold uppercase text-xs cursor-pointer">{c}</SelectItem>
                     ))}
@@ -137,7 +137,7 @@ export default function HomePage() {
                   <SelectTrigger className="h-14 rounded-2xl border-none !bg-white/10 !text-white font-bold focus:ring-2 focus:ring-primary shadow-inner">
                     <SelectValue placeholder="Destination" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-2xl bg-white text-slate-900">
+                  <SelectContent className="rounded-2xl bg-white text-slate-100">
                     {citiesList.filter(c => c !== from).map(c => (
                       <SelectItem key={c} value={c} className="font-bold uppercase text-xs cursor-pointer">{c}</SelectItem>
                     ))}
@@ -174,7 +174,7 @@ export default function HomePage() {
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4 max-w-5xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-black italic uppercase tracking-tight mb-4 text-slate-900">Services Mobilité & Logistique</h2>
+            <h2 className="text-4xl font-black italic uppercase tracking-tight mb-4 text-slate-100">Services Mobilité & Logistique</h2>
             <div className="h-1.5 w-24 bg-primary mx-auto rounded-full" />
           </div>
           
@@ -183,7 +183,7 @@ export default function HomePage() {
               <div className="h-16 w-16 bg-primary rounded-2xl flex items-center justify-center text-white mb-8 shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
                 <Train size={32} />
               </div>
-              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-slate-900">Billetterie Multimodale</h3>
+              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-slate-100">Billetterie Multimodale</h3>
               <p className="text-slate-600 leading-relaxed font-medium">
                 Accédez aux horaires et tarifs de la SETRAG (Train), des navires maritimes et des agences de bus majeures. 
                 Réservez vos places en <strong>1ère Classe, Business ou VIP</strong> et recevez votre ticket numérique sécurisé instantanément.
@@ -194,7 +194,7 @@ export default function HomePage() {
               <div className="h-16 w-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-white mb-8 shadow-lg shadow-emerald-100 group-hover:scale-110 transition-transform">
                 <Package size={32} />
               </div>
-              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-slate-900">Expédition Fret & Colis</h3>
+              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-slate-100">Expédition Fret & Colis</h3>
               <p className="text-slate-600 leading-relaxed font-medium">
                 Notre solution de fret permet aux particuliers et entreprises d'envoyer des marchandises partout au Gabon. 
                 Enregistrez vos colis, obtenez un <strong>bordereau de suivi (Tracking)</strong> et soyez notifié à chaque étape du transport.
@@ -245,14 +245,14 @@ export default function HomePage() {
       {/* --- TRANSPORT TYPES --- */}
       <section className="py-24 bg-slate-50">
         <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="text-2xl font-black text-center uppercase italic mb-12 tracking-widest text-slate-900">Notre Réseau Multimodal</h2>
+          <h2 className="text-2xl font-black text-center uppercase italic mb-12 tracking-widest text-slate-100">Notre Réseau Multimodal</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {TRANSPORT_TYPES.map((t, i) => (
               <div key={i} className="bg-white rounded-[2rem] p-8 text-center shadow-xl shadow-slate-200/50 border-2 border-transparent hover:border-primary transition-all group">
                 <div className={`h-16 w-16 mx-auto mb-6 rounded-2xl flex items-center justify-center text-white ${t.color} shadow-lg`}>
                     <t.icon size={28} />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">{t.label}</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-100">{t.label}</span>
               </div>
             ))}
           </div>

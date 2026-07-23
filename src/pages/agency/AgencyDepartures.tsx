@@ -202,7 +202,7 @@ export default function AgencyDepartures() {
       {/* HEADER : FULL WIDTH SUR MOBILE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 px-2">
         <div className="text-left">
-          <h1 className="text-3xl md:text-4xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl md:text-4xl font-black italic text-slate-100 uppercase tracking-tighter flex items-center gap-3">
              <Clock className="text-primary h-8 w-8 md:h-10 md:w-10" /> Gestion départs
           </h1>
           <p className="text-[11px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest mt-1">Planning Agence</p>
@@ -227,7 +227,7 @@ export default function AgencyDepartures() {
                     <TransportIcon className="h-6 w-6 md:h-10 md:w-10" />
                   </div>
                   <div className="min-w-0 flex-1 text-left">
-                    <div className="flex flex-wrap items-center gap-2 font-black text-xl md:text-3xl text-slate-900 uppercase tracking-tighter leading-tight">
+                    <div className="flex flex-wrap items-center gap-2 font-black text-xl md:text-3xl text-slate-100 uppercase tracking-tighter leading-tight">
                       <span className="truncate">{dep.departureCity}</span> 
                       <ArrowRight size={18} className="text-primary opacity-30 shrink-0" /> 
                       <span className="truncate">{dep.arrivalCity}</span>
@@ -313,13 +313,13 @@ export default function AgencyDepartures() {
       {/* DIALOG FORMULAIRE XXL : FIXÉ POUR MOBILE */}
       <Dialog open={showForm} onOpenChange={(o) => { if(!o) resetForm(); setShowForm(o); }}>
         <DialogContent className="rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-12 w-[95vw] max-w-2xl border-none shadow-2xl overflow-y-auto max-h-[90vh] animate-in zoom-in-95">
-          <DialogHeader><DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-left leading-none text-slate-900">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-left leading-none text-slate-100">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
           
           <div className="space-y-8 mt-8">
             {!editId && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2 italic tracking-widest">Trajet Autorisé</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-2 italic tracking-widest">Trajet Autorisé</Label>
                         <Select value={routeId} onValueChange={setRouteId}>
                             <SelectTrigger className="h-16 rounded-2xl bg-slate-50 border-none font-black text-xs px-6 shadow-inner focus:ring-primary"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-2xl">
@@ -328,7 +328,7 @@ export default function AgencyDepartures() {
                         </Select>
                     </div>
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2 italic tracking-widest">Véhicule</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-2 italic tracking-widest">Véhicule</Label>
                         <Select value={vehicleId} onValueChange={setVehicleId}>
                             <SelectTrigger className="h-14 md:h-16 rounded-2xl bg-slate-50 border-none font-black text-xs px-6 shadow-inner focus:ring-primary"><SelectValue placeholder="Sélect. véhicule" /></SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-2xl">
@@ -341,7 +341,7 @@ export default function AgencyDepartures() {
 
             <div className="p-5 md:p-8 bg-slate-50 rounded-[2rem] border-2 border-slate-100 shadow-inner">
                <div className="flex justify-between items-center mb-6 px-2">
-                  <h3 className="text-xs font-black uppercase flex items-center gap-2 text-slate-900 tracking-widest"><Clock size={16} className="text-primary"/> Escales</h3>
+                  <h3 className="text-xs font-black uppercase flex items-center gap-2 text-slate-100 tracking-widest"><Clock size={16} className="text-primary"/> Escales</h3>
                   <Button type="button" variant="outline" onClick={addStop} className="h-10 rounded-xl font-black border-2 text-[9px] px-4 bg-white shadow-sm hover:scale-105 active:scale-95">
                     <Plus size={16} className="mr-1" /> AJOUTER
                   </Button>
@@ -363,11 +363,11 @@ export default function AgencyDepartures() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-dashed border-slate-100 pt-8">
               <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2 tracking-widest">Tarif Standard / 2ème Cl.</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-2 tracking-widest">Tarif Standard / 2ème Cl.</Label>
                 <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-50 border-none font-black text-primary text-3xl px-6 shadow-inner focus:ring-4 focus:ring-primary/10" />
               </div>
               <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2 tracking-widest">Date Départ</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-2 tracking-widest">Date Départ</Label>
                 <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-50 border-none font-black text-base px-6 shadow-inner" />
               </div>
             </div>

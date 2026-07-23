@@ -209,7 +209,7 @@ export default function AgencyRefunds() {
                           {b.passengerName.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-black text-slate-900 uppercase leading-none">{b.passengerName}</p>
+                          <p className="font-black text-slate-100 uppercase leading-none">{b.passengerName}</p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-[10px] font-bold text-primary font-mono uppercase tracking-tighter">{b.bookingNumber}</span>
                             <Badge variant="outline" className="text-[8px] font-black h-4 px-1.5 uppercase border-primary/20 text-primary bg-primary/5">
@@ -234,7 +234,7 @@ export default function AgencyRefunds() {
 
                   <div className="flex flex-col items-end justify-between border-t md:border-t-0 md:border-l border-dashed border-slate-100 pt-4 md:pt-0 md:pl-8 min-w-[180px]">
                     <div className="text-right w-full">
-                       <p className="text-2xl font-black text-slate-900 tracking-tighter leading-none">{b.amount.toLocaleString()} <span className="text-xs">F</span></p>
+                       <p className="text-2xl font-black text-slate-100 tracking-tighter leading-none">{b.amount.toLocaleString()} <span className="text-xs">F</span></p>
                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 italic">Via {b.paymentMethod}</p>
                     </div>
 

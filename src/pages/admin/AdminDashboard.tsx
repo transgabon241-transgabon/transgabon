@@ -71,7 +71,7 @@ export default function AdminDashboard() {
   return (
     <div className="text-left space-y-8 animate-in fade-in duration-700">
       <div>
-        <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter">Supervision Nationale</h1>
+        <h1 className="text-3xl font-black italic text-slate-100 uppercase tracking-tighter">Supervision Nationale</h1>
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] mt-1">Gabon Mobilité • Statistiques Globales</p>
       </div>
 
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
         <KPI icon={DollarSign} label="Volume d'affaires" value={`${(data.totalRevenue || 0).toLocaleString()} F`} color="text-emerald-600" bg="bg-emerald-50" />
         <KPI icon={Ticket} label="Billets émis" value={data.totalBookings || 0} color="text-primary" bg="bg-primary/5" />
         <KPI icon={UsersRound} label="Membres actifs" value={data.totalUsers || 0} color="text-blue-600" bg="bg-blue-50" />
-        <KPI icon={Building2} label="Transporteurs" value={data.totalCompanies || 0} color="text-slate-900" bg="bg-slate-100" />
+        <KPI icon={Building2} label="Transporteurs" value={data.totalCompanies || 0} color="text-slate-100" bg="bg-slate-100" />
       </div>
 
       {/* GRAPHIQUES */}
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
                   <span className="text-sm font-black text-slate-700 uppercase italic tracking-tighter">{r.route}</span>
                 </div>
                 <div className="text-right">
-                   <p className="text-xs font-black text-slate-900">{r.bookings}</p>
+                   <p className="text-xs font-black text-slate-100">{r.bookings}</p>
                    <p className="text-[8px] font-bold text-slate-400 uppercase">Réservations</p>
                 </div>
               </div>
@@ -217,7 +217,7 @@ export default function AdminDashboard() {
                   <td className="p-4 text-center">
                      <StatusBadge value={b.status} />
                   </td>
-                  <td className="p-4 text-right font-black text-slate-900 text-base tracking-tighter">
+                  <td className="p-4 text-right font-black text-slate-100 text-base tracking-tighter">
                     {(b.amount || 0).toLocaleString()} F
                   </td>
                 </tr>
@@ -239,7 +239,7 @@ function KPI({ icon: Icon, label, value, color, bg }: { icon: any; label: string
         <Icon className={`h-7 w-7 ${color}`} />
       </div>
       <div>
-        <div className="text-2xl font-black tracking-tight text-slate-900 leading-none mb-1">{value}</div>
+        <div className="text-2xl font-black tracking-tight text-slate-100 leading-none mb-1">{value}</div>
         <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</div>
       </div>
     </div>

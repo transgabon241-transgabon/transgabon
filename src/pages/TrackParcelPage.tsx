@@ -164,7 +164,7 @@ export default function TrackParcelPage() {
         <div className="inline-flex items-center justify-center h-20 w-20 rounded-[2.5rem] bg-primary/10 shadow-inner">
           <Truck className="h-10 w-10 text-primary" />
         </div>
-        <h1 className="text-4xl font-black italic tracking-tighter uppercase text-slate-900 leading-none">Suivi de Fret</h1>
+        <h1 className="text-4xl font-black italic tracking-tighter uppercase text-slate-100 leading-none">Suivi de Fret</h1>
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em]">Gabon Mobilité • Logistique Nationale</p>
       </div>
 
@@ -250,7 +250,7 @@ export default function TrackParcelPage() {
              <div className="pt-8 border-t-2 border-slate-50 flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div className="text-center sm:text-left">
                   <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Montant à régler au retrait</p>
-                  <p className="text-3xl font-black text-slate-900 tracking-tighter">{parcel.price.toLocaleString()} <span className="text-xs">FCFA</span></p>
+                  <p className="text-3xl font-black text-slate-100 tracking-tighter">{parcel.price.toLocaleString()} <span className="text-xs">FCFA</span></p>
                 </div>
                 <Badge className={`rounded-xl px-5 py-2 font-black text-[10px] uppercase border-2 shadow-sm ${
                   parcel.paymentStatus === 'Réglé' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'

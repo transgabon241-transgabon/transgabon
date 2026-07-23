@@ -155,7 +155,7 @@ export default function AdminCompanies() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl font-black italic text-slate-100 uppercase tracking-tighter flex items-center gap-3">
              <Building2 className="text-primary h-8 w-8" /> Réseau Partenaires
           </h1>
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Supervision des agences de transport gabonaises</p>
@@ -196,7 +196,7 @@ export default function AdminCompanies() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
-                        <h2 className="font-black text-2xl text-slate-900 uppercase tracking-tighter leading-none">{c.name}</h2>
+                        <h2 className="font-black text-2xl text-slate-100 uppercase tracking-tighter leading-none">{c.name}</h2>
                         <Badge className={`rounded-full px-3 py-0.5 text-[8px] font-black uppercase border-2 ${c.active ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
                           {c.active ? 'Opérationnel' : 'Désactivé'}
                         </Badge>

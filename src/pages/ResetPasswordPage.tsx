@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
                <ShieldCheck size={12} />
                <span className="text-[9px] font-black uppercase tracking-widest">Sécurité Compte</span>
             </div>
-            <h3 className="text-2xl font-black italic text-slate-900 uppercase tracking-tighter">Nouveau Passe</h3>
+            <h3 className="text-2xl font-black italic text-slate-100 uppercase tracking-tighter">Nouveau Passe</h3>
           </div>
 
           {message && (

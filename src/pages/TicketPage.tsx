@@ -216,7 +216,7 @@ export default function TicketPage() {
                 <div className="space-y-2">
                    {booking.luggages.map((lug) => (
                      <div key={lug.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                        <span className="text-[10px] font-black text-slate-900 uppercase">{lug.label}</span>
+                        <span className="text-[10px] font-black text-slate-100 uppercase">{lug.label}</span>
                         <Badge className="bg-slate-100 text-slate-600 border-none font-black text-[10px]">x{lug.quantity}</Badge>
                      </div>
                    ))}
@@ -263,7 +263,7 @@ function InfoField({ label, value, children }: { label: string; value?: string; 
   return (
     <div className="space-y-1">
       <div className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none">{label}</div>
-      <div className="text-sm font-black text-slate-900 truncate uppercase mt-1">
+      <div className="text-sm font-black text-slate-100 truncate uppercase mt-1">
         {children || value || '—'}
       </div>
     </div>

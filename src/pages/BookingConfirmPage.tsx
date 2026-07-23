@@ -180,7 +180,7 @@ export default function BookingConfirmPage() {
   return (
     <div className="container mx-auto px-4 py-10 max-w-lg text-left space-y-8 animate-in fade-in duration-500">
       
-      <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Finaliser ma place</h1>
+      <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-100 leading-none">Finaliser ma place</h1>
 
       {/* RECAP BILLET */}
       <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
@@ -211,7 +211,7 @@ export default function BookingConfirmPage() {
         <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary"><Package size={20} /></div>
             <div>
-                <h3 className="font-black text-sm text-slate-900 uppercase tracking-tighter">Déclaration de Bagages</h3>
+                <h3 className="font-black text-sm text-slate-100 uppercase tracking-tighter">Déclaration de Bagages</h3>
                 <p className="text-[9px] font-bold text-slate-400 uppercase">Saisissez vos colis pour la pesée</p>
             </div>
         </div>
@@ -261,7 +261,7 @@ export default function BookingConfirmPage() {
             {luggages.length > 0 && (
                 <div className="pt-4 px-2 flex justify-between items-center border-t border-dashed">
                     <p className="text-[10px] font-black text-slate-400 uppercase">Poids Total Déclaré :</p>
-                    <p className="font-black text-slate-900">{totalWeight} KG</p>
+                    <p className="font-black text-slate-100">{totalWeight} KG</p>
                 </div>
             )}
         </div>

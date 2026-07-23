@@ -115,7 +115,7 @@ export default function SearchResultsPage() {
     <div className="container mx-auto px-4 py-12 max-w-5xl text-left">
       {/* Header Itinéraire */}
       <div className="mb-10 bg-white p-8 rounded-[2rem] border-2 border-slate-50 shadow-sm">
-        <div className="flex items-center gap-3 text-3xl font-black italic tracking-tighter text-slate-900 mb-2">
+        <div className="flex items-center gap-3 text-3xl font-black italic tracking-tighter text-slate-100 mb-2">
           <span>{from}</span>
           <ArrowRight className="h-6 w-6 text-primary stroke-[3px]" />
           <span>{to}</span>
@@ -159,7 +159,7 @@ export default function SearchResultsPage() {
                       <TransportIcon className="h-8 w-8" />
                     </div>
                     <div>
-                      <div className="font-black text-xl text-slate-900 leading-none mb-3">{trip.companyName}</div>
+                      <div className="font-black text-xl text-slate-100 leading-none mb-3">{trip.companyName}</div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-tighter rounded-md px-2 h-5">
                             {trip.transportType}
@@ -173,14 +173,14 @@ export default function SearchResultsPage() {
 
                   <div className="flex items-center justify-center gap-10 flex-1 border-y lg:border-y-0 lg:border-x border-slate-50 py-6 lg:py-0">
                     <div className="text-center">
-                      <div className="text-3xl font-black text-slate-900 tracking-tighter">{trip.departureTime}</div>
+                      <div className="text-3xl font-black text-slate-100 tracking-tighter">{trip.departureTime}</div>
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{from}</div>
                     </div>
                     <div className="flex flex-col items-center">
                       <ArrowRight className="h-5 w-5 text-primary opacity-30" />
                     </div>
                     <div className="text-center">
-                      <div className="text-3xl font-black text-slate-900 tracking-tighter">{trip.arrivalTime || '--:--'}</div>
+                      <div className="text-3xl font-black text-slate-100 tracking-tighter">{trip.arrivalTime || '--:--'}</div>
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-1">
                         {to} {trip.isStop && <Badge className="h-3 px-1 text-[7px] bg-amber-100 text-amber-700 border-none uppercase">Escale</Badge>}
                       </div>

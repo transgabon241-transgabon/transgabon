@@ -140,7 +140,7 @@ export default function AdminPayments() {
       {/* HEADER ADMIM */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl font-black italic text-slate-100 uppercase tracking-tighter flex items-center gap-3">
             <BarChart3 className="h-8 w-8 text-primary" /> Flux Financiers
           </h1>
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Supervision globale des encaissements réseau</p>
@@ -222,7 +222,7 @@ export default function AdminPayments() {
                     <p className="font-mono font-black text-primary text-xs tracking-tighter">{b.bookingNumber}</p>
                   </td>
                   <td className="p-5">
-                    <p className="font-bold text-slate-900 leading-none">{b.passengerName}</p>
+                    <p className="font-bold text-slate-100 leading-none">{b.passengerName}</p>
                     <p className="text-[10px] font-black text-slate-400 uppercase mt-1.5 flex items-center gap-1">
                         <Building2 size={10} /> {b.companyName}
                     </p>
@@ -247,7 +247,7 @@ export default function AdminPayments() {
                     </span>
                     <p className="text-[8px] font-bold text-slate-300 mt-1 uppercase italic">{b.paymentMethod}</p>
                   </td>
-                  <td className="p-5 text-right font-black text-slate-900 text-lg tracking-tighter">
+                  <td className="p-5 text-right font-black text-slate-100 text-lg tracking-tighter">
                     {b.amount.toLocaleString()} F
                   </td>
                 </tr>

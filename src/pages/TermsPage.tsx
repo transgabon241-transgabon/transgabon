@@ -14,10 +14,10 @@ export default function TermsPage() {
             <Gavel className="h-10 w-10 text-white" />
           </div>
           <div>
-            <Badge className="bg-slate-100 text-slate-900 border-none px-3 py-1 font-black uppercase text-[10px] tracking-widest mb-2">
+            <Badge className="bg-slate-100 text-slate-100 border-none px-3 py-1 font-black uppercase text-[10px] tracking-widest mb-2">
                 Cadre Juridique v1.1
             </Badge>
-            <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-slate-900 uppercase leading-none">
+            <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-slate-100 uppercase leading-none">
               Conditions d'usage
             </h1>
           </div>
@@ -31,7 +31,7 @@ export default function TermsPage() {
         
         {/* 1. ACCEPTATION */}
         <section className="px-6 border-l-4 border-primary">
-          <h2 className="text-2xl font-black text-slate-900 mb-4 uppercase italic tracking-tight flex items-center gap-3">
+          <h2 className="text-2xl font-black text-slate-100 mb-4 uppercase italic tracking-tight flex items-center gap-3">
             <FileText size={22} className="text-primary" /> 1. Acceptation des termes
           </h2>
           <p className="font-medium">
@@ -44,7 +44,7 @@ export default function TermsPage() {
           <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
              <HelpCircle size={100} />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase italic flex items-center gap-3">
+          <h2 className="text-2xl font-black text-slate-100 mb-6 uppercase italic flex items-center gap-3">
             <Scale className="h-6 w-6 text-primary" /> 2. Nature du Service
           </h2>
           <p className="font-medium mb-4">
@@ -57,7 +57,7 @@ export default function TermsPage() {
 
         {/* 3. VALIDITÉ ET PAIEMENT */}
         <section className="px-6">
-          <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase italic flex items-center gap-3">
+          <h2 className="text-2xl font-black text-slate-100 mb-6 uppercase italic flex items-center gap-3">
             <CheckCircle className="h-6 w-6 text-emerald-600" /> 3. Validité des Billets
           </h2>
           <p className="font-medium mb-4">
@@ -75,7 +75,7 @@ export default function TermsPage() {
 
         {/* 4. DONNÉES GOOGLE OAUTH (EXIGENCE CNPDCP) */}
         <section className="px-6">
-          <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase italic flex items-center gap-3">
+          <h2 className="text-2xl font-black text-slate-100 mb-6 uppercase italic flex items-center gap-3">
             <ShieldAlert className="h-6 w-6 text-primary" /> 4. Données Utilisateurs (Loi 001/2011)
           </h2>
           <p className="font-medium">
@@ -124,7 +124,7 @@ export default function TermsPage() {
 
         {/* 7. REMBOURSEMENTS */}
         <section className="px-6 border-t border-dashed pt-12">
-          <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase italic">
+          <h2 className="text-2xl font-black text-slate-100 mb-6 uppercase italic">
             7. Annulation et Remboursement
           </h2>
           <p className="text-sm font-medium">

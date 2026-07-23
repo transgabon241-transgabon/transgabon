@@ -140,7 +140,7 @@ export default function AdminUsers() {
       {/* HEADER PROFESSIONNEL */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl font-black italic text-slate-100 uppercase tracking-tighter flex items-center gap-3">
              <UsersRound className="text-primary h-8 w-8" /> Communauté
           </h1>
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Contrôle des accès et privilèges utilisateurs</p>
@@ -207,7 +207,7 @@ export default function AdminUsers() {
                             {u.firstName.charAt(0)}{u.lastName.charAt(0)}
                         </div>
                         <div>
-                            <p className="font-black text-slate-900 uppercase leading-none">{u.firstName} {u.lastName}</p>
+                            <p className="font-black text-slate-100 uppercase leading-none">{u.firstName} {u.lastName}</p>
                             <p className="text-[10px] font-bold text-slate-400 mt-1.5 lowercase italic">{u.email}</p>
                         </div>
                       </div>
@@ -274,7 +274,7 @@ export default function AdminUsers() {
                         {editUser.firstName.charAt(0)}{editUser.lastName.charAt(0)}
                     </div>
                     <div>
-                        <p className="font-black text-slate-900 uppercase leading-none">{editUser.firstName} {editUser.lastName}</p>
+                        <p className="font-black text-slate-100 uppercase leading-none">{editUser.firstName} {editUser.lastName}</p>
                         <p className="text-[10px] font-bold text-slate-400 mt-1">{editUser.email}</p>
                     </div>
                 </div>

@@ -138,7 +138,7 @@ export default function AgencyVehicles() {
       {/* HEADER : Adapté mobile */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
         <div>
-          <h1 className="text-2xl sm:text-4xl font-black italic text-slate-900 uppercase tracking-tighter leading-none">Mon Parc</h1>
+          <h1 className="text-2xl sm:text-4xl font-black italic text-slate-100 uppercase tracking-tighter leading-none">Mon Parc</h1>
           <p className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest mt-1 sm:mt-2 italic text-primary">Gestion technique du parc</p>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="w-full sm:w-auto rounded-xl sm:rounded-[1.5rem] font-black gap-2 h-14 sm:h-20 px-6 sm:px-10 shadow-xl shadow-primary/10 transition-all active:scale-95 uppercase tracking-wider text-sm sm:text-base">
@@ -219,7 +219,7 @@ export default function AgencyVehicles() {
       {/* DIALOG FORMULAIRE : Fullscreen sur mobile */}
       <Dialog open={showForm} onOpenChange={(o) => { if(!o) resetForm(); setShowForm(o); }}>
         <DialogContent className="rounded-none sm:rounded-[3rem] p-6 sm:p-12 h-full sm:h-auto max-w-lg overflow-y-auto border-none shadow-2xl">
-          <DialogHeader><DialogTitle className="text-2xl sm:text-4xl font-black italic uppercase tracking-tighter text-left leading-none text-slate-900 mb-4 sm:mb-8">{editId ? 'Édition' : 'Ajout'} Matériel</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-2xl sm:text-4xl font-black italic uppercase tracking-tighter text-left leading-none text-slate-100 mb-4 sm:mb-8">{editId ? 'Édition' : 'Ajout'} Matériel</DialogTitle></DialogHeader>
           
           <div className="space-y-6 sm:space-y-10 mt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
@@ -246,7 +246,7 @@ export default function AgencyVehicles() {
             <div className="p-5 sm:p-8 bg-slate-50 rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-slate-100">
                 <div className="flex items-center gap-3 mb-4 sm:mb-8">
                     <Armchair size={20} className="text-primary" />
-                    <h3 className="text-[10px] sm:text-sm font-black uppercase text-slate-900 tracking-widest italic">Plan de cabine</h3>
+                    <h3 className="text-[10px] sm:text-sm font-black uppercase text-slate-100 tracking-widest italic">Plan de cabine</h3>
                 </div>
                 <div className="grid grid-cols-3 gap-3 sm:gap-6">
                     <div className="space-y-1 text-left text-center">

@@ -141,7 +141,7 @@ export default function AgencyUsers() {
       {/* HEADER PROFESSIONNEL */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl font-black italic text-slate-100 uppercase tracking-tighter flex items-center gap-3">
              <Users className="text-primary h-8 w-8" /> Mon Équipe
           </h1>
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Gestion des accès guichet et logistique</p>
@@ -160,7 +160,7 @@ export default function AgencyUsers() {
                 {agent.firstName.charAt(0)}{agent.lastName.charAt(0)}
               </div>
               <div className="space-y-1">
-                <p className="font-black text-slate-900 text-lg leading-tight uppercase">{agent.firstName} {agent.lastName}</p>
+                <p className="font-black text-slate-100 text-lg leading-tight uppercase">{agent.firstName} {agent.lastName}</p>
                 <div className="flex flex-col gap-1">
                     <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
                         <Mail size={12} className="text-primary" /> {agent.email}

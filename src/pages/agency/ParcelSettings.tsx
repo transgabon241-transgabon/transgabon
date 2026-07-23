@@ -111,7 +111,7 @@ export default function ParcelSettings() {
           <Scale className="h-5 w-5 sm:h-6 sm:w-6" />
         </div>
         <div>
-          <h1 className="text-xl sm:text-2xl font-black italic tracking-tighter text-slate-900 uppercase leading-none">Grille Tarifaire Fret</h1>
+          <h1 className="text-xl sm:text-2xl font-black italic tracking-tighter text-slate-100 uppercase leading-none">Grille Tarifaire Fret</h1>
           <p className="text-[8px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Configuration des prix colis & marchandises</p>
         </div>
       </header>
@@ -162,7 +162,7 @@ export default function ParcelSettings() {
                 <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Prix (FCFA)</Label>
                 <Input 
                   type="number" 
-                  className="h-11 sm:h-12 rounded-xl bg-white border-2 border-slate-100 px-4 sm:px-5 font-black text-lg text-slate-900 focus:border-primary transition-all shadow-inner" 
+                  className="h-11 sm:h-12 rounded-xl bg-white border-2 border-slate-100 px-4 sm:px-5 font-black text-lg text-slate-100 focus:border-primary transition-all shadow-inner" 
                   value={newItem.price} 
                   onChange={e => setNewItem({...newItem, price: e.target.value})} 
                 />

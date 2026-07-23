@@ -144,7 +144,7 @@ export default function AdminCities() {
       {/* HEADER PROFESSIONNEL */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl font-black italic text-slate-100 uppercase tracking-tighter flex items-center gap-3">
             <Globe className="h-8 w-8 text-primary" /> Maillage National
           </h1>
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Référentiel officiel des gares et agences</p>

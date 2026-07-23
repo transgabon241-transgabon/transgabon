@@ -123,7 +123,7 @@ export default function SeatSelectionPage() {
     return (
       <div className="container mx-auto px-4 py-12 max-w-lg text-left animate-in fade-in duration-500">
         <div className="flex items-center gap-2 mb-2">
-            <h1 className="text-4xl font-black italic tracking-tighter uppercase text-slate-900">Le Confort</h1>
+            <h1 className="text-4xl font-black italic tracking-tighter uppercase text-slate-100">Le Confort</h1>
             {data.isStop && <Badge className="bg-amber-100 text-amber-700 border-none text-[10px] uppercase font-black">Tarif Escale</Badge>}
         </div>
         <p className="text-muted-foreground mb-10 text-xs font-bold uppercase tracking-widest leading-relaxed flex items-center gap-2">
@@ -176,7 +176,7 @@ export default function SeatSelectionPage() {
     <div className="container mx-auto px-4 py-12 max-w-lg text-left animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">Choisir un siège</h1>
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-100 leading-none">Choisir un siège</h1>
           <div className="flex items-center gap-3 mt-3">
              <div className="p-2 bg-primary/10 rounded-lg text-primary">
                 <TransportIcon size={16} />
@@ -264,7 +264,7 @@ function ClassCard({ title, price, desc, icon, onClick, color = "bg-emerald-600 
           {icon}
         </div>
         <div>
-          <p className="font-black text-xl text-slate-900 leading-tight uppercase italic">{title}</p>
+          <p className="font-black text-xl text-slate-100 leading-tight uppercase italic">{title}</p>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mt-1">{desc}</p>
         </div>
       </div>
