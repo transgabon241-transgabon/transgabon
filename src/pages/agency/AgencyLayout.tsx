@@ -142,14 +142,13 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6 md:p-10">
-            <div className="min-h-full w-full bg-white rounded-[3rem] shadow-sm border border-slate-200/50 p-8 md:p-12 relative overflow-hidden">
-                <div className="absolute bottom-0 right-0 p-12 opacity-[0.03] pointer-events-none select-none">
-                    <ShieldCheck size={400} />
-                </div>
-                <div className="relative z-10 animate-in fade-in slide-in-from-bottom-3 duration-700">
+      {/* MAIN CONTENT CANVAS - CORRIGÉ POUR MOBILE */}
+      <main className="flex-1 flex flex-col min-w-0 w-full overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-2 md:p-8"> {/* p-2 sur mobile */}
+            {/* Le conteneur s'adapte : moins arrondi et moins de padding sur mobile */}
+            <div className="min-h-full w-full bg-white rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm border border-slate-200/50 p-4 md:p-10 relative">
+                
+                <div className="relative z-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     {children}
                 </div>
             </div>
