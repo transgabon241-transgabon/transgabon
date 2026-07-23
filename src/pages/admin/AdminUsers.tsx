@@ -21,7 +21,8 @@ import {
   Building2, 
   Phone,
   RefreshCw,
-  MoreHorizontal
+  MoreHorizontal,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -136,7 +137,6 @@ export default function AdminUsers() {
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
-      {/* HEADER PROFESSIONNEL */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="text-left">
           <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3 leading-none">
@@ -149,7 +149,6 @@ export default function AdminUsers() {
         </Button>
       </div>
 
-      {/* FILTRES & RECHERCHE */}
       <div className="bg-card border-2 border-border rounded-[2.5rem] p-6 shadow-2xl space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end text-left">
             <div className="lg:col-span-2 space-y-2">
@@ -160,7 +159,7 @@ export default function AdminUsers() {
                         value={search} 
                         onChange={e => setSearch(e.target.value)} 
                         placeholder="Nom, Prénom ou Email..." 
-                        className="pl-12 h-14 rounded-2xl border-none bg-slate-950 text-white font-medium text-base shadow-inner focus-visible:ring-1 focus-visible:ring-primary/50" 
+                        className="pl-12 h-14 rounded-2xl border-none bg-slate-950 text-white font-medium text-base shadow-inner focus:visible:ring-1 focus-visible:ring-primary/50" 
                     />
                 </div>
             </div>
@@ -181,7 +180,6 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* TABLEAU */}
       <div className="bg-card border-2 border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -241,7 +239,6 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
           <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronLeft size={18}/></Button>
@@ -252,37 +249,35 @@ export default function AdminUsers() {
         </div>
       )}
 
-      {/* --- MODAL D'ÉDITION CORRIGÉ (Auto-scroll & Max-height) --- */}
+      {/* --- MODAL D'ÉDITION CORRIGÉ : Centrage Absolu --- */}
       <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) setEditUser(null); }}>
-        <DialogContent className="rounded-[2.5rem] p-6 md:p-10 max-w-md border-border bg-slate-900 text-white shadow-2xl relative max-h-[90vh] overflow-y-auto">
-          {/* Icône de fond */}
-          <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-white">
-             <UserCog size={120} />
-          </div>
-
-          <DialogHeader className="text-left">
+        <DialogContent 
+           /* Les classes suivantes forcent le centrage au milieu de l'écran et limitent la hauteur */
+           className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] rounded-[2.5rem] p-6 md:p-10 max-w-md border-border bg-slate-900 text-white shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        >
+          <DialogHeader className="text-left shrink-0">
             <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Configuration Privilèges</DialogTitle>
           </DialogHeader>
           
           {editUser && (
-            <div className="space-y-6 mt-6">
-              <div className="p-5 bg-slate-950 rounded-3xl border border-border shadow-inner text-left">
+            <div className="space-y-6 mt-6 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="p-4 bg-slate-950 rounded-2xl border border-border shadow-inner text-left">
                 <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-slate-900 border border-border text-primary flex items-center justify-center font-black shrink-0 shadow-lg">
+                    <div className="h-10 w-10 rounded-xl bg-slate-900 border border-border text-primary flex items-center justify-center font-black shrink-0 shadow-lg">
                         {editUser.firstName.charAt(0)}{editUser.lastName.charAt(0)}
                     </div>
                     <div className="min-w-0">
-                        <p className="font-black text-white uppercase leading-none truncate">{editUser.firstName} {editUser.lastName}</p>
+                        <p className="font-black text-white text-sm uppercase leading-none truncate">{editUser.firstName} {editUser.lastName}</p>
                         <p className="text-[10px] font-bold text-slate-500 mt-1 truncate">{editUser.email}</p>
                     </div>
                 </div>
               </div>
 
-              <div className="space-y-6 text-left">
+              <div className="space-y-5 text-left">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Rang hiérarchique</Label>
                     <Select value={editRole} onValueChange={setEditRole}>
-                        <SelectTrigger className="h-14 rounded-2xl bg-slate-950 border-none font-black text-xs shadow-inner px-6 text-slate-200">
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-black text-xs shadow-inner px-4 text-slate-200">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl bg-slate-900 border-border text-white">
@@ -294,13 +289,13 @@ export default function AdminUsers() {
                 </div>
 
                 {editRole === 'Agent' && (
-                    <div className="space-y-2 animate-in slide-in-from-top-2">
+                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
                         <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Affectation Agence</Label>
                         <Select value={editCompany} onValueChange={setEditCompany}>
-                            <SelectTrigger className="h-14 rounded-2xl bg-primary/10 border-2 border-primary/20 font-black text-primary px-6 shadow-sm">
+                            <SelectTrigger className="h-12 rounded-xl bg-primary/10 border-2 border-primary/20 font-black text-primary px-4 shadow-sm">
                                 <SelectValue placeholder="Choisir une compagnie" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl bg-slate-900 border-border text-white">
+                            <SelectContent className="rounded-xl bg-slate-900 border-border text-white max-h-[200px]">
                                 <SelectItem value="none">Indépendant</SelectItem>
                                 {companies.map(c => <SelectItem key={c.id} value={c.id} className="font-bold focus:bg-primary/20">{c.name}</SelectItem>)}
                             </SelectContent>
@@ -309,8 +304,8 @@ export default function AdminUsers() {
                 )}
               </div>
 
-              <Button onClick={handleSave} disabled={saving} className="w-full h-16 rounded-[2rem] font-black text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest transition-all active:scale-95 border-none mt-4">
-                {saving ? <RefreshCw className="animate-spin mr-2 h-6 w-6" /> : <ShieldCheck className="mr-2 h-6 w-6" />}
+              <Button onClick={handleSave} disabled={saving} className="w-full h-14 rounded-2xl font-black text-lg shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest transition-all active:scale-95 border-none mt-2 shrink-0">
+                {saving ? <RefreshCw className="animate-spin mr-2 h-5 w-5" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
                 Appliquer
               </Button>
             </div>
