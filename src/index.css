@@ -1,5 +1,5 @@
 /* 
-   Polices Système : Flou désactivé, rendu net et rapide.
+   Polices Système : Rendu net, rapide et sans flou.
 */
 @import "tailwindcss/index.css";
 
@@ -12,13 +12,13 @@
   --muted-foreground: 215 16% 35%;
   
   --popover: 0 0% 100%;
-  --popover-foreground: 224 71% 4%;
+  --popover-foreground: 222 47% 11%; 
   
   --border: 220 13% 91%;
   --input: 220 13% 91%;
   
   --card: 0 0% 100%;
-  --card-foreground: 224 71% 4%;
+  --card-foreground: 222 47% 11%; 
 
   /* Vert Gabon Premium - Synchronisé avec le Logo */
   --primary: 158 94% 30%;
@@ -35,7 +35,7 @@
   
   --ring: 158 94% 30%;
 
-  /* --- RADIUS PREMIUM (SaaS Style) --- */
+  /* --- RADIUS FIXÉ À 1.0rem (Selon ta demande) --- */
   --radius: 1.0rem;
 
   /* --- TYPOGRAPHIE --- */
@@ -74,10 +74,26 @@
   --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07);
 }
 
-/* --- LE SECRET DU CONFORT 125% --- */
+/* --- CONFIGURATION DE LA TAILLE DE POLICE RACINE --- */
 html {
-  /* Définit la base de calcul (1rem) à 20px au lieu de 16px */
-  font-size: 90%; 
+  /* Taille de base pour Ordi (70% selon ta demande pour un look compact) */
+  font-size: 70%; 
+}
+
+/* --- ADAPTATION MOBILE (HAUTE VISIBILITÉ) --- */
+@media (max-width: 768px) {
+  html {
+    /* Augmentation automatique sur téléphone pour éviter de zoomer avec les doigts */
+    /* 120% offre un confort optimal sur les petits écrans */
+    font-size: 120%; 
+  }
+}
+
+/* Optimisation pour les très petits téléphones */
+@media (max-width: 480px) {
+  html {
+    font-size: 125%; 
+  }
 }
 
 @layer base {
@@ -87,13 +103,18 @@ html {
   
   body {
     @apply bg-slate-50 text-slate-900 antialiased;
-    /* Lissage du texte optimisé pour les grandes tailles */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Interlignage aéré pour le confort de lecture */
     line-height: 1.5;
   }
 
-  /* Amélioration des barres de défilement */
+  /* Force la taille sur les éléments de saisie pour éviter le zoom forcé d'iOS */
+  input, select, textarea, button {
+    font-size: 1rem !important; 
+  }
+
+  /* Style des barres de défilement */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -104,14 +125,9 @@ html {
   ::-webkit-scrollbar-thumb {
     @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
   }
-
-  /* Force la taille sur les éléments de saisie pour éviter le zoom iOS */
-  input, select, textarea, button {
-    font-size: 1rem !important; /* Sera 20px grâce au html { 125% } */
-  }
 }
 
-/* Utilitaires */
+/* --- UTILITAIRES --- */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -129,16 +145,9 @@ html {
   animation: float 3s ease-in-out infinite;
 }
 
-/* Optimisation pour les très grands écrans (écrans 4K) */
+/* Optimisation pour les très grands écrans (4K) */
 @media (min-width: 1920px) {
   html {
-    font-size: 140%; /* Encore plus de confort sur les écrans géants */
-  }
-}
-
-/* Optimisation Mobile : on garde un fort confort */
-@media (max-width: 768px) {
-  html {
-    font-size: 115%; /* Un peu moins gros que sur PC pour ne pas saturer le petit écran */
+    font-size: 90%; 
   }
 }
