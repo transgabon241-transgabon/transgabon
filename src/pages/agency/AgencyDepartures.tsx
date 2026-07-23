@@ -222,7 +222,6 @@ export default function AgencyDepartures() {
       {/* LISTE DES DÉPARTS */}
       <div className="space-y-4 md:space-y-6">
         {currentItems.map(dep => {
-          // LOGIQUE D'ICÔNE POUR L'AVION INCLUSE
           const TransportIcon = dep.type === 'BOAT' ? Ship : dep.type === 'TRAIN' ? Train : dep.type === 'PLANE' ? Plane : Bus;
           
           return (
@@ -348,9 +347,45 @@ export default function AgencyDepartures() {
                 </div>
             )}
 
+            {/* HORAIRES */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest italic leading-none">Date Départ</Label>
+                <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 md:h-14 rounded-xl bg-slate-950 border-none font-black text-xs px-6 shadow-inner text-white appearance-none outline-none" />
+              </div>
+              <div className="space-y-2 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest italic leading-none">Heure Départ</Label>
+                <Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 md:h-14 rounded-xl bg-slate-950 border-none font-black text-xs px-6 shadow-inner text-white appearance-none outline-none" />
+              </div>
+              <div className="space-y-2 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest italic leading-none">Heure Arrivée</Label>
+                <Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 md:h-14 rounded-xl bg-slate-950 border-none font-black text-xs px-6 shadow-inner text-white appearance-none outline-none" />
+              </div>
+            </div>
+
+            {/* TARIFS PAR CLASSE */}
+            <div className="p-5 md:p-8 bg-slate-950 rounded-[2rem] border border-border shadow-inner space-y-6">
+               <h3 className="text-[10px] font-black uppercase flex items-center gap-2 text-slate-400 tracking-widest leading-none italic"><Hash size={16} className="text-primary"/> Tarification par classe (FCFA)</h3>
+               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">Classe Économie</Label>
+                    <Input type="number" placeholder="Prix" value={price} onChange={e => setPrice(e.target.value)} className="h-12 rounded-xl border-none bg-slate-900 text-primary font-black text-lg px-4 outline-none" />
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">Classe Business</Label>
+                    <Input type="number" placeholder="Optionnel" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-12 rounded-xl border-none bg-slate-900 text-white font-black text-lg px-4 outline-none" />
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">Classe VIP</Label>
+                    <Input type="number" placeholder="Optionnel" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-12 rounded-xl border-none bg-slate-900 text-white font-black text-lg px-4 outline-none" />
+                  </div>
+               </div>
+            </div>
+
+            {/* ESCALES */}
             <div className="p-5 md:p-8 bg-slate-950 rounded-[2rem] border border-border shadow-inner">
                <div className="flex justify-between items-center mb-6 px-1">
-                  <h3 className="text-[10px] font-black uppercase flex items-center gap-2 text-slate-400 tracking-widest leading-none"><Clock size={16} className="text-primary"/> Escales</h3>
+                  <h3 className="text-[10px] font-black uppercase flex items-center gap-2 text-slate-400 tracking-widest leading-none italic"><MapPin size={16} className="text-primary"/> Escales</h3>
                   <Button type="button" variant="outline" onClick={addStop} className="h-8 rounded-lg font-black border border-border text-[9px] px-4 bg-slate-900 text-slate-300 hover:bg-slate-800">
                     <Plus size={14} className="mr-1" /> AJOUTER
                   </Button>
@@ -370,18 +405,7 @@ export default function AgencyDepartures() {
                </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-dashed border-border pt-6">
-              <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest leading-none">Tarif Standard (FCFA)</Label>
-                <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-950 border-none font-black text-primary text-3xl px-6 shadow-inner focus:ring-2 focus:ring-primary/50 text-white outline-none" />
-              </div>
-              <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest leading-none">Date Départ</Label>
-                <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-950 border-none font-black text-base px-6 shadow-inner text-white appearance-none outline-none" />
-              </div>
-            </div>
-
-            <Button onClick={handleSave} disabled={saving} className="w-full h-16 md:h-20 rounded-xl md:rounded-[2rem] font-black text-lg md:text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest transition-all active:scale-95 border-none">
+            <Button onClick={handleSave} disabled={saving} className="w-full h-16 md:h-20 rounded-xl md:rounded-[2rem] font-black text-lg md:text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest transition-all active:scale-95 border-none mt-4">
               {saving ? <RefreshCw className="animate-spin h-8 w-8" /> : <Save className="mr-3 h-6 w-6 md:h-8 md:w-8" />}
               {editId ? 'METTRE À JOUR LE TRAJET' : 'VALIDER LA PROGRAMMATION'}
             </Button>
