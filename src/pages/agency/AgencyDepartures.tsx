@@ -286,7 +286,7 @@ export default function AgencyDepartures() {
                    </div>
                 </div>
 
-                {dep.stops.length > 0 && (
+                {dep.stops.length > 0 ? (
                   <div className="pt-4 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                     {dep.stops.map((s, idx) => (
                       <div key={idx} className="flex items-center gap-2 shrink-0 bg-slate-950 px-4 py-2.5 rounded-2xl border border-border shadow-inner">
@@ -297,6 +297,10 @@ export default function AgencyDepartures() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                ) : (
+                  <div className="pt-4 px-2">
+                    <p className="text-[9px] md:text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] italic opacity-60">PAS D'ESCALE PROGRAMMÉE</p>
                   </div>
                 )}
               </div>
