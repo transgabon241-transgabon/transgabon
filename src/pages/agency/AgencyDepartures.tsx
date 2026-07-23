@@ -60,7 +60,6 @@ export default function AgencyDepartures() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Form states
   const [routeId, setRouteId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [depDate, setDepDate] = useState('');
@@ -73,11 +72,8 @@ export default function AgencyDepartures() {
 
   const canEdit = user?.role === 'Agent' || user?.role === 'Administrateur';
 
-  // CALCUL DYNAMIQUE DU TYPE DE VEHICULE
   const currentVehicleType = useMemo(() => {
-    if (editId) {
-      return departures.find(d => d.id === editId)?.type;
-    }
+    if (editId) return departures.find(d => d.id === editId)?.type;
     return vehicles.find(v => v.id === vehicleId)?.type;
   }, [editId, vehicleId, departures, vehicles]);
 
@@ -90,13 +86,7 @@ export default function AgencyDepartures() {
 
       const { data: tripsData } = await supabase
         .from('trips')
-        .select(`
-          *, 
-          from:cities!from_id(name), 
-          to:cities!to_id(name), 
-          vehicle:vehicles(registration),
-          trip_stops(city_id, arrival_time, price_from_start, stop_order, cities(name))
-        `)
+        .select('*, from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration), trip_stops(*, city:cities(name))')
         .eq('company_id', user.companyId)
         .order('departure_date', { ascending: true });
 
@@ -118,7 +108,7 @@ export default function AgencyDepartures() {
         type: t.type,
         stops: (t.trip_stops || []).map((s: any) => ({
             cityId: s.city_id,
-            cityName: s.cities?.name || 'Escale',
+            cityName: s.city?.name || 'Escale',
             arrivalTime: s.arrival_time || '--:--',
             priceFromStart: Number(s.price_from_start) || 0,
             stop_order: s.stop_order
@@ -127,10 +117,8 @@ export default function AgencyDepartures() {
 
       const { data: rD } = await supabase.from('routes').select('*');
       if (rD) setRoutes(rD);
-      
       const { data: vD } = await supabase.from('vehicles').select('*').eq('company_id', user.companyId);
       if (vD) setVehicles(vD);
-
     } catch (e) { toast.error('Erreur réseau'); }
     finally { setLoading(false); }
   };
@@ -142,64 +130,39 @@ export default function AgencyDepartures() {
     setSaving(true);
     try {
       const tripData = {
-        departure_date: depDate,
-        departure_time: depTime,
-        arrival_time: arrTime || null,
-        price: Number(price) || 0,
-        class_vip_price: vipPrice ? Number(vipPrice) : null,
+        departure_date: depDate, departure_time: depTime, arrival_time: arrTime || null,
+        price: Number(price) || 0, class_vip_price: vipPrice ? Number(vipPrice) : null,
         class_business_price: businessPrice ? Number(businessPrice) : null,
-        status: status || 'Programmé',
-        duration_min: 0
+        status: status || 'Programmé', duration_min: 0
       };
-
       let tripId = editId;
-
       if (editId) {
-        const { error: tripErr } = await supabase.from('trips').update(tripData).eq('id', editId);
-        if (tripErr) throw tripErr;
+        await supabase.from('trips').update(tripData).eq('id', editId);
         await supabase.from('trip_stops').delete().eq('trip_id', editId);
       } else {
         const route = routes.find(r => r.id === routeId);
         const vehicle = vehicles.find(v => v.id === vehicleId);
         const { data: fC } = await supabase.from('cities').select('id').ilike('name', route!.departure_city).single();
         const { data: tC } = await supabase.from('cities').select('id').ilike('name', route!.arrival_city).single();
-
         const { data: newTrip, error: tripErr } = await supabase.from('trips').insert([{
-          ...tripData,
-          company_id: user.companyId,
-          type: vehicle!.type,
-          vehicle_number: vehicle!.name,
-          vehicle_id: vehicle!.id,
-          from_id: fC!.id,
-          to_id: tC!.id,
-          seats_total: vehicle!.capacity,
-          seats_left: vehicle!.capacity,
+          ...tripData, company_id: user.companyId, type: vehicle!.type,
+          vehicle_number: vehicle!.name, vehicle_id: vehicle!.id,
+          from_id: fC!.id, to_id: tC!.id, seats_total: vehicle!.capacity, seats_left: vehicle!.capacity,
         }]).select().single();
-
         if (tripErr) throw tripErr;
         tripId = newTrip.id;
       }
-
       const validStops = stops.filter(s => s.cityId && s.cityId !== "");
       if (validStops.length > 0 && tripId) {
         const stopsToInsert = validStops.map((s, index) => ({
-          trip_id: tripId,
-          city_id: s.cityId,
-          arrival_time: s.arrivalTime || null, 
-          price_from_start: Number(s.priceFromStart) || 0,
-          stop_order: index + 1
+          trip_id: tripId, city_id: s.cityId, arrival_time: s.arrivalTime || null, 
+          price_from_start: Number(s.priceFromStart) || 0, stop_order: index + 1
         }));
         await supabase.from('trip_stops').insert(stopsToInsert);
       }
-
-      setShowForm(false);
-      resetForm();
-      await loadData();
+      setShowForm(false); resetForm(); await loadData();
       toast.success('Voyage enregistré');
-    } catch (e: any) { 
-      console.error(e);
-      toast.error(e.message || "Erreur sauvegarde"); 
-    }
+    } catch (e: any) { toast.error("Erreur sauvegarde"); }
     finally { setSaving(false); }
   };
 
@@ -228,217 +191,168 @@ export default function AgencyDepartures() {
   if (loading && departures.length === 0) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full"/></div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left space-y-10 animate-in fade-in duration-500">
+    <div className="w-full max-w-6xl mx-auto p-2 md:p-4 text-left space-y-6 md:space-y-10 animate-in fade-in duration-500">
       
-      {/* HEADER HAUTE VISIBILITÉ */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-        <div>
-          <h1 className="text-4xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3 leading-none">
-             <Clock className="text-primary h-10 w-10" /> Gestion départs
+      {/* HEADER ADAPTATIF */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="text-left">
+          <h1 className="text-3xl md:text-4xl font-black italic text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+             <Clock className="text-primary h-8 w-8 md:h-10 md:w-10" /> Gestion départs
           </h1>
-          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mt-2 italic">Planning des voyages et escales</p>
+          <p className="text-[10px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest mt-1">Planning Agence</p>
         </div>
         {canEdit && (
-          <Button onClick={() => { resetForm(); setShowForm(true); }} size="lg" className="rounded-[1.5rem] font-black gap-3 h-20 px-10 shadow-2xl shadow-primary/20 transition-all active:scale-95 uppercase tracking-widest">
-            <Plus size={28} /> Nouveau Départ
+          <Button onClick={() => { resetForm(); setShowForm(true); }} className="w-full sm:w-auto rounded-2xl font-black gap-2 h-14 md:h-16 px-8 shadow-xl shadow-primary/20">
+            <Plus size={24} /> NOUVEAU VOYAGE
           </Button>
         )}
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {currentItems.map(dep => {
           const TransportIcon = dep.type === 'BOAT' ? Ship : dep.type === 'TRAIN' ? Train : Bus;
           return (
-            <div key={dep.id} className="bg-white border-2 border-slate-100 rounded-[3rem] p-8 hover:shadow-2xl transition-all group overflow-hidden">
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+            <div key={dep.id} className="bg-white border-2 border-slate-100 rounded-[2rem] md:rounded-[3rem] p-5 md:p-8 hover:shadow-xl transition-all group overflow-hidden">
+              <div className="flex flex-col space-y-6">
                 
-                <div className="flex items-center gap-6 flex-1 w-full text-left">
-                  <div className={`h-24 w-24 rounded-[2.5rem] flex items-center justify-center text-white shadow-xl shrink-0 ${dep.type === 'BOAT' ? 'bg-blue-600' : dep.type === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
-                    <TransportIcon size={44} />
+                {/* BLOC INFO PRINCIPAL */}
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className={`h-16 w-16 md:h-20 md:w-20 rounded-2xl md:rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shrink-0 ${dep.type === 'BOAT' ? 'bg-blue-600' : dep.type === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
+                    <TransportIcon size={32} />
                   </div>
-                  <div className="overflow-hidden text-left flex-1">
-                    <div className="flex items-center gap-3 font-black text-2xl md:text-3xl text-slate-900 uppercase tracking-tighter truncate leading-none">
-                      {dep.departureCity} <ArrowRight size={24} className="text-primary opacity-30" /> {dep.arrivalCity}
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="flex items-center gap-2 font-black text-xl md:text-3xl text-slate-900 uppercase tracking-tighter truncate leading-tight">
+                      {dep.departureCity} <ArrowRight size={18} className="text-primary opacity-30 shrink-0" /> {dep.arrivalCity}
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 mt-4">
-                      <span className="text-primary font-black px-4 py-1.5 bg-primary/5 rounded-2xl border-2 border-primary/10 text-xs uppercase tracking-widest shadow-sm">{dep.registration}</span>
-                      <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">{new Date(dep.departureDate).toLocaleDateString('fr-FR')} • {dep.departureTime}</span>
+                    <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2">
+                      <span className="text-primary font-black px-2 py-0.5 bg-primary/5 rounded-lg border border-primary/10 text-[9px] md:text-xs uppercase tracking-widest">{dep.registration}</span>
+                      <span className="text-[10px] md:text-sm font-bold text-slate-400 uppercase">{new Date(dep.departureDate).toLocaleDateString('fr-FR')} • {dep.departureTime}</span>
                       <StatusBadge status={dep.status} />
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between w-full lg:w-auto gap-10 border-t lg:border-none pt-8 lg:pt-0">
-                   <div className="text-left lg:text-right">
-                      <p className="font-black text-primary text-4xl tracking-tighter">{(dep.price || 0).toLocaleString()} F</p>
-                      <p className="text-xs font-black text-slate-400 uppercase mt-2 tracking-[0.2em]">{dep.bookingCount}/{dep.totalSeats} PLACES RÉSERVÉES</p>
+                {/* ZONE ACTIONS ET PRIX : RÉPONSIVE */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-dashed border-slate-100">
+                   <div className="flex items-end gap-3 w-full sm:w-auto">
+                      <p className="font-black text-primary text-3xl md:text-4xl tracking-tighter">{(dep.price || 0).toLocaleString()} F</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{dep.bookingCount}/{dep.totalSeats} PLACES</p>
                    </div>
                    
-                   <div className="flex items-center gap-3">
-                      <Link to={`/agency/passengers/${dep.id}`}>
-                          <Button variant="outline" className="h-16 rounded-2xl border-2 font-black text-xs uppercase gap-3 px-8 shadow-sm">
-                              <Users size={20} /> <span className="hidden sm:inline">Manifeste</span>
+                   <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Link to={`/agency/passengers/${dep.id}`} className="flex-1 sm:flex-none">
+                          <Button variant="outline" className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-[10px] md:text-xs uppercase gap-2 px-6">
+                              <Users size={18} /> Manifeste
                           </Button>
                       </Link>
 
                       {canEdit && (
-                          <>
-                              <Button variant="outline" onClick={() => openEdit(dep)} className="h-16 w-16 rounded-2xl border-2 hover:bg-slate-900 hover:text-white p-0 shadow-sm transition-all">
-                                  <Pencil size={24} />
-                              </Button>
-                              <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                      <Button variant="outline" className="h-16 w-16 rounded-2xl border-2 text-red-400 hover:text-red-600 hover:bg-red-50 p-0 shadow-sm transition-all">
-                                          <Trash2 size={24} />
-                                      </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent className="rounded-[3rem] border-none shadow-2xl p-12">
-                                      <AlertDialogHeader>
-                                          <AlertDialogTitle className="font-black italic text-4xl uppercase tracking-tighter leading-none">Annuler le voyage ?</AlertDialogTitle>
-                                          <AlertDialogDescription className="text-lg font-medium mt-6">Cette action est irréversible et supprimera le trajet de la vente publique.</AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter className="mt-10 gap-4">
-                                          <AlertDialogCancel className="rounded-2xl font-black h-16 px-8 uppercase tracking-widest text-xs">RETOUR</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => supabase.from('trips').delete().eq('id', dep.id).then(()=>loadData())} className="bg-red-600 rounded-2xl font-black h-16 px-8 uppercase tracking-widest text-xs text-white">OUI, SUPPRIMER</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                  </AlertDialogContent>
-                              </AlertDialog>
-                          </>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => openEdit(dep)} className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-2xl border-2 hover:bg-slate-900 hover:text-white p-0"><Pencil size={20} /></Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-2xl border-2 text-red-400 hover:text-red-600 p-0"><Trash2 size={20} /></Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="rounded-[2.5rem] w-[95vw] max-w-lg">
+                                    <AlertDialogHeader><AlertDialogTitle className="font-black uppercase italic">Supprimer ?</AlertDialogTitle></AlertDialogHeader>
+                                    <AlertDialogFooter><AlertDialogCancel className="rounded-xl">RETOUR</AlertDialogCancel><AlertDialogAction onClick={() => supabase.from('trips').delete().eq('id', dep.id).then(()=>loadData())} className="bg-red-600 rounded-xl text-white">OUI</AlertDialogAction></AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                       )}
                    </div>
                 </div>
-              </div>
 
-              {/* ESCALES DANS LA LISTE : HAUTE DÉFINITION */}
-              {dep.stops.length > 0 && (
-                <div className="mt-10 pt-8 border-t-2 border-dashed border-slate-100 flex gap-5 overflow-x-auto pb-6 scrollbar-hide">
-                  {dep.stops.map((s, idx) => (
-                    <div key={idx} className="flex items-center gap-4 shrink-0 bg-slate-50 px-6 py-4 rounded-[1.5rem] border-2 border-slate-100 shadow-sm">
-                      <MapPin size={20} className="text-primary" />
-                      <div className="leading-tight text-left">
-                        <p className="text-sm font-black uppercase text-slate-900 tracking-tight">{s.cityName}</p>
-                        <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{s.arrivalTime} • {(s.priceFromStart || 0).toLocaleString()}F</p>
+                {/* ESCALES DANS LA LISTE */}
+                {dep.stops.length > 0 && (
+                  <div className="pt-4 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {dep.stops.map((s, idx) => (
+                      <div key={idx} className="flex items-center gap-2 shrink-0 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                        <MapPin size={10} className="text-primary" />
+                        <div className="leading-tight text-left">
+                          <p className="text-[10px] font-black uppercase text-slate-800">{s.cityName}</p>
+                          <p className="text-[8px] font-bold text-slate-400 mt-0.5">{s.arrivalTime} • {s.priceFromStart}F</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* PAGINATION XXL */}
+      {/* PAGINATION */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-8 mt-16 bg-white p-4 rounded-[2rem] border-2 border-slate-50 w-fit mx-auto shadow-2xl">
-          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-2xl h-14 w-14 border-2 bg-white hover:bg-slate-50 transition-all"><ChevronLeft size={28}/></Button>
-          <div className="flex items-center gap-3 font-black text-base uppercase tracking-widest text-slate-400 px-8">
-             <span className="text-primary">Page {currentPage}</span>
-             <span className="opacity-20 text-2xl">/</span>
-             <span>{totalPages}</span>
-          </div>
-          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-2xl h-14 w-14 border-2 bg-white hover:bg-slate-50 transition-all"><ChevronRight size={28}/></Button>
+        <div className="flex items-center justify-center gap-4 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
+          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border"><ChevronLeft /></Button>
+          <span className="text-[10px] font-black uppercase text-slate-400 px-4">Page {currentPage} / {totalPages}</span>
+          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border"><ChevronRight /></Button>
         </div>
       )}
 
-      {/* FORMULAIRE XXL */}
+      {/* DIALOG FORMULAIRE XXL */}
       <Dialog open={showForm} onOpenChange={(o) => { if(!o) resetForm(); setShowForm(o); }}>
-        <DialogContent className="rounded-[3rem] p-12 max-w-2xl border-none shadow-2xl overflow-y-auto max-h-[95vh] animate-in zoom-in-95">
-          <DialogHeader><DialogTitle className="text-4xl font-black italic uppercase tracking-tighter text-left leading-none text-slate-900 mb-8">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
+        <DialogContent className="rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-12 w-[95vw] max-w-2xl border-none shadow-2xl overflow-y-auto max-h-[95vh] animate-in zoom-in-95">
+          <DialogHeader><DialogTitle className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter text-left leading-none text-slate-900">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
           
-          <div className="space-y-10">
+          <div className="space-y-8 mt-8">
             {!editId && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                    <div className="space-y-3 text-left">
-                        <Label className="text-xs font-black uppercase text-slate-900 ml-4 tracking-[0.2em] opacity-70 italic">Itinéraire Autorisé</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2 text-left">
+                        <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2 italic tracking-widest">Trajet Autorisé</Label>
                         <Select value={routeId} onValueChange={setRouteId}>
-                            <SelectTrigger className="h-20 rounded-[1.5rem] bg-slate-50 border-none font-black text-sm px-8 shadow-inner focus:ring-4 focus:ring-primary/20"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
-                            <SelectContent className="rounded-[1.5rem] shadow-2xl border-none">
-                                {routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold py-4 text-xs">{r.departure_city} ➔ {r.arrival_city}</SelectItem>)}
-                            </SelectContent>
+                            <SelectTrigger className="h-14 md:h-16 rounded-2xl bg-slate-50 border-none font-black text-xs px-6 shadow-inner"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
+                            <SelectContent className="rounded-2xl">{routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold py-3 text-xs">{r.departure_city} ➔ {r.arrival_city}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
-                    <div className="space-y-3 text-left">
-                        <Label className="text-xs font-black uppercase text-slate-900 ml-4 tracking-[0.2em] opacity-70 italic">Matériel Roulant</Label>
+                    <div className="space-y-2 text-left">
+                        <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2 italic tracking-widest">Véhicule</Label>
                         <Select value={vehicleId} onValueChange={setVehicleId}>
-                            <SelectTrigger className="h-20 rounded-[1.5rem] bg-slate-50 border-none font-black text-sm px-8 shadow-inner focus:ring-4 focus:ring-primary/20"><SelectValue placeholder="Choisir véhicule" /></SelectTrigger>
-                            <SelectContent className="rounded-[1.5rem] shadow-2xl border-none">
-                                {vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold py-4 text-xs">{v.name} ({v.capacity} pl.)</SelectItem>)}
-                            </SelectContent>
+                            <SelectTrigger className="h-14 md:h-16 rounded-2xl bg-slate-50 border-none font-black text-xs px-6 shadow-inner"><SelectValue placeholder="Sélect. véhicule" /></SelectTrigger>
+                            <SelectContent className="rounded-2xl">{vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold py-3 text-xs">{v.name} ({v.capacity} pl.)</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
                 </div>
             )}
 
-            {/* SECTION ESCALES INTERMÉDIAIRES XXL */}
-            <div className="p-8 bg-slate-50 rounded-[3rem] border-2 border-slate-100 shadow-inner">
-               <div className="flex justify-between items-center mb-8 px-2">
-                  <h3 className="text-sm font-black uppercase flex items-center gap-3 text-slate-900 italic tracking-widest"><Clock size={24} className="text-primary"/> Escales intermédiaires</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-11 rounded-xl font-black border-2 text-[10px] px-6 bg-white shadow-sm hover:scale-105 active:scale-95 uppercase tracking-widest">
-                    <Plus size={18} className="mr-2" /> Ajouter Arrêt
+            {/* SECTION ESCALES INTERMÉDIAIRES */}
+            <div className="p-5 md:p-8 bg-slate-50 rounded-[2rem] border-2 border-slate-100 shadow-inner">
+               <div className="flex justify-between items-center mb-6 px-2">
+                  <h3 className="text-xs font-black uppercase flex items-center gap-2 text-slate-900 tracking-widest"><Clock size={16} className="text-primary"/> Escales</h3>
+                  <Button type="button" variant="outline" onClick={addStop} className="h-10 rounded-xl font-black border-2 text-[9px] px-4 bg-white shadow-sm hover:scale-105 active:scale-95">
+                    <Plus size={16} className="mr-1" /> AJOUTER
                   </Button>
                </div>
-               <div className="space-y-6">
+               <div className="space-y-4">
                   {stops.map((stop, index) => (
-                    <div key={index} className="grid grid-cols-[1.5fr_1fr_1fr_50px] gap-4 items-end animate-in fade-in slide-in-from-right-4 duration-300">
-                      <div className="space-y-2 text-left">
-                        <Select value={stop.cityId} onValueChange={(v) => updateStop(index, 'cityId', v)}>
-                          <SelectTrigger className="h-14 rounded-xl bg-white border-none text-[10px] font-black uppercase shadow-sm px-5"><SelectValue placeholder="Ville" /></SelectTrigger>
-                          <SelectContent className="rounded-xl shadow-xl">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold text-xs py-3">{c.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <Input type="time" value={stop.arrivalTime} onChange={e => updateStop(index, 'arrivalTime', e.target.value)} className="h-14 rounded-xl border-none shadow-sm font-black text-sm bg-white text-center" />
-                      <Input type="number" placeholder="Prix" value={stop.priceFromStart} onChange={e => updateStop(index, 'priceFromStart', e.target.value)} className="h-14 rounded-xl border-none shadow-sm font-black text-sm bg-white text-center" />
-                      <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-14 w-14 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all active:scale-90"><X size={28}/></Button>
+                    <div key={index} className="grid grid-cols-[1fr_1fr_1fr_40px] gap-2 items-end animate-in fade-in slide-in-from-right-4">
+                      <Select value={stop.cityId} onValueChange={(v) => updateStop(index, 'cityId', v)}>
+                        <SelectTrigger className="h-11 rounded-xl bg-white border-none text-[9px] font-black uppercase shadow-sm px-2"><SelectValue placeholder="Ville" /></SelectTrigger>
+                        <SelectContent className="rounded-xl">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold text-[10px]">{c.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Input type="time" value={stop.arrivalTime} onChange={e => updateStop(index, 'arrivalTime', e.target.value)} className="h-11 rounded-xl border-none shadow-sm font-black text-xs bg-white text-center p-1" />
+                      <Input type="number" placeholder="Prix F" value={stop.priceFromStart} onChange={e => updateStop(index, 'priceFromStart', e.target.value)} className="h-11 rounded-xl border-none shadow-sm font-black text-xs bg-white text-center p-1" />
+                      <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-11 w-11 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl"><X size={20}/></Button>
                     </div>
                   ))}
-                  {stops.length === 0 && <p className="text-xs text-center text-slate-400 font-bold uppercase italic py-10 tracking-[0.3em] opacity-40">Aucune escale configurée</p>}
                </div>
             </div>
 
-            {/* PRIX ET DATE : TRÈS IMPACTANT */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 border-t border-dashed border-slate-100 pt-12 text-left">
-              <div className="space-y-4">
-                <Label className="text-xs font-black uppercase text-slate-900 opacity-70 ml-4 tracking-[0.2em]">Tarif Standard / 2ème Cl.</Label>
-                <div className="relative">
-                    <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-20 rounded-[1.5rem] bg-slate-50 border-none font-black text-primary text-4xl px-8 shadow-inner focus:ring-4 focus:ring-primary/10" />
-                    <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-primary/20 text-2xl uppercase tracking-tighter">FCFA</span>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-dashed border-slate-100 pt-8">
+              <div className="space-y-2 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2 tracking-widest">Tarif Standard / 2ème Cl.</Label>
+                <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-50 border-none font-black text-primary text-3xl px-6 shadow-inner focus:ring-4 focus:ring-primary/10" />
               </div>
-              <div className="space-y-4">
-                <Label className="text-xs font-black uppercase text-slate-900 opacity-70 ml-4 tracking-[0.2em]">Date du départ</Label>
-                <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-20 rounded-[1.5rem] bg-slate-50 border-none font-black text-xl px-8 shadow-inner" />
+              <div className="space-y-2 text-left">
+                <Label className="text-[10px] font-black uppercase text-slate-900 opacity-70 ml-2 tracking-widest">Date Départ</Label>
+                <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-50 border-none font-black text-base px-6 shadow-inner" />
               </div>
             </div>
 
-            {/* HORAIRES XXL */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 text-left">
-                <div className="space-y-4">
-                    <Label className="text-xs font-black uppercase text-slate-900 opacity-70 ml-4 italic tracking-[0.2em]">Heure Départ</Label>
-                    <Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-20 rounded-[1.5rem] bg-slate-50 border-none font-black text-3xl px-10 shadow-inner" />
-                </div>
-                <div className="space-y-4">
-                    <Label className="text-xs font-black uppercase text-slate-900 opacity-70 ml-4 italic tracking-[0.2em]">Arrivée Terminus</Label>
-                    <Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-20 rounded-[1.5rem] bg-slate-50 border-none font-black text-3xl px-10 shadow-inner text-slate-400" />
-                </div>
-            </div>
-
-            {/* CLASSES SPÉCIFIQUES : DESIGN PREMIUM SOMBRE */}
-            {(currentVehicleType === 'BOAT' || currentVehicleType === 'TRAIN') && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 p-10 bg-slate-900 rounded-[3.5rem] shadow-2xl text-left animate-in zoom-in-95">
-                <div className="space-y-4">
-                  <Label className="text-xs font-black uppercase text-primary ml-6 tracking-widest">{currentVehicleType === 'TRAIN' ? 'Tarif 1ère Classe' : 'Tarif Business'}</Label>
-                  <Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-2 border-white/10 font-black text-white text-2xl px-8 shadow-inner" placeholder="0 F" />
-                </div>
-                <div className="space-y-4">
-                  <Label className="text-xs font-black uppercase text-primary ml-6 tracking-widest">{currentVehicleType === 'TRAIN' ? 'Tarif Prestige' : 'Tarif Salon VIP'}</Label>
-                  <Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-2 border-white/10 font-black text-white text-2xl px-8 shadow-inner" placeholder="0 F" />
-                </div>
-              </div>
-            )}
-
-            <Button onClick={handleSave} disabled={saving} className="w-full h-24 rounded-[2.5rem] font-black text-2xl shadow-2xl shadow-primary/20 uppercase tracking-[0.3em] active:scale-95 transition-all mt-8 bg-primary text-white border-b-8 border-primary-foreground/20">
-              {saving ? <RefreshCw className="animate-spin h-10 w-10" /> : <Save className="mr-4 h-10 w-10" />}
+            <Button onClick={handleSave} disabled={saving} className="w-full h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest active:scale-95 transition-all mt-4 bg-primary text-white">
+              {saving ? <RefreshCw className="animate-spin h-8 w-8" /> : <Save className="mr-3 h-8 w-8" />}
               {editId ? 'METTRE À JOUR LE TRAJET' : 'VALIDER LA PROGRAMMATION'}
             </Button>
           </div>
@@ -456,5 +370,5 @@ function StatusBadge({ status }: { status: string }) {
       'Arrivé': 'bg-slate-50 text-slate-600 border-slate-200',
       'Annulé': 'bg-red-50 text-red-600 border-red-100',
     };
-    return <span className={`inline-block px-5 py-2 rounded-full text-[11px] font-black uppercase border-2 shadow-sm ${colors[status] || 'bg-muted'}`}>{status}</span>;
+    return <span className={`inline-block px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase border-2 shadow-sm ${colors[status] || 'bg-muted'}`}>{status}</span>;
 }
