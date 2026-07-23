@@ -24,7 +24,7 @@
   --destructive-foreground: 210 40% 98%;
   --ring: 158 94% 30%;
 
-  --radius: 1.0rem;
+  --radius: 1.25rem;
   --font-sans: 'Inter', 'ui-sans-serif', 'system-ui', sans-serif;
   --font-mono: 'JetBrains Mono', 'ui-monospace', monospace;
 }
@@ -62,7 +62,7 @@
 
 /* --- LOGIQUE DE TAILLE RESPONSIVE --- */
 html {
-  font-size: 70%; /* Ton réglage Ordi */
+  font-size: 100%; /* Ton réglage Ordi */
   overflow-x: hidden; /* EMPÊCHE LE DÉBORDEMENT */
   width: 100%;
   -webkit-text-size-adjust: 100%;
