@@ -23,11 +23,11 @@ import {
   Ship,
   Bus,
   Train,
+  Plane, // AJOUT DE L'ICÔNE AVION
   X,
   MapPin,
   Phone,
   User,
-  CreditCard,
   Lock,
   Wallet
 } from 'lucide-react'; 
@@ -169,7 +169,7 @@ export default function AgencyParcels() {
     try {
       const { error } = await supabase.from('parcels').update({ is_paid: true }).eq('id', id);
       if (error) throw error;
-      toast.success("Paiement encaissé avec succès !");
+      toast.success("Paiement encaissé !");
       loadData();
     } catch (e) { toast.error("Erreur d'encaissement"); }
   };
@@ -197,7 +197,6 @@ export default function AgencyParcels() {
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-card p-6 rounded-[2rem] border-2 border-border shadow-2xl">
         <div className="flex items-center gap-4 text-left">
           <div className="p-3 bg-slate-950 rounded-2xl shadow-lg text-primary border border-slate-800">
@@ -213,7 +212,6 @@ export default function AgencyParcels() {
         </Button>
       </div>
 
-      {/* Barre de Recherche SOMBRE */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-card p-5 rounded-[2rem] border border-border shadow-2xl">
         <div className="md:col-span-3 relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 group-focus-within:text-primary transition-colors" />
@@ -239,7 +237,6 @@ export default function AgencyParcels() {
         </Select>
       </div>
 
-      {/* Liste des colis */}
       <div className="space-y-4">
         {paginatedParcels.map(p => (
           <ParcelCard 
@@ -255,17 +252,16 @@ export default function AgencyParcels() {
         {paginatedParcels.length === 0 && (
           <div className="py-20 text-center border-2 border-dashed border-border rounded-[3rem] bg-card/40 text-slate-600">
             <Package size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="font-black uppercase text-xs tracking-widest italic">Aucun colis à afficher</p>
+            <p className="font-black uppercase text-xs tracking-widest italic leading-none">Aucun colis à afficher</p>
           </div>
         )}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-8 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
-          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronLeft size={18} /></Button>
+          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronLeft size={18} /></Button>
           <span className="text-[10px] font-black uppercase text-slate-500 px-4">Page {currentPage} / {totalPages}</span>
-          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronRight size={18} /></Button>
+          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronRight size={18} /></Button>
         </div>
       )}
     </div>
@@ -288,14 +284,18 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
   const handleFinalize = async () => {
     if (!selectedTariff) return;
     try {
-      await supabase.from('parcels').update({ 
+      const { error } = await supabase.from('parcels').update({ 
         price: calculatedPrice, 
         weight: parseFloat(weight) || 0,
         quantity: parseInt(quantity) || 1,
+        parcel_type: selectedTariff.label,
         status: 'COLIS_ENREGISTRE' 
       }).eq('id', p.id);
+      
+      if (error) throw error;
+      
       toast.success("Tarification validée");
-      onRefresh();
+      onRefresh(); 
       setPricingMode(false);
     } catch (e) { toast.error("Erreur"); }
   };
@@ -310,19 +310,23 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
 
   const nextStatus = getNextStatus(p.status);
   const isPaid = p.paymentStatus === 'Payé';
-  const isPriced = p.price > 0;
+  const isPriced = (p.price || 0) > 0;
   const isBlocked = !isPaid && p.status === 'En attente';
 
-  const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : Bus;
+  // MISE À JOUR : Support PLANE
+  const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : p.transportType === 'PLANE' ? Plane : Bus;
 
   return (
     <div className={`bg-card border-2 border-border rounded-[2.5rem] p-6 hover:shadow-2xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
       <div className="flex flex-col space-y-6">
         
-        {/* LIGNE 1 */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-4 text-left min-w-0">
-            <div className={`h-14 w-14 rounded-2xl shrink-0 flex items-center justify-center text-white shadow-lg ${p.transportType === 'BOAT' ? 'bg-blue-600' : p.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'}`}>
+            <div className={`h-14 w-14 rounded-2xl shrink-0 flex items-center justify-center text-white shadow-lg ${
+                p.transportType === 'BOAT' ? 'bg-blue-600' : 
+                p.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 
+                p.transportType === 'PLANE' ? 'bg-indigo-600' : 
+                'bg-primary'}`}>
                <TransportIcon size={24} />
             </div>
             <div className="min-w-0">
@@ -357,17 +361,16 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
           </div>
         </div>
 
-        {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE SOMBRE */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-800 text-left">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-800 text-left text-slate-200">
            <div className="space-y-1">
               <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest"><User size={12} className="text-primary"/> Expéditeur</p>
-              <div className="text-sm font-black text-slate-200 uppercase truncate">{p.senderName}</div>
+              <div className="text-sm font-black uppercase truncate">{p.senderName}</div>
               <div className="flex items-center gap-2 text-xs font-bold text-primary"><Phone size={12} /> {p.senderPhone}</div>
            </div>
 
            <div className="space-y-1">
               <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest"><User size={12} className="text-emerald-500"/> Destinataire</p>
-              <div className="text-sm font-black text-slate-200 uppercase truncate">{p.receiverName}</div>
+              <div className="text-sm font-black uppercase truncate">{p.receiverName}</div>
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-500"><Phone size={12} /> {p.receiverPhone}</div>
            </div>
 
@@ -381,16 +384,15 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
            </div>
         </div>
 
-        {/* LIGNE 3 : LOGISTIQUE ET ACTIONS */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-left">
            <div className="flex gap-8 w-full md:w-auto">
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Colisage</Label>
+                 <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Détails Fret</Label>
                  <p className="font-black text-white text-sm leading-none">{p.quantity} PCS • {(p.weightKg || 0).toLocaleString()} KG</p>
               </div>
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Montant</Label>
-                 <p className={`font-black text-xl tracking-tighter leading-none ${isPaid ? 'text-emerald-400' : 'text-amber-500 animate-pulse'}`}>
+                 <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Total à Encaisser</Label>
+                 <p className={`font-black text-xl tracking-tighter leading-none ${isPaid ? 'text-emerald-400' : 'text-amber-500'}`}>
                     {(p.price || 0).toLocaleString()} F
                  </p>
               </div>
@@ -406,8 +408,8 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                   {pricingMode && (
                     <div className="absolute right-0 bottom-full mb-6 bg-slate-900 p-6 md:p-8 rounded-[2rem] border-2 border-border shadow-[0_40px_100px_rgba(0,0,0,0.8)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left">
                        <div className="flex justify-between items-center mb-6">
-                          <h4 className="text-[11px] font-black uppercase text-white flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet Pesée</h4>
-                          <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-800 hover:text-white"><X size={18}/></Button>
+                          <h4 className="text-[11px] font-black uppercase text-white flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Poste Pesage</h4>
+                          <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-800 hover:text-white transition-colors"><X size={18}/></Button>
                        </div>
                        
                        <div className="space-y-5">
@@ -451,7 +453,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                 </>
               )}
 
-              {/* BOUTON ENCAISSER SOMBRE */}
               {!isPaid && isPriced && canCollectMoney && (
                 <Button 
                     onClick={() => onCollectPayment(p.id)}

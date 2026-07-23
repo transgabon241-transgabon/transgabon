@@ -25,7 +25,8 @@ import {
   Phone, 
   Save,
   ShieldCheck,
-  Globe
+  Globe,
+  Plane // AJOUT DE L'IMPORT DE L'ICÔNE AVION
 } from 'lucide-react'; 
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +75,8 @@ export default function AdminCompanies() {
       setCompanies((data || []).map(c => ({
         id: c.id,
         name: c.name,
-        transportType: c.transport_type === 'BOAT' ? 'Bateau' : c.transport_type === 'TRAIN' ? 'Train' : 'Bus',
+        // MAPPING MIS À JOUR POUR INCLURE 'PLANE'
+        transportType: c.transport_type === 'PLANE' ? 'Avion' : c.transport_type === 'BOAT' ? 'Bateau' : c.transport_type === 'TRAIN' ? 'Train' : 'Bus',
         phone: c.phone || '',
         contactEmail: c.contact_email || '',
         description: c.description || '',
@@ -98,7 +100,9 @@ export default function AdminCompanies() {
     if (!name) return;
     setSaving(true);
     try {
-      const dbType = transportType === 'Bateau' ? 'BOAT' : transportType === 'Train' ? 'TRAIN' : 'BUS';
+      // MAPPING VERS LA BASE DE DONNÉES INCLUANT 'PLANE'
+      const dbType = transportType === 'Avion' ? 'PLANE' : transportType === 'Bateau' ? 'BOAT' : transportType === 'Train' ? 'TRAIN' : 'BUS';
+      
       const payload = {
         name,
         transport_type: dbType,
@@ -147,7 +151,7 @@ export default function AdminCompanies() {
   };
 
   if (loading && companies.length === 0) return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6 bg-background min-h-screen">
+    <div className="max-w-6xl mx-auto p-4 space-y-6 bg-background min-h-screen text-left">
         <Skeleton className="h-12 w-64 rounded-xl bg-card" />
         <Skeleton className="h-64 w-full rounded-[2.5rem] bg-card" />
     </div>
@@ -158,11 +162,11 @@ export default function AdminCompanies() {
       
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-        <div>
-          <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3">
+        <div className="text-left">
+          <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3 leading-none">
              <Building2 className="text-primary h-8 w-8" /> Réseau Partenaires
           </h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Supervision des agences de transport</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 leading-none">Supervision des agences de transport</p>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-14 px-8 shadow-xl bg-primary text-white border-none hover:bg-primary/90 active:scale-95 transition-all uppercase tracking-widest text-xs">
           <Plus size={20} /> Ajouter un partenaire
@@ -176,7 +180,7 @@ export default function AdminCompanies() {
           value={search} 
           onChange={e => setSearch(e.target.value)} 
           placeholder="Rechercher une agence..." 
-          className="pl-12 h-14 rounded-2xl border-none bg-slate-900 text-white font-medium text-base shadow-inner focus-visible:ring-1 focus-visible:ring-primary/50" 
+          className="pl-12 h-14 rounded-2xl border-none bg-slate-900 text-white font-medium text-base shadow-inner focus:ring-1 focus:ring-primary/50 outline-none" 
         />
       </div>
 
@@ -185,7 +189,7 @@ export default function AdminCompanies() {
         {paginatedCompanies.length === 0 ? (
           <div className="p-20 text-center border-2 border-dashed border-border rounded-[3rem] bg-card/40">
             <Globe className="h-12 w-12 mx-auto mb-4 text-slate-800 opacity-20" />
-            <p className="font-bold text-slate-600 uppercase text-[10px] tracking-widest italic">Aucun partenaire trouvé</p>
+            <p className="font-bold text-slate-600 uppercase text-[10px] tracking-widest italic leading-none">Aucun partenaire trouvé</p>
           </div>
         ) : (
           <>
@@ -194,9 +198,11 @@ export default function AdminCompanies() {
                 <div key={c.id} className="bg-card border border-border rounded-[2.5rem] p-6 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-primary/20 transition-all group flex flex-col md:flex-row justify-between items-center gap-6">
                   <div className="flex items-center gap-6 flex-1 w-full overflow-hidden text-left">
                     <div className={`h-16 w-16 md:h-20 md:w-20 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0 ${
-                      c.transportType === 'Bateau' ? 'bg-blue-600' : c.transportType === 'Train' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'
+                      // COULEUR INDIGO POUR L'AVION
+                      c.transportType === 'Avion' ? 'bg-indigo-600' : c.transportType === 'Bateau' ? 'bg-blue-600' : c.transportType === 'Train' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'
                     }`}>
-                      {c.transportType === 'Bateau' ? <Ship size={32} /> : c.transportType === 'Train' ? <Train size={32} /> : <Bus size={32} />}
+                      {/* ICÔNE AVION POUR LE TYPE 'Avion' */}
+                      {c.transportType === 'Avion' ? <Plane size={32} /> : c.transportType === 'Bateau' ? <Ship size={32} /> : c.transportType === 'Train' ? <Train size={32} /> : <Bus size={32} />}
                     </div>
                     <div className="space-y-2 min-w-0">
                       <div className="flex items-center gap-3">
@@ -222,15 +228,15 @@ export default function AdminCompanies() {
                         <button className="flex items-center justify-center border border-border bg-slate-950 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 h-11 w-11 transition-all shadow-sm"><Trash2 size={18} /></button>
                       </AlertDialogTrigger>
                       <AlertDialogContent className="rounded-[2.5rem] bg-slate-900 border border-border text-white shadow-2xl">
-                        <AlertDialogHeader>
+                        <AlertDialogHeader className="text-left">
                           <AlertDialogTitle className="font-black italic text-xl uppercase text-white">Retirer {c.name} ?</AlertDialogTitle>
                           <AlertDialogDescription className="text-slate-400 font-medium">
                             La suppression n'est possible que si l'agence n'a plus de données actives (trajets, ventes).
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter className="mt-6 gap-2">
-                          <AlertDialogCancel className="rounded-xl font-bold bg-slate-800 border-none text-white hover:bg-slate-700">ANNULER</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(c.id)} className="bg-red-600 rounded-xl font-bold uppercase text-white hover:bg-red-700 border-none">SUPPRIMER</AlertDialogAction>
+                          <AlertDialogCancel className="rounded-xl font-bold bg-slate-800 border-none text-white hover:bg-slate-700 mt-0">ANNULER</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(c.id)} className="bg-red-600 rounded-xl font-bold uppercase text-white hover:bg-red-700 border-none px-6">SUPPRIMER</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -241,13 +247,13 @@ export default function AdminCompanies() {
 
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-4 mt-10 bg-card p-2 rounded-2xl w-fit mx-auto border border-border shadow-2xl">
-                <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 text-slate-500 hover:bg-slate-800 hover:text-white"><ChevronLeft size={18} /></Button>
+                <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 text-slate-500 hover:bg-slate-800 hover:text-white transition-all"><ChevronLeft size={18} /></Button>
                 <div className="flex items-center gap-1 font-black text-[10px] uppercase tracking-widest text-slate-500 px-4">
                   <span className="text-primary">Page {currentPage}</span>
                   <span className="mx-1">/</span>
                   <span>{totalPages}</span>
                 </div>
-                <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 text-slate-500 hover:bg-slate-800 hover:text-white"><ChevronRight size={18} /></Button>
+                <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 text-slate-500 hover:bg-slate-800 hover:text-white transition-all"><ChevronRight size={18} /></Button>
               </div>
             )}
           </>
@@ -265,7 +271,7 @@ export default function AdminCompanies() {
           <div className="space-y-6 mt-8">
             <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Raison Sociale</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} className="h-14 rounded-2xl bg-slate-950 border-none font-black text-lg px-6 shadow-inner text-white placeholder:text-slate-700" placeholder="Ex: SETRAG" />
+                <Input value={name} onChange={e => setName(e.target.value)} className="h-14 rounded-2xl bg-slate-950 border-none font-black text-lg px-6 shadow-inner text-white placeholder:text-slate-700 focus:ring-1 focus:ring-primary/50 outline-none" placeholder="Ex: GABON AIR" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -274,14 +280,15 @@ export default function AdminCompanies() {
                     <Select value={transportType} onValueChange={setTransportType}>
                         <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200 px-5"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-slate-900 border-border text-white">
-                            {['Bus', 'Train', 'Bateau', 'Coaster', 'MiniBus'].map(t => <SelectItem key={t} value={t} className="font-bold focus:bg-primary/20">{t}</SelectItem>)}
+                            {/* AJOUT DE L'OPTION AVION DANS LE SELECT */}
+                            {['Bus', 'Train', 'Bateau', 'Avion', 'Coaster', 'MiniBus'].map(t => <SelectItem key={t} value={t} className="font-bold focus:bg-primary/20">{t}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
                 <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Commission (%)</Label>
                     <div className="relative group">
-                        <Input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)} className="h-12 rounded-xl bg-primary/5 border-2 border-primary/20 font-black text-primary px-5 shadow-sm" />
+                        <Input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)} className="h-12 rounded-xl bg-primary/5 border-2 border-primary/20 font-black text-primary px-5 shadow-sm outline-none" />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-primary/30">%</span>
                     </div>
                 </div>
@@ -290,18 +297,18 @@ export default function AdminCompanies() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border pt-6">
                 <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Téléphone</Label>
-                    <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-5" />
+                    <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-5 outline-none" />
                 </div>
                 <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Email Gestion</Label>
-                    <Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-5" />
+                    <Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-5 outline-none" />
                 </div>
             </div>
 
             <div className="flex items-center justify-between bg-slate-950 p-6 rounded-3xl border border-border shadow-inner">
               <div className="space-y-1 text-left">
                  <p className="text-[10px] font-black uppercase text-primary tracking-widest">État du contrat</p>
-                 <p className="text-xs font-medium text-slate-500 italic">Autoriser les ventes en ligne</p>
+                 <p className="text-xs font-medium text-slate-500 italic leading-tight">Autoriser les réservations en ligne</p>
               </div>
               <Switch checked={active} onCheckedChange={setActive} />
             </div>
@@ -315,7 +322,7 @@ export default function AdminCompanies() {
       </Dialog>
       
       <footer className="text-center opacity-10 pt-10">
-         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white leading-none">TransGabon Connect • Console Admin Centrale</p>
+         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white leading-none">TransGabon Connect • Administration Centrale</p>
       </footer>
     </div>
   );

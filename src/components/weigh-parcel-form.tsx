@@ -50,6 +50,7 @@ export function WeighParcelForm({
       toast.success("Mise à jour logistique validée");
       setIsSubmitting(false);
       
+      // Rafraîchissement pour mettre à jour la liste des colis
       setTimeout(() => window.location.reload(), 1200); 
     } catch (err) {
       setError("Erreur de connexion réseau.");
@@ -63,9 +64,9 @@ export function WeighParcelForm({
         <div className="h-12 w-12 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
             <CheckCircle2 size={24} strokeWidth={3} />
         </div>
-        <div>
-            <p className="font-black text-emerald-400 uppercase text-xs tracking-widest">Pesée Enregistrée</p>
-            <p className="text-[10px] text-emerald-500/60 font-bold uppercase mt-1">Colis marqué comme PRIS EN CHARGE</p>
+        <div className="text-center">
+            <p className="font-black text-emerald-400 uppercase text-xs tracking-widest leading-none">Pesée Enregistrée</p>
+            <p className="text-[10px] text-emerald-500/60 font-bold uppercase mt-2">Colis marqué comme PRIS EN CHARGE</p>
         </div>
       </div>
     )
@@ -73,20 +74,20 @@ export function WeighParcelForm({
 
   return (
     <div className="bg-slate-900 border-2 border-border rounded-[2rem] p-6 shadow-2xl">
-      <div className="flex items-center gap-3 mb-6 border-b border-dashed border-slate-800 pb-4">
-         <div className="h-10 w-10 bg-slate-950 rounded-xl flex items-center justify-center text-primary border border-border">
+      <div className="flex items-center gap-3 mb-6 border-b border-dashed border-slate-800 pb-4 text-left">
+         <div className="h-10 w-10 bg-slate-950 rounded-xl flex items-center justify-center text-primary border border-border shadow-inner">
             <Calculator size={20} />
          </div>
-         <div className="text-left">
+         <div className="min-w-0">
             <h3 className="font-black text-white uppercase text-xs tracking-tighter leading-none">Contrôle de pesée</h3>
-            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Validation physique du fret</p>
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Validation physique du fret</p>
          </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 text-left">
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="actualWeight" className="text-[10px] font-black uppercase text-slate-500 ml-1">Poids Balance (Kg)</Label>
+            <Label htmlFor="actualWeight" className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Poids Balance (Kg)</Label>
             <div className="relative">
               <Scale className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
               <Input
@@ -104,7 +105,7 @@ export function WeighParcelForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="actualQty" className="text-[10px] font-black uppercase text-slate-500 ml-1">Nombre de colis</Label>
+            <Label htmlFor="actualQty" className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Nombre de colis</Label>
             <Input
               id="actualQty"
               type="number"

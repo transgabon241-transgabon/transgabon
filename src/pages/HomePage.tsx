@@ -16,7 +16,8 @@ import {
   Package,
   ArrowRight,
   Truck,
-  Gem
+  Gem,
+  Plane // AJOUT DE L'ICÔNE AVION
 } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,11 +27,17 @@ import { Badge } from '@/components/ui/badge';
 
 import heroBg from '@/assets/hero-gabon.png';
 
+const FEATURES = [
+  { icon: Search, title: 'Comparez', desc: 'Comparez les prix et horaires de toutes les compagnies (Vols, Bus, Train, Bateau) en temps réel.' },
+  { icon: Gem, title: 'Confort Premium', desc: 'Choisissez votre classe de voyage : VIP, Business, 1ère Classe ou Économique.' },
+  { icon: Package, title: 'Fret & Colis', desc: 'Expédiez vos marchandises et suivez leur acheminement du dépôt à la livraison.' },
+];
+
 const TRANSPORT_TYPES = [
+  { icon: Plane, label: 'Vols (Aérien)', color: 'bg-indigo-600' }, // AJOUT OPTION AVION
   { icon: Train, label: 'Train (SETRAG)', color: 'bg-slate-950 border-slate-800' },
   { icon: Ship, label: 'Navires (Maritime)', color: 'bg-blue-600' },
   { icon: Bus, label: 'Autocars & Bus', color: 'bg-primary' },
-  { icon: Truck, label: 'Logistique Fret', color: 'bg-emerald-600' },
 ];
 
 const GABON_CITIES_FALLBACK = [
@@ -92,7 +99,7 @@ export default function HomePage() {
               Le voyage et le fret <span className="text-primary">en un clic.</span>
             </h1>
             <p className="text-lg md:text-xl leading-relaxed font-medium mb-8 text-slate-300">
-              Réservez vos billets et gérez vos expéditions de colis à travers tout le Gabon. Simple, sécurisé et rapide.
+              Réservez vos vols, trains et bus à travers tout le Gabon. Simple, sécurisé et rapide.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
                 <Button onClick={() => navigate('/track')} variant="outline" className="rounded-2xl font-black bg-white/5 border-white/10 text-white h-12 px-8 hover:bg-white/10 uppercase text-[10px] tracking-widest transition-all">
@@ -110,7 +117,7 @@ export default function HomePage() {
                   <SelectTrigger className="h-14 rounded-2xl border-none !bg-slate-950 !text-white font-bold focus:ring-2 focus:ring-primary shadow-inner">
                     <SelectValue placeholder="Ville de départ" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl bg-slate-900 border-slate-800 text-white">
+                  <SelectContent className="rounded-xl bg-slate-900 border-border text-white">
                     {citiesList.filter(c => c !== to).map(c => (
                       <SelectItem key={c} value={c} className="font-bold uppercase text-xs focus:bg-primary/20">{c}</SelectItem>
                     ))}
@@ -176,12 +183,12 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 gap-8 text-left">
             <div className="p-8 md:p-10 bg-slate-900/40 rounded-[2.5rem] border-2 border-slate-800 hover:border-primary/30 transition-all group">
               <div className="h-16 w-16 bg-primary rounded-2xl flex items-center justify-center text-white mb-8 shadow-xl group-hover:scale-110 transition-transform">
-                <Train size={32} />
+                <Plane size={32} />
               </div>
-              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-white">Billetterie Multimodale</h3>
+              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-white">Voyages Nationaux</h3>
               <p className="text-slate-400 leading-relaxed font-medium">
-                Accédez aux horaires de la SETRAG, des navires maritimes et des bus. 
-                Réservez vos places en <strong>VIP ou 1ère Classe</strong> et recevez votre ticket numérique sécurisé instantanément.
+                Accédez aux vols intérieurs, aux horaires de la SETRAG et des bus. 
+                Réservez vos places en <strong>VIP, Business ou 1ère Classe</strong> et recevez votre ticket numérique sécurisé.
               </p>
             </div>
             
@@ -191,7 +198,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-white">Expédition Fret & Colis</h3>
               <p className="text-slate-400 leading-relaxed font-medium">
-                Envoyez des marchandises partout au Gabon. Enregistrez vos colis, obtenez un <strong>bordereau de suivi (Tracking)</strong> et surveillez chaque étape du transport.
+                Envoyez des marchandises partout au Gabon par air ou par terre. Enregistrez vos colis, obtenez un <strong>bordereau de suivi</strong> et surveillez chaque étape.
               </p>
             </div>
           </div>
@@ -221,11 +228,11 @@ export default function HomePage() {
       {/* --- NETWORK SECTION --- */}
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4 max-w-5xl text-center">
-          <h2 className="text-2xl font-black uppercase italic mb-12 tracking-widest text-slate-500">Notre Réseau Multimodal</h2>
+          <h2 className="text-2xl font-black uppercase italic mb-12 tracking-widest text-slate-500">Réseau Multimodal National</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {TRANSPORT_TYPES.map((t, i) => (
-              <div key={i} className="bg-slate-900/40 rounded-[2rem] p-8 border-2 border-slate-800 hover:border-primary/40 transition-all group">
-                <div className={`h-14 w-14 mx-auto mb-6 rounded-xl flex items-center justify-center text-white ${t.color} shadow-lg shadow-black/40`}>
+              <div key={i} className="bg-slate-900/40 rounded-[2rem] p-8 border-2 border-slate-800 hover:border-primary/40 transition-all group text-center flex flex-col items-center">
+                <div className={`h-14 w-14 mb-6 rounded-xl flex items-center justify-center text-white ${t.color} shadow-lg shadow-black/40`}>
                     <t.icon size={28} />
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t.label}</span>
@@ -244,10 +251,10 @@ export default function HomePage() {
             <a href="mailto:transgabon241@gmail.com" className="text-xs font-black uppercase tracking-widest hover:text-primary transition-colors text-slate-500">Support</a>
           </div>
           <div className="h-px w-20 bg-slate-800 mx-auto mb-10" />
-          <p className="text-[10px] text-slate-600 uppercase tracking-[0.4em] font-black mb-2">
-             TransGabon-Connect • Logistique & Transport National 2026 SHOOL TECH
+          <p className="text-[10px] text-slate-600 uppercase tracking-[0.4em] font-black mb-2 text-center">
+             TransGabon-Connect • Logistique & Transport National 2026 SCHOOL TECH
           </p>
-          <p className="text-[8px] text-slate-700 font-bold uppercase">
+          <p className="text-[8px] text-slate-700 font-bold uppercase text-center">
              © {new Date().getFullYear()} • République Gabonaise
           </p>
         </div>

@@ -5,7 +5,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Ship, Crown, Gem, ArrowRight, Bus, Train, MapPin, Hash } from 'lucide-react';
+import { Ship, Crown, Gem, ArrowRight, Bus, Train, MapPin, Hash, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
@@ -97,7 +97,8 @@ export default function SeatSelectionPage() {
           takenSeats: takenSeats
         });
 
-        if (trip.type !== 'BOAT' && trip.type !== 'TRAIN') {
+        // Seul le Bus n'a pas de choix de classe par défaut
+        if (trip.type !== 'BOAT' && trip.type !== 'TRAIN' && trip.type !== 'PLANE') {
           setSelectedClass('STANDARD');
         }
 
@@ -115,18 +116,21 @@ export default function SeatSelectionPage() {
   if (loading) return <div className="max-w-lg mx-auto p-10"><Skeleton className="h-80 w-full rounded-[3rem] bg-slate-900" /></div>;
   if (!data) return <div className="p-20 text-center font-black uppercase text-red-500">Erreur système.</div>;
 
-  const needsClassSelection = (data.type === 'BOAT' || data.type === 'TRAIN') && !selectedClass;
+  // MISE À JOUR : Inclure PLANE dans la sélection de classe
+  const needsClassSelection = (data.type === 'BOAT' || data.type === 'TRAIN' || data.type === 'PLANE') && !selectedClass;
 
   if (needsClassSelection) {
     const isTrain = data.type === 'TRAIN';
+    const isPlane = data.type === 'PLANE';
+    
     return (
-      <div className="container mx-auto px-4 py-12 max-w-lg text-left animate-in fade-in duration-500">
+      <div className="container mx-auto px-4 py-12 max-w-lg text-left animate-in fade-in duration-500 bg-background">
         <div className="flex items-center gap-2 mb-2">
             <h1 className="text-4xl font-black italic tracking-tighter uppercase text-white">Le Confort</h1>
-            {data.isStop && <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] uppercase font-black">Tarif Escale</Badge>}
+            {data.isStop && <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] uppercase font-black px-2 py-0.5">Tarif Escale</Badge>}
         </div>
         <p className="text-slate-400 mb-10 text-xs font-bold uppercase tracking-widest leading-relaxed flex items-center gap-2">
-          {isTrain ? 'Voyage Ferroviaire' : 'Trajet Maritime'} • {data.vehicleName} 
+          {isPlane ? 'Voyage Aérien' : isTrain ? 'Voyage Ferroviaire' : 'Trajet Maritime'} • {data.vehicleName} 
           <ArrowRight size={12} className="text-primary" /> <MapPin size={12} className="text-primary"/> {data.destinationName}
         </p>
 
@@ -134,14 +138,14 @@ export default function SeatSelectionPage() {
           <ClassCard 
             title={isTrain ? "2ème Classe" : "Économique"} 
             price={data.basePrice} 
-            desc={isTrain ? "Voyage standard" : "Salon climatisé"} 
-            icon={isTrain ? <Train className="h-6 w-6" /> : <Ship className="h-6 w-6" />}
+            desc={isPlane ? "Classe standard" : isTrain ? "Voyage classique" : "Salon climatisé"} 
+            icon={isPlane ? <Plane className="h-6 w-6" /> : isTrain ? <Train className="h-6 w-6" /> : <Ship className="h-6 w-6" />}
             onClick={() => setSelectedClass(isTrain ? '2EME_CLASSE' : 'ECO')}
           />
           <ClassCard 
             title={isTrain ? "1ère Classe" : "Business"} 
             price={data.businessPrice} 
-            desc="Confort supérieur" 
+            desc="Service & Confort" 
             icon={<Crown className="h-6 w-6" />}
             onClick={() => setSelectedClass(isTrain ? '1ERE_CLASSE' : 'BUSINESS')}
             color="bg-blue-600"
@@ -168,12 +172,13 @@ export default function SeatSelectionPage() {
     seatLabels.push(row);
   }
 
-  const TransportIcon = data.type === 'BOAT' ? Ship : data.type === 'TRAIN' ? Train : Bus;
+  // MISE À JOUR : Mapping icône avec support PLANE
+  const TransportIcon = data.type === 'BOAT' ? Ship : data.type === 'TRAIN' ? Train : data.type === 'PLANE' ? Plane : Bus;
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-lg text-left animate-in slide-in-from-bottom-4 duration-500">
+    <div className="container mx-auto px-4 py-12 max-w-lg text-left animate-in slide-in-from-bottom-4 duration-500 bg-background text-foreground">
       <div className="flex justify-between items-start mb-8">
-        <div>
+        <div className="text-left">
           <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-none">Choisir un siège</h1>
           <div className="flex items-center gap-3 mt-3">
              <div className="p-2 bg-primary/10 rounded-lg text-primary border border-primary/20">
@@ -184,12 +189,12 @@ export default function SeatSelectionPage() {
                   {selectedClass?.replace('_', ' ')} • {data.vehicleName}
                 </p>
                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter mt-1 flex items-center gap-1">
-                  Immat: {data.registration} • Vers: {data.destinationName}
+                  Réf: {data.registration} • Vers: {data.destinationName}
                 </p>
              </div>
           </div>
         </div>
-        {(data.type === 'BOAT' || data.type === 'TRAIN') && (
+        {(data.type === 'BOAT' || data.type === 'TRAIN' || data.type === 'PLANE') && (
           <Button variant="ghost" size="sm" onClick={() => setSelectedClass(null)} className="text-[10px] font-black text-slate-500 hover:text-primary underline uppercase transition-all">
             Changer Classe
           </Button>
@@ -197,7 +202,7 @@ export default function SeatSelectionPage() {
       </div>
 
       <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 sm:p-10 shadow-2xl mb-10 relative overflow-hidden">
-        <div className="text-center text-[9px] font-black text-slate-700 mb-8 tracking-[1em] uppercase">Partie Avant</div>
+        <div className="text-center text-[9px] font-black text-slate-700 mb-8 tracking-[1em] uppercase leading-none">Cabine Avant</div>
         
         <div className="space-y-4">
           {seatLabels.map((row, ri) => (
@@ -228,7 +233,7 @@ export default function SeatSelectionPage() {
           ))}
         </div>
         
-        <div className="text-center text-[9px] font-black text-slate-700 mt-10 tracking-[1em] uppercase">Partie Arrière</div>
+        <div className="text-center text-[9px] font-black text-slate-700 mt-10 tracking-[1em] uppercase leading-none">Cabine Arrière</div>
       </div>
 
       {/* LÉGENDE SOMBRE */}
@@ -239,14 +244,14 @@ export default function SeatSelectionPage() {
       </div>
 
       <Button
-        className="w-full h-16 rounded-2xl font-black text-lg shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest active:scale-95 transition-all"
+        className="w-full h-16 rounded-2xl font-black text-lg shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest active:scale-95 transition-all border-none"
         disabled={!selectedSeat}
         onClick={() => {
             const finalPrice = selectedClass === 'VIP' ? data.vipPrice : (selectedClass === 'BUSINESS' || selectedClass === '1ERE_CLASSE' ? data.businessPrice : data.basePrice);
             navigate(`/confirm/${departureId}?seat=${selectedSeat}&class=${selectedClass}&price=${finalPrice}&to=${data.destinationName}`);
         }}
       >
-        {selectedSeat ? `RÉSERVER LE SIÈGE ${selectedSeat}` : 'SÉLECTIONNEZ UNE PLACE'}
+        {selectedSeat ? `CONFIRMER LE SIÈGE ${selectedSeat}` : 'SÉLECTIONNEZ UNE PLACE'}
       </Button>
     </div>
   );
@@ -262,7 +267,7 @@ function ClassCard({ title, price, desc, icon, onClick, color = "bg-emerald-600"
         <div className={`h-14 w-14 rounded-2xl ${color} text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
           {icon}
         </div>
-        <div>
+        <div className="text-left">
           <p className="font-black text-xl text-white leading-tight uppercase italic">{title}</p>
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{desc}</p>
         </div>

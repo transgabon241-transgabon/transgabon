@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { CalendarDays, MapPin, Ticket, X, Eye, Bus, Package, Ship, Train, Hash, Gem, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, MapPin, Ticket, X, Eye, Bus, Package, Ship, Train, Hash, Gem, ArrowRight, ChevronLeft, ChevronRight, Plane } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -79,7 +79,8 @@ export default function DashboardPage() {
           departureCity: b.trip.from.name,
           arrivalCity: b.arrival_city_name || b.trip.to.name,
           companyName: b.trip.company.name,
-          transportType: b.trip.type === 'TRAIN' ? 'Train' : b.trip.type === 'BOAT' ? 'Bateau' : 'Bus',
+          // MISE À JOUR DU MAPPING POUR L'AVION
+          transportType: b.trip.type === 'TRAIN' ? 'Train' : b.trip.type === 'BOAT' ? 'Bateau' : b.trip.type === 'PLANE' ? 'Avion' : 'Bus',
           transportTypeCode: b.trip.type,
           departureDate: b.trip.departure_date,
           departureTime: b.trip.departure_time,
@@ -221,7 +222,7 @@ function PaginationControls({ currentPage, totalItems, itemsPerPage, onPageChang
                 <ChevronLeft size={16} />
             </Button>
             <span className="text-[9px] sm:text-[10px] font-black uppercase text-slate-500 px-2">Page {currentPage} / {totalPages}</span>
-            <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} className="rounded-xl h-9 w-9 border border-slate-800 hover:bg-slate-800 text-slate-400">
+            <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-9 w-9 border border-slate-800 hover:bg-slate-800 text-slate-400">
                 <ChevronRight size={16} />
             </Button>
         </div>
@@ -235,11 +236,17 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
   return (
     <div className="grid gap-4">
       {bookings.map(b => {
-        const TransportIcon = b.transportTypeCode === 'BOAT' ? Ship : b.transportTypeCode === 'TRAIN' ? Train : Bus;
+        // LOGIQUE D'ICÔNE MISE À JOUR POUR L'AVION
+        const TransportIcon = b.transportTypeCode === 'BOAT' ? Ship : b.transportTypeCode === 'TRAIN' ? Train : b.transportTypeCode === 'PLANE' ? Plane : Bus;
+        
         return (
           <div key={b.id} className="bg-slate-900 border-2 border-slate-800/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-primary/20 transition-all group flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 overflow-hidden">
             <div className="flex items-center gap-4 sm:gap-5 flex-1 w-full overflow-hidden">
-               <div className={`h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg ${b.transportTypeCode === 'BOAT' ? 'bg-blue-600' : b.transportTypeCode === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'}`}>
+               <div className={`h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg ${
+                 b.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 
+                 b.transportTypeCode === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 
+                 b.transportTypeCode === 'PLANE' ? 'bg-indigo-600' : 
+                 'bg-primary'}`}>
                   <TransportIcon size={20} className="sm:w-6 sm:h-6" />
                </div>
                <div className="overflow-hidden text-left">
@@ -258,7 +265,7 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
                   <p className="text-[7px] sm:text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Montant</p>
                   <p className="font-black text-slate-100 text-sm sm:text-base mt-1">{b.amount.toLocaleString()} F</p>
                </div>
-               <Button onClick={() => navigate(`/ticket/${b.id}`)} variant="outline" className="flex-1 md:flex-none h-10 sm:h-11 rounded-lg sm:rounded-xl border-slate-800 bg-slate-950 text-slate-300 font-black text-[9px] sm:text-[10px] uppercase gap-2 hover:bg-slate-800 hover:text-white">
+               <Button onClick={() => navigate(`/ticket/${b.id}`)} variant="outline" className="flex-1 md:flex-none h-10 sm:h-11 rounded-lg sm:rounded-xl border-slate-800 bg-slate-950 text-slate-300 font-black text-[9px] sm:text-[10px] uppercase gap-2 hover:bg-slate-800 hover:text-white transition-all">
                  <Eye size={14} /> Billet
                </Button>
                {showActions && b.status === 'Confirmé' && onCancel && (
@@ -268,12 +275,12 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
                    </AlertDialogTrigger>
                    <AlertDialogContent className="rounded-[2rem] sm:rounded-[2.5rem] w-[90vw] max-w-md bg-slate-900 border border-slate-800 text-white">
                      <AlertDialogHeader className="text-left">
-                       <AlertDialogTitle className="font-black italic uppercase text-lg sm:text-xl">Annuler le voyage ?</AlertDialogTitle>
-                       <AlertDialogDescription className="font-medium text-slate-400 text-sm italic">Cette action est soumise aux conditions de remboursement de {b.companyName}.</AlertDialogDescription>
+                       <AlertDialogTitle className="font-black italic uppercase text-lg sm:text-xl text-white">Annuler le voyage ?</AlertDialogTitle>
+                       <AlertDialogDescription className="font-medium text-slate-400 text-sm italic mt-2">Cette action est soumise aux conditions de remboursement de {b.companyName}.</AlertDialogDescription>
                      </AlertDialogHeader>
-                     <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+                     <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-6">
                        <AlertDialogCancel className="rounded-xl font-bold mt-0 bg-slate-800 border-none hover:bg-slate-700 text-white">RETOUR</AlertDialogCancel>
-                       <AlertDialogAction onClick={() => onCancel(b.id)} className="bg-red-600 hover:bg-red-700 rounded-xl font-bold border-none">ANNULER BILLET</AlertDialogAction>
+                       <AlertDialogAction onClick={() => onCancel(b.id)} className="bg-red-600 hover:bg-red-700 rounded-xl font-bold border-none text-white">ANNULER BILLET</AlertDialogAction>
                      </AlertDialogFooter>
                    </AlertDialogContent>
                  </AlertDialog>
@@ -308,7 +315,7 @@ function ParcelList({ parcels }: { parcels: Parcel[] }) {
              </div>
           </div>
           <Link to={`/track?q=${p.trackingNumber}`} className="w-full md:w-auto">
-             <Button variant="outline" className="w-full h-10 sm:h-11 rounded-lg sm:rounded-xl border-slate-800 bg-slate-950 text-slate-300 font-black text-[9px] sm:text-[10px] uppercase gap-2 hover:bg-emerald-500/10 hover:text-emerald-400">
+             <Button variant="outline" className="w-full h-10 sm:h-11 rounded-lg sm:rounded-xl border-slate-800 bg-slate-950 text-slate-300 font-black text-[9px] sm:text-[10px] uppercase gap-2 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all">
                <Eye size={14} /> Suivre colis
              </Button>
           </Link>
@@ -332,7 +339,7 @@ function EmptyState({ label, icon: Icon = Ticket }: any) {
   return (
     <div className="py-12 sm:py-20 text-center border-2 border-dashed border-slate-800 rounded-[2rem] sm:rounded-[3rem] bg-slate-900/40 px-4">
       <Icon className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-slate-700 mb-4" />
-      <p className="text-slate-500 font-bold uppercase text-[10px] sm:text-xs tracking-[0.2em] italic">{label}</p>
+      <p className="text-slate-500 font-bold uppercase text-[10px] sm:text-xs tracking-[0.2em] italic text-center">{label}</p>
     </div>
   );
 }

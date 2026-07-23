@@ -11,8 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
-  Smartphone, Building2, Check, CreditCard, Ship, 
-  Gem, RefreshCw, Train, Bus, MapPin, Package, Plus, Trash2, Scale, Calculator, Info 
+  Building2, Check, CreditCard, Ship, 
+  Gem, RefreshCw, Train, Bus, MapPin, Package, Plus, Trash2, Scale, Calculator, Info, Plane 
 } from 'lucide-react';
 
 const PAYMENT_METHODS = [
@@ -60,7 +60,7 @@ export default function BookingConfirmPage() {
 
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
-  }, [isLoading, user]);
+  }, [isLoading, user, loginWithRedirect]);
 
   useEffect(() => {
     if (user) {
@@ -170,12 +170,12 @@ export default function BookingConfirmPage() {
     finally { setSubmitting(false); }
   };
 
-  const TransportIcon = trip?.type === 'TRAIN' ? Train : trip?.type === 'BOAT' ? Ship : Bus;
+  const TransportIcon = trip?.type === 'TRAIN' ? Train : trip?.type === 'BOAT' ? Ship : trip?.type === 'PLANE' ? Plane : Bus;
 
-  if (loading) return <div className="max-w-lg mx-auto p-10"><Skeleton className="h-64 w-full rounded-[2.5rem] bg-slate-900" /></div>;
+  if (loading) return <div className="max-w-lg mx-auto p-10 bg-background min-h-screen text-left"><Skeleton className="h-64 w-full rounded-[2.5rem] bg-slate-900" /></div>;
 
   return (
-    <div className="container mx-auto px-4 py-10 max-w-lg text-left space-y-8 animate-in fade-in duration-500 text-foreground">
+    <div className="container mx-auto px-4 py-10 max-w-lg text-left space-y-8 animate-in fade-in duration-500 text-foreground bg-background">
       
       <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-none">Finaliser ma place</h1>
 
@@ -183,8 +183,8 @@ export default function BookingConfirmPage() {
       <div className="bg-card border-2 border-border rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <p className="text-[10px] font-black text-primary uppercase mb-1 tracking-widest">{trip?.companyName}</p>
-              <div className="flex items-center gap-2">
+              <p className="text-[10px] font-black text-primary uppercase mb-1 tracking-widest leading-none">{trip?.companyName}</p>
+              <div className="flex items-center gap-2 mt-1">
                 <TransportIcon size={18} className="text-slate-500" />
                 <p className="font-bold text-slate-200 italic uppercase text-sm">{trip?.registration}</p>
               </div>
@@ -194,20 +194,20 @@ export default function BookingConfirmPage() {
           <div className="space-y-3 p-4 bg-slate-950 rounded-3xl border border-border shadow-inner">
             <div className="flex items-center gap-3">
                 <MapPin size={16} className="text-primary" />
-                <p className="font-black text-sm text-slate-100 uppercase">{destinationName}</p>
+                <p className="font-black text-sm text-slate-100 uppercase truncate">{destinationName}</p>
             </div>
             <div className="flex items-center gap-3 border-t border-slate-800 pt-3">
-                <Check size={16} className="text-primary" />
+                <div className={`h-2 w-2 rounded-full ${trip?.type === 'PLANE' ? 'bg-indigo-500' : 'bg-primary'}`} />
                 <p className="font-black text-[11px] text-slate-400 uppercase tracking-tighter">{selectedClass.replace('_', ' ')}</p>
             </div>
           </div>
       </div>
 
       {/* SECTION BAGAGES SOMBRE */}
-      <div className="bg-card border-2 border-border rounded-[2.5rem] p-8 shadow-xl space-y-6">
-        <div className="flex items-center gap-3 text-left">
+      <div className="bg-card border-2 border-border rounded-[2.5rem] p-8 shadow-xl space-y-6 text-left">
+        <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary"><Package size={20} /></div>
-            <div>
+            <div className="text-left">
                 <h3 className="font-black text-sm text-white uppercase tracking-tighter leading-none">Déclaration Bagages</h3>
                 <p className="text-[9px] font-bold text-slate-500 uppercase mt-1">Saisissez vos colis pour la pesée</p>
             </div>
@@ -216,7 +216,7 @@ export default function BookingConfirmPage() {
         <div className="space-y-3 p-4 bg-slate-950 rounded-3xl border border-border">
             <div className="grid grid-cols-1 gap-3">
                 <Input 
-                    placeholder="Objet (ex: Glacière, Sac...)" 
+                    placeholder="Objet (ex: Valise, Sac...)" 
                     value={tempLabel}
                     onChange={(e) => setTempLabel(e.target.value)}
                     className="h-11 bg-slate-900 border-none shadow-inner rounded-xl font-bold text-xs text-white"
@@ -228,11 +228,11 @@ export default function BookingConfirmPage() {
                             placeholder="Poids" 
                             value={tempWeight}
                             onChange={(e) => setTempWeight(e.target.value)}
-                            className="h-11 bg-slate-900 border-none shadow-inner rounded-xl font-black text-center text-white"
+                            className="h-11 bg-slate-900 border-none shadow-inner rounded-xl font-black text-center text-white outline-none"
                         />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-600">KG</span>
                     </div>
-                    <Button onClick={addLuggage} type="button" className="h-11 px-6 rounded-xl bg-primary text-white font-black text-[10px] uppercase shadow-lg shadow-primary/20">
+                    <Button onClick={addLuggage} type="button" className="h-11 px-6 rounded-xl bg-primary text-white font-black text-[10px] uppercase shadow-lg border-none active:scale-95">
                         <Plus size={16} className="mr-2" /> Ajouter
                     </Button>
                 </div>
@@ -242,11 +242,11 @@ export default function BookingConfirmPage() {
         <div className="space-y-2">
             {luggages.map((lug) => (
                 <div key={lug.id} className="flex items-center justify-between p-3 bg-slate-900/50 border border-border rounded-2xl animate-in fade-in slide-in-from-right-2">
-                    <div className="flex items-center gap-3 text-left">
-                        <Scale size={14} className="text-primary" />
-                        <span className="text-xs font-bold text-slate-200 uppercase">{lug.label}</span>
+                    <div className="flex items-center gap-3 text-left min-w-0">
+                        <Scale size={14} className="text-primary shrink-0" />
+                        <span className="text-xs font-bold text-slate-200 uppercase truncate">{lug.label}</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 shrink-0">
                         <span className="font-black text-sm text-slate-500">{lug.weight} KG</span>
                         <button onClick={() => removeLuggage(lug.id)} className="text-red-400 hover:text-red-300 transition-colors">
                             <Trash2 size={16} />
@@ -268,7 +268,7 @@ export default function BookingConfirmPage() {
         <div className="bg-slate-900 border border-border p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
             <Calculator className="absolute -right-4 -bottom-4 h-24 w-24 opacity-5 text-primary" />
             <div className="space-y-2 relative z-10 text-left">
-                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60"><span>Billet</span><span className="text-slate-200">{ticketPrice.toLocaleString()} F</span></div>
+                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60"><span>Prix Billet</span><span className="text-slate-200">{ticketPrice.toLocaleString()} F</span></div>
                 {luggageTotal > 0 && (
                     <div className="flex justify-between text-[10px] font-bold uppercase text-primary">
                         <span>Excédent ({totalWeight}kg)</span>
@@ -277,11 +277,11 @@ export default function BookingConfirmPage() {
                 )}
                 <div className="h-px bg-white/10 my-4 border-t border-dashed border-border" />
                 <div className="flex justify-between items-center">
-                    <p className="text-xs font-black uppercase text-primary tracking-widest">Total à régler</p>
-                    <p className="text-4xl font-black tracking-tighter text-white">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
+                    <p className="text-xs font-black uppercase text-primary tracking-widest leading-none">Total à régler</p>
+                    <p className="text-4xl font-black tracking-tighter text-white leading-none">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
                 </div>
-                <div className="flex items-center gap-2 mt-4">
-                    <Info size={10} className="text-slate-500" />
+                <div className="flex items-center gap-2 mt-4 text-left">
+                    <Info size={10} className="text-slate-500 shrink-0" />
                     <p className="text-[8px] font-bold text-slate-500 uppercase italic leading-none">* {trip?.freeWeight}kg inclus sans supplément.</p>
                 </div>
             </div>
@@ -312,22 +312,23 @@ export default function BookingConfirmPage() {
         </div>
 
         <Button
-          className="w-full h-20 rounded-[2rem] font-black text-2xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] shadow-primary/20 uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all mt-4 bg-primary text-white border-none"
+          className="w-full h-20 rounded-[2rem] font-black text-xl md:text-2xl shadow-2xl bg-primary text-white border-none hover:bg-primary/90 active:scale-95 transition-all mt-4 uppercase tracking-widest"
           onClick={handleSubmit}
           disabled={submitting || !paymentMethod}
         >
-          {submitting ? <RefreshCw className="animate-spin mr-3" /> : <CheckCircle size={28} className="mr-3" />}
-          {submitting ? 'VALIDATION...' : 'RÉSERVER MAINTENANT'}
+          {submitting ? <RefreshCw className="animate-spin mr-3" /> : <CheckCircle className="mr-3" />}
+          {submitting ? 'TRAITEMENT...' : 'VALIDER MA RÉSERVATION'}
         </Button>
       </div>
 
       <p className="text-center text-[8px] font-black uppercase tracking-[0.4em] text-slate-600 pb-10">
-        TransGabon Connect • Billetterie & Fret
+        TransGabon Connect • Billetterie & Fret 2026
       </p>
     </div>
   );
 }
 
+// FONCTION RÉTABLIE POUR L'ICÔNE DU BOUTON
 function CheckCircle(props: any) {
   return (
     <svg

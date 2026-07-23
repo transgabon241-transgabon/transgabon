@@ -33,14 +33,13 @@ export default function Layout({ children }: { children: ReactNode }) {
   const isStaff = user && ["Agent", "Administrateur", "Agent Embarquement", "Service Colis", "Caissier"].includes(user.role);
 
   return (
-    // bg-background = Bleu Marine du globals.css
     <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 selection:text-white">
       
-      {/* --- HEADER : Utilise bg-card (Bleu un peu plus clair) --- */}
+      {/* --- HEADER : Midnight Navy (bg-card) --- */}
       <header className="sticky top-0 z-[100] w-full border-b border-border bg-card/90 backdrop-blur-md shadow-2xl">
         <div className="container mx-auto px-4 h-24 md:h-28 flex items-center justify-between">
           
-          {/* LOGO */}
+          {/* LOGO - Correction contraste texte */}
           <Link to="/" className="flex items-center gap-4 group">
             <div className="relative">
                 <img src={logo} alt="Logo" className="h-12 md:h-16 w-auto object-contain group-hover:scale-105 transition-transform duration-500 filter drop-shadow-lg" />
@@ -70,7 +69,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 {user ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-muted border-2 border-transparent hover:border-primary/20 transition-all shadow-lg group">
+                      <button className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-muted/50 border-2 border-transparent hover:border-primary/20 hover:bg-muted transition-all shadow-lg group">
                          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-md shadow-primary/20 group-hover:scale-110 transition-transform">
                             <User size={20} strokeWidth={2.5} />
                          </div>
@@ -87,7 +86,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Identifiant</p>
                         <p className="text-xs font-bold text-slate-300 truncate">{user.email}</p>
                       </div>
-                      <DropdownMenuItem onClick={() => navigate('/dashboard')} className="rounded-xl py-3.5 font-bold text-xs gap-3 focus:bg-muted focus:text-white cursor-pointer text-slate-200">
+                      <DropdownMenuItem onClick={() => navigate('/dashboard')} className="rounded-xl py-3.5 font-bold text-xs gap-3 focus:bg-muted focus:text-white cursor-pointer transition-colors">
                         <LayoutDashboard size={18} className="text-muted-foreground" /> Mes réservations
                       </DropdownMenuItem>
                       {isStaff && (
@@ -109,7 +108,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 ) : (
                   <div className="flex items-center gap-3">
                     <Button variant="ghost" className="font-black text-[11px] uppercase h-12 px-6 text-slate-300 hover:text-white hover:bg-muted" onClick={() => loginWithRedirect()}>Connexion</Button>
-                    <Button className="font-black text-[11px] uppercase h-12 px-10 rounded-2xl shadow-xl shadow-primary/20 bg-primary text-white hover:bg-primary/90 transition-transform active:scale-95" onClick={() => loginWithRedirect({ initialView: 'signup' })}>S'inscrire</Button>
+                    <Button className="font-black text-[11px] uppercase h-12 px-10 rounded-2xl shadow-xl shadow-primary/20 bg-primary text-white border-none hover:bg-primary/90 transition-all active:scale-95" onClick={() => loginWithRedirect({ initialView: 'signup' })}>S'inscrire</Button>
                   </div>
                 )}
               </>
@@ -186,7 +185,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Link to="/privacy" className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors">Confidentialité</Link>
             <Link to="/terms" className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors">Conditions</Link>
           </div>
-          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.5em]">
+          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.5em] text-center">
               République Gabonaise • {new Date().getFullYear()}
           </p>
         </div>

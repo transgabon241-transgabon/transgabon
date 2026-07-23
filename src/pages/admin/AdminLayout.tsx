@@ -4,8 +4,19 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
 import { 
-  LayoutDashboard, Building2, UsersRound, CreditCard, LogOut, ArrowLeft, Shield, 
-  ArrowLeftRight, Globe, ChevronRight, Menu, X 
+  LayoutDashboard, 
+  Building2, 
+  UsersRound, 
+  CreditCard, 
+  LogOut, 
+  ArrowLeft, 
+  Shield, 
+  ArrowLeftRight, 
+  Globe, 
+  ChevronRight, 
+  Menu, 
+  X,
+  Plane // Importé pour de futures utilisations si besoin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,8 +47,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
 
   if (isLoading || !user) return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-background flex items-center justify-center text-primary">
+        <RefreshCw className="h-10 w-10 animate-spin" />
     </div>
   );
 
@@ -85,9 +96,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                 <Shield className="h-7 w-7 text-white" />
             </div>
-            <div>
+            <div className="text-left">
                 <h2 className="font-black text-2xl tracking-tighter uppercase italic leading-none text-white">Console</h2>
-                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1.5">Super Administration</p>
+                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1.5 leading-none">Super Administration</p>
             </div>
           </div>
         </div>
@@ -138,7 +149,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col min-w-0 w-full h-screen overflow-hidden bg-background">
         <div className="flex-1 overflow-y-auto p-3 md:p-8">
-            <div className="min-h-full w-full bg-card rounded-[1.5rem] md:rounded-[3rem] shadow-2xl border border-border p-5 md:p-12 relative overflow-hidden">
+            <div className="min-h-full w-full bg-card rounded-[1.5rem] md:rounded-[3rem] shadow-2xl border border-border p-5 md:p-12 relative overflow-hidden text-left">
                 <div className="absolute top-0 right-0 p-20 opacity-[0.02] pointer-events-none text-white">
                     <Shield size={500} />
                 </div>
@@ -151,3 +162,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+// Importation nécessaire pour le squelette si non définie
+import { RefreshCw } from 'lucide-react';

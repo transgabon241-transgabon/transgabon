@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, CheckCircle, Printer, RefreshCw, Ship, Train, Bus, Hash, MapPin, Gem, Package, Info, ArrowRight } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Printer, RefreshCw, Ship, Train, Bus, Hash, MapPin, Gem, Package, Info, ArrowRight, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 // Type précis pour les bagages
@@ -100,7 +100,8 @@ export default function TicketPage() {
             departureCity: b.trip.from.name,
             arrivalCity: destination,
             companyName: b.trip.company.name,
-            transportType: b.trip.type === 'TRAIN' ? 'Train' : b.trip.type === 'BOAT' ? 'Bateau' : 'Bus',
+            // LOGIQUE DE MAPPING MISE À JOUR POUR L'AVION
+            transportType: b.trip.type === 'TRAIN' ? 'Train' : b.trip.type === 'BOAT' ? 'Bateau' : b.trip.type === 'PLANE' ? 'Avion' : 'Bus',
             transportTypeCode: b.trip.type,
             registration: b.trip.vehicle?.registration || '—',
             travelClass: prettyClass,
@@ -130,21 +131,24 @@ export default function TicketPage() {
   if (!booking) return <div className="p-20 text-center font-bold text-red-500 uppercase">Billet introuvable</div>;
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(booking.qrCodeData)}`;
-  const TransportIcon = booking.transportTypeCode === 'BOAT' ? Ship : booking.transportTypeCode === 'TRAIN' ? Train : Bus;
+  
+  // LOGIQUE D'ICÔNE MISE À JOUR POUR L'AVION
+  const TransportIcon = booking.transportTypeCode === 'BOAT' ? Ship : booking.transportTypeCode === 'TRAIN' ? Train : booking.transportTypeCode === 'PLANE' ? Plane : Bus;
 
   return (
     <div className="container mx-auto px-4 py-10 max-w-lg animate-in fade-in duration-700">
       
-      <Link to="/dashboard" className="inline-flex items-center gap-2 text-[10px] font-black uppercase text-slate-500 hover:text-primary mb-6 print:hidden tracking-widest">
+      <Link to="/dashboard" className="inline-flex items-center gap-2 text-[10px] font-black uppercase text-slate-500 hover:text-primary mb-6 print:hidden tracking-widest text-left">
         <ArrowLeft size={14} /> Retour à mon espace
       </Link>
 
       <div className="bg-card border-2 border-border rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] print:border-none print:shadow-none">
         
-        {/* HEADER - Couleurs d'accent conservées pour la distinction */}
+        {/* HEADER - Couleur Indigo pour PLANE */}
         <div className={`p-8 text-white ${
           booking.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 
-          booking.transportTypeCode === 'TRAIN' ? 'bg-slate-950' : 'bg-primary'
+          booking.transportTypeCode === 'TRAIN' ? 'bg-slate-950 border-b border-border' : 
+          booking.transportTypeCode === 'PLANE' ? 'bg-indigo-600' : 'bg-primary'
         }`}>
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2">
@@ -159,7 +163,7 @@ export default function TicketPage() {
             </div>
           </div>
           
-          <div className="space-y-1">
+          <div className="space-y-1 text-left">
              <h2 className="text-3xl font-black leading-none tracking-tighter uppercase">{booking.departureCity}</h2>
              <div className="flex items-center gap-3 opacity-20 py-1">
                 <div className="h-px flex-1 bg-white" />
@@ -169,12 +173,11 @@ export default function TicketPage() {
              <h2 className="text-3xl font-black leading-none tracking-tighter uppercase">{booking.arrivalCity}</h2>
           </div>
           
-          <p className="mt-6 text-[10px] font-black uppercase tracking-widest text-white/60 italic">{booking.companyName}</p>
+          <p className="mt-6 text-[10px] font-black uppercase tracking-widest text-white/60 italic text-left">{booking.companyName}</p>
         </div>
 
         {/* SECTION QR CODE */}
         <div className="p-8 flex flex-col items-center justify-center bg-card border-b-2 border-dashed border-border relative">
-          {/* Cercles de découpe ticket (doivent matcher la couleur de fond du site) */}
           <div className="absolute -left-4 top-full -translate-y-1/2 h-8 w-8 bg-background rounded-full border-r-2 border-border print:hidden" />
           <div className="absolute -right-4 top-full -translate-y-1/2 h-8 w-8 bg-background rounded-full border-l-2 border-border print:hidden" />
           
@@ -184,7 +187,7 @@ export default function TicketPage() {
           <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em]">Scanner au contrôle</p>
         </div>
 
-        {/* DÉTAILS - bg-card au lieu de bg-white */}
+        {/* DÉTAILS */}
         <div className="p-8 space-y-8 bg-card">
             <div className="grid grid-cols-2 gap-y-8 text-left">
                 <InfoField label="Voyageur" value={booking.passengerName} />
@@ -194,7 +197,7 @@ export default function TicketPage() {
                    </span>
                 </InfoField>
 
-                <InfoField label="Véhicule / Train">
+                <InfoField label="Appareil / Immat.">
                     <div className="flex items-center gap-1.5 font-black text-xs text-slate-200 uppercase">
                         <Hash size={12} className="text-primary" /> {booking.registration}
                     </div>
@@ -209,7 +212,7 @@ export default function TicketPage() {
 
             {/* SECTION BAGAGES SOMBRE */}
             {booking.luggages.length > 0 ? (
-              <div className="p-5 bg-slate-950 rounded-[2rem] border-2 border-border animate-in slide-in-from-bottom-2">
+              <div className="p-5 bg-slate-950 rounded-[2rem] border-2 border-border animate-in slide-in-from-bottom-2 text-left">
                 <div className="flex items-center gap-2 text-slate-500 mb-4">
                    <Package size={14} className="text-primary" />
                    <span className="text-[10px] font-black uppercase tracking-widest">Bagages enregistrés</span>
@@ -230,7 +233,7 @@ export default function TicketPage() {
               </div>
             )}
 
-            {/* BOX RÉCAPITULATIF SOMBRE */}
+            {/* BOX RÉCAPITULATIF */}
             <div className="grid grid-cols-3 gap-2 bg-slate-950 p-6 rounded-[2rem] border border-border shadow-xl text-white">
                <div className="text-left">
                   <p className="text-[8px] font-black text-primary uppercase opacity-70">Date</p>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { Clock, MapPin, Users, Train, Bus, Ship, ArrowRight, Hash, Info } from 'lucide-react'; 
+import { Clock, MapPin, Users, Train, Bus, Ship, ArrowRight, Hash, Info, Plane } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -64,9 +64,11 @@ export default function SearchResultsPage() {
                 const stopAtDestination = t.trip_stops?.find((s: any) => s.city_id === toCity.id);
                 const isStop = !!stopAtDestination;
 
+                // MAPPING DES LABELS INCLUANT L'AVION
                 let typeLabel = 'Bus';
                 if (t.type === 'TRAIN') typeLabel = 'Train';
                 if (t.type === 'BOAT') typeLabel = 'Bateau';
+                if (t.type === 'PLANE') typeLabel = 'Avion';
 
                 return {
                   departureId: t.id,
@@ -102,7 +104,7 @@ export default function SearchResultsPage() {
   const formattedDate = date ? new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl text-left animate-in fade-in duration-500">
+    <div className="container mx-auto px-4 py-12 max-w-5xl text-left animate-in fade-in duration-500 bg-background">
       
       {/* Header Itinéraire - Sombre */}
       <div className="mb-10 bg-card border-2 border-border p-6 md:p-8 rounded-[2rem] shadow-2xl">
@@ -117,19 +119,15 @@ export default function SearchResultsPage() {
       {/* Barre de tri - Sombre */}
       <div className="flex items-center gap-4 mb-8 px-2">
         <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Trier par :</span>
-        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-            <Button 
-                variant={sortBy === 'time' ? 'default' : 'ghost'} 
-                size="sm" 
+        <div className="flex bg-slate-900 p-1 rounded-xl border border-border shadow-inner">
+            <button 
                 onClick={() => setSortBy('time')} 
-                className={`rounded-lg font-black text-[10px] uppercase px-4 ${sortBy === 'time' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >Horaire</Button>
-            <Button 
-                variant={sortBy === 'price' ? 'default' : 'ghost'} 
-                size="sm" 
+                className={`rounded-lg font-black text-[10px] uppercase px-4 py-2 transition-all ${sortBy === 'time' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >Horaire</button>
+            <button 
                 onClick={() => setSortBy('price')} 
-                className={`rounded-lg font-black text-[10px] uppercase px-4 ${sortBy === 'price' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >Prix</Button>
+                className={`rounded-lg font-black text-[10px] uppercase px-4 py-2 transition-all ${sortBy === 'price' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >Prix</button>
         </div>
       </div>
 
@@ -138,31 +136,34 @@ export default function SearchResultsPage() {
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 w-full rounded-[2rem] bg-slate-900 border border-slate-800" />)}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="text-center py-20 bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-800">
+        <div className="text-center py-20 bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-border">
           <MapPin className="h-16 w-16 mx-auto text-slate-700 mb-6" />
           <h3 className="text-2xl font-black text-white">Aucun trajet trouvé</h3>
           <p className="text-slate-500 font-medium mb-8">Essayez une autre date ou une autre destination.</p>
-          <Button variant="default" className="rounded-2xl font-black px-8 h-12 shadow-xl bg-primary hover:bg-primary/90" onClick={() => navigate('/')}>REFAIRE UNE RECHERCHE</Button>
+          <Button variant="default" className="rounded-2xl font-black px-8 h-12 shadow-xl bg-primary hover:bg-primary/90 text-white" onClick={() => navigate('/')}>REFAIRE UNE RECHERCHE</Button>
         </div>
       ) : (
         <div className="grid gap-5">
           {sorted.map(trip => {
-            const TransportIcon = trip.transportType === 'Train' ? Train : trip.transportType === 'Bateau' ? Ship : Bus;
+            // LOGIQUE D'ICÔNE MISE À JOUR POUR L'AVION
+            const TransportIcon = trip.transportType === 'Train' ? Train : trip.transportType === 'Bateau' ? Ship : trip.transportType === 'Avion' ? Plane : Bus;
+            
             return (
               <div key={trip.departureId} className="bg-card border-2 border-border rounded-[2rem] p-6 md:p-8 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-primary/30 transition-all duration-300 group overflow-hidden">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
                   
-                  <div className="flex items-center gap-5 min-w-[240px]">
+                  <div className="flex items-center gap-5 min-w-[240px] text-left">
                     <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform ${
                         trip.transportType === 'Bateau' ? 'bg-blue-600' : 
-                        trip.transportType === 'Train' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'
+                        trip.transportType === 'Train' ? 'bg-slate-950 border border-slate-800' : 
+                        trip.transportType === 'Avion' ? 'bg-indigo-600' : 'bg-primary'
                     } text-white`}>
                       <TransportIcon className="h-8 w-8" />
                     </div>
                     <div className="min-w-0">
                       <div className="font-black text-xl text-white leading-none mb-3 truncate uppercase tracking-tight">{trip.companyName}</div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter border-slate-700 text-slate-400 bg-slate-950/50">
+                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter border-slate-700 text-slate-400 bg-slate-950/50 px-2 py-0.5">
                             {trip.transportType}
                         </Badge>
                         <span className="flex items-center gap-1 text-[9px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 uppercase italic">
@@ -177,13 +178,13 @@ export default function SearchResultsPage() {
                       <div className="text-2xl md:text-3xl font-black text-white tracking-tighter leading-none">{trip.departureTime}</div>
                       <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5 truncate">{from}</div>
                     </div>
-                    <div className="flex flex-col items-center opacity-30">
-                      <ArrowRight className="h-5 w-5 text-primary" />
+                    <div className="flex flex-col items-center opacity-30 text-primary">
+                      <ArrowRight className="h-5 w-5" />
                     </div>
                     <div className="text-center min-w-[80px]">
                       <div className="text-2xl md:text-3xl font-black text-white tracking-tighter leading-none">{trip.arrivalTime || '--:--'}</div>
                       <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5 flex items-center justify-center gap-1">
-                        {to} {trip.isStop && <Badge className="h-3 px-1 text-[7px] bg-amber-500/10 text-amber-500 border-none uppercase">Escale</Badge>}
+                        {to} {trip.isStop && <Badge className="h-3 px-1 text-[7px] bg-amber-500/10 text-amber-500 border-none uppercase font-black">Escale</Badge>}
                       </div>
                     </div>
                   </div>
@@ -201,7 +202,7 @@ export default function SearchResultsPage() {
                     </div>
                     <Button
                       size="lg"
-                      className="rounded-2xl font-black h-14 px-8 shadow-xl bg-primary text-white hover:bg-primary/90 active:scale-95 transition-all uppercase tracking-widest text-xs"
+                      className="rounded-2xl font-black h-14 px-8 shadow-xl bg-primary text-white hover:bg-primary/90 active:scale-95 transition-all uppercase tracking-widest text-[10px] border-none"
                       onClick={() => navigate(`/seats/${trip.departureId}?from=${from}&to=${to}&price=${trip.price}&isStop=${trip.isStop}`)}
                       disabled={trip.availableSeats <= 0}
                     >
@@ -216,7 +217,7 @@ export default function SearchResultsPage() {
       )}
 
       <footer className="text-center pt-10 opacity-20">
-         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white">TransGabon Connect • Billetterie Nationale</p>
+         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white">TransGabon Connect • Mobilité Aérienne & Terrestre</p>
       </footer>
     </div>
   );

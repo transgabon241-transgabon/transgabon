@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Save, RefreshCw, Hash, MapPin, Clock, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Plane, Save, RefreshCw, Hash, MapPin, Clock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -202,7 +202,7 @@ export default function AgencyDepartures() {
   );
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-2 md:p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground">
+    <div className="w-full max-w-6xl mx-auto p-2 md:p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 px-2">
@@ -213,22 +213,28 @@ export default function AgencyDepartures() {
           <p className="text-[11px] md:text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Planning Agence</p>
         </div>
         {canEdit && (
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="w-full sm:w-auto rounded-xl font-black gap-2 h-14 md:h-16 px-8 shadow-xl bg-primary text-white border-none hover:bg-primary/90">
+          <Button onClick={() => { resetForm(); setShowForm(true); }} className="w-full sm:w-auto rounded-xl font-black gap-2 h-14 md:h-16 px-8 shadow-xl bg-primary text-white border-none hover:bg-primary/90 transition-all">
             <Plus size={24} /> NOUVEAU DÉPART
           </Button>
         )}
       </div>
 
-      {/* LISTE DES DÉPARTS SOMBRE */}
+      {/* LISTE DES DÉPARTS */}
       <div className="space-y-4 md:space-y-6">
         {currentItems.map(dep => {
-          const TransportIcon = dep.type === 'BOAT' ? Ship : dep.type === 'TRAIN' ? Train : Bus;
+          // LOGIQUE D'ICÔNE POUR L'AVION INCLUSE
+          const TransportIcon = dep.type === 'BOAT' ? Ship : dep.type === 'TRAIN' ? Train : dep.type === 'PLANE' ? Plane : Bus;
+          
           return (
             <div key={dep.id} className="bg-card border border-border rounded-[1.5rem] md:rounded-[3rem] p-5 md:p-8 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] transition-all group overflow-visible">
               <div className="flex flex-col space-y-6">
                 
                 <div className="flex items-start md:items-center gap-4 md:gap-6">
-                  <div className={`h-14 w-14 md:h-20 md:w-20 rounded-xl md:rounded-[1.5rem] flex items-center justify-center text-white shadow-lg shrink-0 ${dep.type === 'BOAT' ? 'bg-blue-600' : dep.type === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'}`}>
+                  <div className={`h-14 w-14 md:h-20 md:w-20 rounded-xl md:rounded-[1.5rem] flex items-center justify-center text-white shadow-lg shrink-0 ${
+                    dep.type === 'BOAT' ? 'bg-blue-600' : 
+                    dep.type === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 
+                    dep.type === 'PLANE' ? 'bg-indigo-600' : 'bg-primary'
+                  }`}>
                     <TransportIcon className="h-6 w-6 md:h-10 md:w-10" />
                   </div>
                   <div className="min-w-0 flex-1 text-left">
@@ -245,7 +251,7 @@ export default function AgencyDepartures() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-dashed border-border">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-dashed border-border text-left">
                    <div className="flex items-end justify-between w-full sm:w-auto gap-4">
                       <div className="text-left">
                          <p className="font-black text-primary text-3xl md:text-4xl tracking-tighter">{(dep.price || 0).toLocaleString()} F</p>
@@ -265,14 +271,14 @@ export default function AgencyDepartures() {
                             <Button variant="outline" onClick={() => openEdit(dep)} className="flex-1 h-12 md:h-14 rounded-xl md:rounded-2xl border border-border bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white p-0 shadow-sm transition-colors"><Pencil size={20} /></Button>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="outline" className="flex-1 h-12 md:h-14 rounded-xl md:rounded-2xl border border-border bg-slate-950 text-red-400 hover:text-red-300 hover:bg-red-500/10 p-0 shadow-sm transition-colors"><Trash2 size={20} /></Button>
+                                    <button className="flex-1 flex items-center justify-center h-12 md:h-14 rounded-xl md:rounded-2xl border border-border bg-slate-950 text-red-400 hover:text-red-300 hover:bg-red-500/10 p-0 shadow-sm transition-colors"><Trash2 size={20} /></button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent className="rounded-[2rem] bg-slate-900 border border-border text-white w-[90vw] max-w-md mx-auto">
-                                    <AlertDialogHeader><AlertDialogTitle className="font-black uppercase italic text-xl text-white">Supprimer ce départ ?</AlertDialogTitle></AlertDialogHeader>
+                                    <AlertDialogHeader className="text-left"><AlertDialogTitle className="font-black uppercase italic text-xl">Supprimer ?</AlertDialogTitle></AlertDialogHeader>
                                     <AlertDialogDescription className="text-slate-400">Cette action supprimera toutes les programmations liées à ce trajet.</AlertDialogDescription>
                                     <AlertDialogFooter className="flex-row gap-2 mt-6">
-                                        <AlertDialogCancel className="rounded-xl flex-1 m-0 bg-slate-800 border-none text-white hover:bg-slate-700">ANNULER</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => supabase.from('trips').delete().eq('id', dep.id).then(()=>loadData())} className="bg-red-600 rounded-xl text-white flex-1 m-0 hover:bg-red-700">SUPPRIMER</AlertDialogAction>
+                                        <AlertDialogCancel className="rounded-xl flex-1 m-0 bg-slate-800 border-none text-white hover:bg-slate-700">NON</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => supabase.from('trips').delete().eq('id', dep.id).then(()=>loadData())} className="bg-red-600 rounded-xl text-white flex-1 m-0 hover:bg-red-700">OUI</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
@@ -288,7 +294,7 @@ export default function AgencyDepartures() {
                         <MapPin size={10} className="text-primary" />
                         <div className="leading-tight text-left">
                           <p className="text-[10px] font-black uppercase text-white">{s.cityName}</p>
-                          <p className="text-[8px] font-bold text-slate-600 mt-0.5">{s.arrivalTime} • {(s.priceFromStart || 0).toLocaleString()}F</p>
+                          <p className="text-[8px] font-bold text-slate-600 mt-0.5">Arrêt: {s.arrivalTime} • {(s.priceFromStart || 0).toLocaleString()}F</p>
                         </div>
                       </div>
                     ))}
@@ -313,19 +319,19 @@ export default function AgencyDepartures() {
         </div>
       )}
 
-      {/* DIALOG FORMULAIRE SOMBRE */}
+      {/* DIALOG FORMULAIRE */}
       <Dialog open={showForm} onOpenChange={(o) => { if(!o) resetForm(); setShowForm(o); }}>
         <DialogContent className="rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 w-[95vw] max-w-2xl border-border bg-slate-900 text-white shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[90vh]">
-          <DialogHeader><DialogTitle className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-left text-white leading-none">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
+          <DialogHeader className="text-left"><DialogTitle className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-white leading-none">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle></DialogHeader>
           
-          <div className="space-y-6 md:space-y-8 mt-6">
+          <div className="space-y-6 md:space-y-8 mt-6 text-left">
             {!editId && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                     <div className="space-y-2 text-left">
                         <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest italic">Trajet Principal</Label>
                         <Select value={routeId} onValueChange={setRouteId}>
-                            <SelectTrigger className="h-12 md:h-14 rounded-xl bg-slate-950 border-none font-black text-xs px-6 shadow-inner text-white"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-border text-white">
+                            <SelectTrigger className="h-12 md:h-14 rounded-xl bg-slate-950 border-none font-black text-xs px-6 shadow-inner text-white outline-none"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
+                            <SelectContent className="bg-slate-900 border-border text-white rounded-xl">
                                 {routes.map(r => <SelectItem key={r.id} value={r.id} className="font-bold py-3 text-xs focus:bg-primary/20">{r.departure_city} ➔ {r.arrival_city}</SelectItem>)}
                             </SelectContent>
                         </Select>
@@ -333,19 +339,18 @@ export default function AgencyDepartures() {
                     <div className="space-y-2 text-left">
                         <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest italic">Véhicule Assigné</Label>
                         <Select value={vehicleId} onValueChange={setVehicleId}>
-                            <SelectTrigger className="h-12 md:h-14 rounded-xl bg-slate-950 border-none font-black text-xs px-6 shadow-inner text-white"><SelectValue placeholder="Sélect. véhicule" /></SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-border text-white">
-                                {vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold py-3 text-xs focus:bg-primary/20">{v.name} ({v.capacity} pl.)</SelectItem>)}
+                            <SelectTrigger className="h-12 md:h-14 rounded-xl bg-slate-950 border-none font-black text-xs px-6 shadow-inner text-white outline-none"><SelectValue placeholder="Sélect. véhicule" /></SelectTrigger>
+                            <SelectContent className="bg-slate-900 border-border text-white rounded-xl">
+                                {vehicles.map(v => <SelectItem key={v.id} value={v.id} className="font-bold py-3 text-xs focus:bg-primary/20">{v.name} ({v.capacity} pl. • {v.type})</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
             )}
 
-            {/* SECTION ESCALES SOMBRE */}
             <div className="p-5 md:p-8 bg-slate-950 rounded-[2rem] border border-border shadow-inner">
                <div className="flex justify-between items-center mb-6 px-1">
-                  <h3 className="text-[10px] font-black uppercase flex items-center gap-2 text-slate-400 tracking-widest"><Clock size={16} className="text-primary"/> Escales Intermédiaires</h3>
+                  <h3 className="text-[10px] font-black uppercase flex items-center gap-2 text-slate-400 tracking-widest leading-none"><Clock size={16} className="text-primary"/> Escales</h3>
                   <Button type="button" variant="outline" onClick={addStop} className="h-8 rounded-lg font-black border border-border text-[9px] px-4 bg-slate-900 text-slate-300 hover:bg-slate-800">
                     <Plus size={14} className="mr-1" /> AJOUTER
                   </Button>
@@ -354,26 +359,25 @@ export default function AgencyDepartures() {
                   {stops.map((stop, index) => (
                     <div key={index} className="grid grid-cols-[1fr_1fr_1fr_40px] gap-2 items-end">
                       <Select value={stop.cityId} onValueChange={(v) => updateStop(index, 'cityId', v)}>
-                        <SelectTrigger className="h-11 rounded-xl bg-slate-900 border-none text-[9px] font-black uppercase text-white shadow-inner"><SelectValue placeholder="Ville" /></SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-border text-white">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold text-[10px]">{c.name}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-11 rounded-xl bg-slate-900 border-none text-[9px] font-black uppercase text-white shadow-inner outline-none"><SelectValue placeholder="Ville" /></SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-border text-white rounded-xl">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold text-[10px]">{c.name}</SelectItem>)}</SelectContent>
                       </Select>
-                      <Input type="time" value={stop.arrivalTime} onChange={e => updateStop(index, 'arrivalTime', e.target.value)} className="h-11 rounded-xl border-none bg-slate-900 text-white font-black text-xs text-center" />
-                      <Input type="number" placeholder="Prix F" value={stop.priceFromStart} onChange={e => updateStop(index, 'priceFromStart', e.target.value)} className="h-11 rounded-xl border-none bg-slate-900 text-white font-black text-xs text-center" />
+                      <Input type="time" value={stop.arrivalTime} onChange={e => updateStop(index, 'arrivalTime', e.target.value)} className="h-11 rounded-xl border-none bg-slate-900 text-white font-black text-xs text-center outline-none" />
+                      <Input type="number" placeholder="Prix F" value={stop.priceFromStart} onChange={e => updateStop(index, 'priceFromStart', e.target.value)} className="h-11 rounded-xl border-none bg-slate-900 text-white font-black text-xs text-center outline-none" />
                       <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-11 w-11 text-red-500 hover:bg-red-500/10 rounded-xl transition-all"><X size={18}/></Button>
                     </div>
                   ))}
-                  {stops.length === 0 && <p className="text-[9px] text-slate-700 font-bold uppercase text-center italic py-2">Aucun arrêt prévu</p>}
                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-dashed border-border pt-6">
               <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest leading-none">Tarif Standard (FCFA)</Label>
-                <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-950 border-none font-black text-primary text-3xl px-6 shadow-inner focus:ring-2 focus:ring-primary/50 text-white" />
+                <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-950 border-none font-black text-primary text-3xl px-6 shadow-inner focus:ring-2 focus:ring-primary/50 text-white outline-none" />
               </div>
               <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest leading-none">Date du Départ</Label>
-                <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-950 border-none font-black text-base px-6 shadow-inner text-white appearance-none" />
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest leading-none">Date Départ</Label>
+                <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-14 md:h-16 rounded-2xl bg-slate-950 border-none font-black text-base px-6 shadow-inner text-white appearance-none outline-none" />
               </div>
             </div>
 

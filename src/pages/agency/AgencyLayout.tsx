@@ -2,10 +2,25 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/lib/auth-context"; 
 import { 
-  LayoutDashboard, CalendarDays, Bus, QrCode, LogOut, ArrowLeft, Package, 
-  RefreshCw, Users, Settings2, Truck, DollarSign, ChevronRight, ShieldCheck, Menu, X 
+  LayoutDashboard, 
+  CalendarDays, 
+  Bus, 
+  QrCode, 
+  LogOut, 
+  ArrowLeft, 
+  Package, 
+  RefreshCw, 
+  Users, 
+  Settings2, 
+  Truck, 
+  DollarSign, 
+  ChevronRight, 
+  ShieldCheck, 
+  Menu, 
+  X,
+  Plane // AJOUT DE L'ICÔNE PLANE POUR LA COHÉRENCE
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,18 +46,18 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
-  }, [isLoading, user]);
+  }, [isLoading, user, loginWithRedirect]);
 
   useEffect(() => {
     const allowedRoles = ['Agent', 'Administrateur', 'Agent Embarquement', 'Service Colis', 'Caissier'];
     if (user && !allowedRoles.includes(user.role)) navigate('/');
-  }, [user]);
+  }, [user, navigate]);
 
   useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
 
   if (isLoading || !user) return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-background flex items-center justify-center text-primary">
+        <RefreshCw className="h-10 w-10 animate-spin" />
     </div>
   );
 
@@ -91,20 +106,20 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="text-left">
                 <h2 className="font-black text-2xl tracking-tighter uppercase italic leading-none text-white">Agence</h2>
-                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1.5">Opérations</p>
+                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1.5 leading-none">Opérations</p>
             </div>
           </div>
         </div>
 
         {/* PROFILE CARD SOMBRE */}
-        <div className="mx-6 mb-8 p-5 bg-white/5 rounded-[1.5rem] border border-white/10">
+        <div className="mx-6 mb-8 p-5 bg-white/5 rounded-[1.5rem] border border-white/10 backdrop-blur-sm">
             <div className="flex items-center gap-4">
                 <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-black text-xs border border-primary/20">
                     {user.firstName?.charAt(0).toUpperCase()}
                 </div>
                 <div className="overflow-hidden text-left">
                     <p className="text-sm font-black uppercase truncate text-white leading-none">{user.firstName}</p>
-                    <Badge className="mt-2 bg-primary text-white border-none uppercase font-black text-[7px] h-4">
+                    <Badge className="mt-2 bg-primary text-white border-none uppercase font-black text-[7px] h-4 flex items-center justify-center">
                         {user.role}
                     </Badge>
                 </div>
@@ -117,11 +132,11 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
             return (
               <Link key={item.path} to={item.path}
                 className={`flex items-center justify-between px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
-                  active ? 'bg-primary text-white shadow-lg translate-x-2' : 'text-slate-400 hover:bg-white/5'
+                  active ? 'bg-primary text-white shadow-lg translate-x-2' : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-4">
-                    <item.icon className={`h-5 w-5 ${active ? 'text-white' : 'text-slate-600'}`} />
+                    <item.icon className={`h-5 w-5 ${active ? 'text-white' : 'text-slate-600 group-hover:text-primary'}`} />
                     {item.label}
                 </div>
                 {active && <ChevronRight className="h-4 w-4" />}
@@ -131,7 +146,7 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="p-8 mt-auto border-t border-white/5">
-          <Button variant="ghost" onClick={() => logout()} className="w-full justify-start gap-4 text-slate-500 hover:text-red-400 font-black text-[10px] uppercase tracking-widest h-14 rounded-2xl">
+          <Button variant="ghost" onClick={() => logout()} className="w-full justify-start gap-4 text-slate-500 hover:text-red-400 font-black text-[10px] uppercase tracking-widest h-14 rounded-2xl hover:bg-red-500/10">
             <LogOut size={20} /> Fermer Session
           </Button>
         </div>

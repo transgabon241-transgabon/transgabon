@@ -26,7 +26,8 @@ import {
   Printer,
   Phone,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Plane // AJOUT DE L'ICÔNE AVION
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -157,7 +158,7 @@ export default function SendParcelPage() {
             if (t.to_id === toId) {
                 res.push({
                     departureId: t.id, companyId: t.company_id, companyName: t.company?.name || 'Compagnie',
-                    transportType: t.type === 'BOAT' ? 'Bateau' : t.type === 'TRAIN' ? 'Train' : 'Bus',
+                    transportType: t.type === 'PLANE' ? 'Avion' : t.type === 'BOAT' ? 'Bateau' : t.type === 'TRAIN' ? 'Train' : 'Bus',
                     transportTypeCode: t.type, vehicleNumber: t.vehicle_number, registration: t.vehicle?.registration || '—',
                     departureTime: t.departure_time, arrivalTime: t.arrival_time, departureCity: cFrom, arrivalCity: cTo,
                     departureDate: date, price: t.price, isEscale: false
@@ -167,7 +168,7 @@ export default function SendParcelPage() {
                 if (escale) {
                     res.push({
                         departureId: t.id, companyId: t.company_id, companyName: t.company?.name || 'Compagnie',
-                        transportType: t.type === 'BOAT' ? 'Bateau' : t.type === 'TRAIN' ? 'Train' : 'Bus',
+                        transportType: t.type === 'PLANE' ? 'Avion' : t.type === 'BOAT' ? 'Bateau' : t.type === 'TRAIN' ? 'Train' : 'Bus',
                         transportTypeCode: t.type, vehicleNumber: t.vehicle_number, registration: t.vehicle?.registration || '—',
                         departureTime: t.departure_time, arrivalTime: escale.arrival_time, departureCity: cFrom, arrivalCity: cTo,
                         departureDate: date, price: escale.price_from_start || t.price, isEscale: true
@@ -349,7 +350,7 @@ export default function SendParcelPage() {
       {step === 1 && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
-            <h2 className="font-black text-xs uppercase mb-6 flex items-center gap-2 text-primary tracking-widest"><MapPin size={16}/> Itinéraire de l'envoi</h2>
+            <h2 className="font-black text-xs uppercase mb-6 flex items-center gap-2 text-primary tracking-widest text-left"><MapPin size={16}/> Itinéraire de l'envoi</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Départ</Label>
@@ -379,7 +380,7 @@ export default function SendParcelPage() {
               </div>
               <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Date</Label>
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-sm text-slate-200 appearance-none" min={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-sm text-slate-200 appearance-none outline-none shadow-inner" min={new Date().toISOString().split('T')[0]} />
               </div>
             </div>
             <Button onClick={handleSearchTrips} disabled={searchingTrips} className="w-full h-14 font-black rounded-2xl shadow-xl uppercase tracking-widest text-xs bg-primary text-white hover:bg-primary/90 transition-all border-none">
@@ -391,8 +392,8 @@ export default function SendParcelPage() {
             {trips.map(t => (
               <button key={`${t.departureId}-${t.isEscale}`} onClick={() => { setSelectedTrip(t); setStep(2); }} className="w-full text-left bg-slate-900 border-2 border-slate-800 hover:border-primary/50 p-6 rounded-[2rem] transition-all flex justify-between items-center shadow-lg group">
                 <div className="flex items-center gap-5 min-w-0">
-                   <div className={`h-12 w-12 rounded-2xl shrink-0 flex items-center justify-center text-white shadow-md ${t.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 'bg-primary'}`}>
-                      {t.transportTypeCode === 'BOAT' ? <Ship size={24}/> : t.transportTypeCode === 'TRAIN' ? <Train size={24}/> : <Bus size={24}/>}
+                   <div className={`h-12 w-12 rounded-2xl shrink-0 flex items-center justify-center text-white shadow-md ${t.transportTypeCode === 'BOAT' ? 'bg-blue-600' : t.transportTypeCode === 'PLANE' ? 'bg-indigo-600' : t.transportTypeCode === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'}`}>
+                      {t.transportTypeCode === 'BOAT' ? <Ship size={24}/> : t.transportTypeCode === 'PLANE' ? <Plane size={24}/> : t.transportTypeCode === 'TRAIN' ? <Train size={24}/> : <Bus size={24}/>}
                    </div>
                    <div className="min-w-0 text-left">
                       <div className="font-black text-slate-200 uppercase text-sm flex flex-wrap items-center gap-2">
@@ -414,7 +415,7 @@ export default function SendParcelPage() {
           <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 flex justify-between items-center text-white shadow-xl">
              <div className="flex items-center gap-3 text-left">
                 <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary border border-primary/20">
-                    {selectedTrip.transportTypeCode === 'BOAT' ? <Ship size={20}/> : <Bus size={20}/>}
+                    {selectedTrip.transportTypeCode === 'BOAT' ? <Ship size={20}/> : selectedTrip.transportTypeCode === 'PLANE' ? <Plane size={20}/> : <Bus size={20}/>}
                 </div>
                 <div>
                     <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">Trajet sélectionné</p>
@@ -428,15 +429,15 @@ export default function SendParcelPage() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-6 space-y-4">
               <h2 className="font-black text-[10px] uppercase text-slate-500 tracking-widest flex items-center gap-2"><User size={12}/> Expéditeur</h2>
               <div className="space-y-3">
-                <Input value={senderName} onChange={e => setSenderName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner" />
-                <Input value={senderPhone} onChange={e => setSenderPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner" />
+                <Input value={senderName} onChange={e => setSenderName(e.target.value)} placeholder="Nom Complet" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner outline-none" />
+                <Input value={senderPhone} onChange={e => setSenderPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner outline-none" />
               </div>
             </div>
             <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-6 space-y-4 text-left">
               <h2 className="font-black text-[10px] uppercase text-slate-500 tracking-widest flex items-center gap-2"><User size={12}/> Destinataire</h2>
               <div className="space-y-3">
-                <Input value={receiverName} onChange={e => setReceiverName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner" />
-                <Input value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner" />
+                <Input value={receiverName} onChange={e => setReceiverName(e.target.value)} placeholder="Nom Complet" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner outline-none" />
+                <Input value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner outline-none" />
               </div>
             </div>
           </div>
@@ -447,7 +448,7 @@ export default function SendParcelPage() {
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Nature du colis</Label>
                 <div className="relative">
                   <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
-                  <Input value={parcelTitle} onChange={e => setParcelTitle(e.target.value)} placeholder="Désignation de la marchandise" className="h-14 rounded-2xl font-black pl-12 border-slate-800 bg-slate-950 text-white shadow-inner" />
+                  <Input value={parcelTitle} onChange={e => setParcelTitle(e.target.value)} placeholder="Ex: 2 cartons de poisson..." className="h-14 rounded-2xl font-black pl-12 border-slate-800 bg-slate-950 text-white shadow-inner outline-none" />
                 </div>
               </div>
 
@@ -455,10 +456,9 @@ export default function SendParcelPage() {
                 <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Type de fret agence</Label>
                   <Select value={selectedTariffId} onValueChange={setSelectedTariffId}>
-                    <SelectTrigger className="h-12 rounded-xl font-bold border-slate-800 bg-slate-950 text-slate-200">
+                    <SelectTrigger className="h-12 rounded-xl font-bold border-slate-800 bg-slate-950 text-slate-200 outline-none">
                         <SelectValue placeholder="Choisir tarif" />
                     </SelectTrigger>
-                    {/* Z-INDEX ÉLEVÉ POUR ÉVITER LES BLOCAGES */}
                     <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 z-[200]">
                       {tariffs.length > 0 ? (
                         tariffs.map(t => (
@@ -467,17 +467,17 @@ export default function SendParcelPage() {
                           </SelectItem>
                         ))
                       ) : (
-                        <div className="p-4 text-center text-[10px] font-black uppercase text-slate-500">Aucun tarif disponible</div>
+                        <div className="p-4 text-center text-[10px] font-black uppercase text-slate-500 italic">Chargement des tarifs...</div>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Poids Estimé (kg)</Label>
-                  <Input type="number" step="0.5" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="h-12 rounded-xl font-black border-slate-800 bg-slate-950 text-white shadow-inner" disabled={selectedTariffId !== "" && !selectedTariff?.is_weight_based} />
+                  <Input type="number" step="0.5" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="h-12 rounded-xl font-black border-slate-800 bg-slate-950 text-white shadow-inner outline-none" disabled={selectedTariffId !== "" && !selectedTariff?.is_weight_based} />
                 </div>
               </div>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Précisions supplémentaires..." className="rounded-xl font-medium border-slate-800 bg-slate-950 text-white min-h-[100px] text-left" />
+              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Précisions supplémentaires..." className="rounded-xl font-medium border-slate-800 bg-slate-950 text-white min-h-[100px] text-left outline-none" />
             </div>
 
             <div className="bg-emerald-600 rounded-2xl p-6 flex items-center justify-between text-white shadow-xl shadow-emerald-950/20">
@@ -491,10 +491,10 @@ export default function SendParcelPage() {
             </div>
           </div>
 
-          <div className="bg-slate-950/50 border-2 border-slate-800 rounded-[2rem] p-6 text-left">
+          <div className="bg-slate-950/50 border-2 border-slate-800 rounded-[2rem] p-6 text-left shadow-inner">
             <h2 className="font-black text-[10px] uppercase text-slate-500 mb-4 tracking-widest">Mode de règlement</h2>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger className="h-12 rounded-xl font-black bg-slate-900 border-none text-slate-200 px-5 shadow-inner">
+              <SelectTrigger className="h-12 rounded-xl font-black bg-slate-900 border-none text-slate-200 px-5 shadow-inner outline-none">
                 <SelectValue placeholder="Choisir une méthode" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 z-[200]">
