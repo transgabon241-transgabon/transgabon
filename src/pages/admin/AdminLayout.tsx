@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react'; // Ajout de useState
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
 import { 
@@ -14,7 +14,9 @@ import {
   ArrowLeftRight,
   Globe,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Menu, // Icone Hamburger
+  X // Icone Fermer
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +32,7 @@ const NAV = [
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, isLoading, loginWithRedirect, logout } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // État du menu mobile
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -45,6 +48,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   }, [user, navigate]);
 
+  // Fermer le menu automatiquement lors du changement de page
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
+
   if (isLoading || !user) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -52,18 +60,46 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-100 font-sans">
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-100 font-sans relative overflow-x-hidden">
       
-      {/* SIDEBAR ADMIN SOMBRE XXL */}
-      <aside className="md:w-80 bg-slate-900 text-white shrink-0 flex flex-col z-50 shadow-2xl">
+      {/* --- MOBILE TOP BAR (Visible uniquement sur téléphone) --- */}
+      <div className="md:hidden flex items-center justify-between bg-slate-900 text-white p-4 h-20 shadow-2xl z-[60]">
+        <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                <Shield className="h-6 w-6 text-white" />
+            </div>
+            <span className="font-black uppercase tracking-tighter italic text-lg">Admin Console</span>
+        </div>
+        <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-3 bg-white/5 rounded-2xl active:scale-90 transition-transform"
+        >
+            {isSidebarOpen ? <X size={28} /> : <Menu size={28} />}
+        </button>
+      </div>
+
+      {/* --- OVERLAY (Voile noir qui ferme le menu au clic extérieur) --- */}
+      {isSidebarOpen && (
+        <div 
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* --- SIDEBAR ADMIN SOMBRE XXL --- */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-80 bg-slate-900 text-white flex flex-col shadow-2xl transition-transform duration-300 ease-in-out
+        md:relative md:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         
         <div className="p-10">
-          <Link to="/" className="flex items-center gap-3 text-slate-400 hover:text-primary mb-10 transition-colors group">
+          <Link to="/" className="flex items-center gap-3 text-slate-400 hover:text-primary mb-10 transition-colors group text-left">
             <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" /> 
             <span className="text-[11px] font-black uppercase tracking-[0.25em]">Site Public</span>
           </Link>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-left">
             <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                 <Shield className="h-7 w-7 text-white" />
             </div>
@@ -74,7 +110,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto scrollbar-hide">
           {NAV.map(item => {
             const active = location.pathname === item.path;
             return (
@@ -83,11 +119,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 to={item.path}
                 className={`flex items-center justify-between px-5 py-4 rounded-[1.25rem] text-[11px] font-black uppercase tracking-widest transition-all duration-300 group ${
                   active 
-                    ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-[1.02]' 
+                    ? 'bg-primary text-white shadow-xl shadow-primary/20 translate-x-2' 
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 text-left">
                     <item.icon className={`h-5 w-5 ${active ? 'text-white' : 'text-slate-500 group-hover:text-primary'}`} />
                     {item.label}
                 </div>
@@ -97,9 +133,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="p-8 mt-auto border-t border-white/5 bg-black/20">
+        <div className="p-8 mt-auto border-t border-white/5 bg-black/20 text-left">
           <div className="flex items-center gap-4 mb-6">
-             <div className="h-12 w-12 rounded-2xl bg-slate-800 border-2 border-white/10 flex items-center justify-center font-black text-primary text-lg">
+             <div className="h-12 w-12 rounded-2xl bg-slate-800 border-2 border-white/10 flex items-center justify-center font-black text-primary text-lg shrink-0">
                 {user.firstName?.charAt(0) || 'A'}
              </div>
              <div className="overflow-hidden">
@@ -109,7 +145,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
           <Button 
             variant="ghost" 
-            className="w-full justify-start gap-4 text-slate-500 hover:text-red-400 hover:bg-red-500/10 font-black text-[10px] uppercase tracking-[0.2em] h-14 rounded-2xl" 
+            className="w-full justify-start gap-4 text-slate-500 hover:text-red-400 hover:bg-red-500/10 font-black text-[10px] uppercase tracking-[0.2em] h-14 rounded-2xl transition-all" 
             onClick={() => logout()}
           >
             <LogOut size={20} /> Déconnexion Système
@@ -117,10 +153,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6 md:p-10">
-            <div className="min-h-full w-full bg-white rounded-[3rem] shadow-sm border border-slate-200/50 p-8 md:p-12 relative overflow-hidden">
+      {/* MAIN CONTENT AREA - OPTIMISÉE POUR MOBILE */}
+      <main className="flex-1 flex flex-col min-w-0 w-full h-screen overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 md:p-10">
+            <div className="min-h-full w-full bg-white rounded-[2rem] md:rounded-[3rem] shadow-sm border border-slate-200/50 p-6 md:p-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-20 opacity-[0.02] pointer-events-none">
                     <Shield size={500} />
                 </div>
