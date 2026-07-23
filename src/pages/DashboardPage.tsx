@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase';
@@ -48,8 +48,6 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // --- ÉTATS POUR LA PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -143,34 +141,33 @@ export default function DashboardPage() {
   const past = bookings.filter(b => b.status !== 'Annulé' && b.status !== 'Remboursé' && (b.status === 'Terminé' || b.departureDate < today));
   const cancelled = bookings.filter(b => b.status === 'Annulé' || b.status === 'Remboursé');
 
-  // --- LOGIQUE DE TRANCHAGE (SLICE) POUR PAGINATION ---
   const paginate = (items: any[]) => {
     const start = (currentPage - 1) * itemsPerPage;
     return items.slice(start, start + itemsPerPage);
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl text-left space-y-10 animate-in fade-in duration-500">
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-12 max-w-5xl text-left space-y-8 sm:space-y-10 animate-in fade-in duration-500">
       
-      {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl">
-        <div>
-          <p className="text-primary font-black uppercase text-[10px] tracking-[0.3em] mb-2">Mon Espace Personnel</p>
-          <h1 className="text-3xl font-black italic">Bonjour, {user.firstName || 'Voyageur'}</h1>
-          <p className="text-slate-400 text-sm mt-1">Gérez vos billets et suivez vos colis en temps réel.</p>
+      {/* Welcome Header - Adapté pour mobile */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-slate-900 p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] text-white shadow-2xl overflow-hidden">
+        <div className="space-y-1">
+          <p className="text-primary font-black uppercase text-[9px] sm:text-[10px] tracking-[0.3em]">Mon Espace Personnel</p>
+          <h1 className="text-2xl sm:text-3xl font-black italic leading-tight">Bonjour, {user.firstName || 'Voyageur'}</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Gérez vos billets et suivez vos colis en temps réel.</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => navigate('/send-parcel')} className="rounded-2xl font-black bg-white/5 border-white/10 hover:bg-white/10 text-white h-12 gap-2">
-            <Package size={18} /> FRET
+        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+          <Button variant="outline" onClick={() => navigate('/send-parcel')} className="flex-1 sm:flex-none rounded-xl sm:rounded-2xl font-black bg-white/5 border-white/10 hover:bg-white/10 text-white h-11 sm:h-12 text-[11px] sm:text-sm gap-2">
+            <Package size={16} /> FRET
           </Button>
-          <Button onClick={() => navigate('/')} className="rounded-2xl font-black shadow-lg shadow-primary/20 h-12 gap-2">
-            <Bus size={18} /> NOUVEAU VOYAGE
+          <Button onClick={() => navigate('/')} className="flex-1 sm:flex-none rounded-xl sm:rounded-2xl font-black shadow-lg shadow-primary/20 h-11 sm:h-12 text-[11px] sm:text-sm gap-2">
+            <Bus size={16} /> NOUVEAU VOYAGE
           </Button>
         </div>
       </div>
 
-      {/* Mini Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Mini Stats - 2 colonnes sur mobile, 4 sur desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <StatItem label="Billets actifs" value={upcoming.length} icon={Ticket} color="text-primary" />
         <StatItem label="Colis envoyés" value={parcels.length} icon={Package} color="text-emerald-500" />
         <StatItem label="Voyages passés" value={past.length} icon={CalendarDays} color="text-blue-500" />
@@ -178,17 +175,20 @@ export default function DashboardPage() {
       </div>
 
       <Tabs defaultValue="upcoming" className="w-full" onValueChange={() => setCurrentPage(1)}>
-        <TabsList className="bg-slate-100 p-1.5 rounded-2xl h-14 w-fit mb-8">
-          <TabsTrigger value="upcoming" className="rounded-xl px-6 font-black uppercase text-[10px]">À Venir ({upcoming.length})</TabsTrigger>
-          <TabsTrigger value="past" className="rounded-xl px-6 font-black uppercase text-[10px]">Historique ({past.length})</TabsTrigger>
-          <TabsTrigger value="cancelled" className="rounded-xl px-6 font-black uppercase text-[10px]">Annulés ({cancelled.length})</TabsTrigger>
-          <TabsTrigger value="parcels" className="rounded-xl px-6 font-black uppercase text-[10px]">Mes Colis ({parcels.length})</TabsTrigger>
-        </TabsList>
+        {/* TabsList Scrollable sur mobile */}
+        <div className="overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="bg-slate-100 p-1 rounded-xl sm:rounded-2xl h-12 sm:h-14 flex w-max sm:w-fit mb-6 sm:mb-8">
+            <TabsTrigger value="upcoming" className="rounded-lg sm:rounded-xl px-3 sm:px-6 font-black uppercase text-[9px] sm:text-[10px]">À Venir ({upcoming.length})</TabsTrigger>
+            <TabsTrigger value="past" className="rounded-lg sm:rounded-xl px-3 sm:px-6 font-black uppercase text-[9px] sm:text-[10px]">Historique ({past.length})</TabsTrigger>
+            <TabsTrigger value="cancelled" className="rounded-lg sm:rounded-xl px-3 sm:px-6 font-black uppercase text-[9px] sm:text-[10px]">Annulés ({cancelled.length})</TabsTrigger>
+            <TabsTrigger value="parcels" className="rounded-lg sm:rounded-xl px-3 sm:px-6 font-black uppercase text-[9px] sm:text-[10px]">Mes Colis ({parcels.length})</TabsTrigger>
+          </TabsList>
+        </div>
 
         {loading ? (
-            <div className="space-y-4"><Skeleton className="h-32 w-full rounded-[2rem]" /><Skeleton className="h-32 w-full rounded-[2rem]" /></div>
+            <div className="space-y-4"><Skeleton className="h-32 w-full rounded-[1.5rem] sm:rounded-[2rem]" /><Skeleton className="h-32 w-full rounded-[1.5rem] sm:rounded-[2rem]" /></div>
         ) : (
-          <>
+          <div className="mt-2">
             <TabsContent value="upcoming" className="space-y-6">
               <BookingList bookings={paginate(upcoming)} onCancel={handleCancel} showActions />
               <PaginationControls currentPage={currentPage} totalItems={upcoming.length} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} />
@@ -205,36 +205,30 @@ export default function DashboardPage() {
               <ParcelList parcels={paginate(parcels)} />
               <PaginationControls currentPage={currentPage} totalItems={parcels.length} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} />
             </TabsContent>
-          </>
+          </div>
         )}
       </Tabs>
     </div>
   );
 }
 
-/**
- * COMPOSANT : CONTRÔLES DE PAGINATION
- */
 function PaginationControls({ currentPage, totalItems, itemsPerPage, onPageChange }: any) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     if (totalPages <= 1) return null;
 
     return (
-        <div className="flex items-center justify-center gap-4 mt-8 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
-            <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50">
-                <ChevronLeft size={18} />
+        <div className="flex items-center justify-center gap-3 mt-8 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
+            <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} className="rounded-xl h-9 w-9 border hover:bg-slate-50">
+                <ChevronLeft size={16} />
             </Button>
-            <span className="text-[10px] font-black uppercase text-slate-400">Page {currentPage} sur {totalPages}</span>
-            <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50">
-                <ChevronRight size={18} />
+            <span className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 px-2">Page {currentPage} / {totalPages}</span>
+            <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} className="rounded-xl h-9 w-9 border hover:bg-slate-50">
+                <ChevronRight size={16} />
             </Button>
         </div>
     );
 }
 
-/**
- * LISTE DES RÉSERVATIONS
- */
 function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[], onCancel?: (id: string) => void, showActions?: boolean }) {
   const navigate = useNavigate();
   if (bookings.length === 0) return <EmptyState label="Aucune réservation trouvée" />;
@@ -244,42 +238,42 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
       {bookings.map(b => {
         const TransportIcon = b.transportTypeCode === 'BOAT' ? Ship : b.transportTypeCode === 'TRAIN' ? Train : Bus;
         return (
-          <div key={b.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all group flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-5 flex-1 w-full">
-               <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${b.transportTypeCode === 'BOAT' ? 'bg-blue-600' : b.transportTypeCode === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
-                  <TransportIcon size={24} />
+          <div key={b.id} className="bg-white border-2 border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 hover:shadow-xl transition-all group flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 overflow-hidden">
+            <div className="flex items-center gap-4 sm:gap-5 flex-1 w-full overflow-hidden">
+               <div className={`h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg ${b.transportTypeCode === 'BOAT' ? 'bg-blue-600' : b.transportTypeCode === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
+                  <TransportIcon size={20} className="sm:w-6 sm:h-6" />
                </div>
-               <div>
-                  <div className="flex items-center gap-2 font-black text-lg text-slate-800 uppercase tracking-tighter text-left">
-                     {b.departureCity} <ArrowRight size={14} className="text-primary opacity-30" /> {b.arrivalCity}
+               <div className="overflow-hidden">
+                  <div className="flex items-center gap-2 font-black text-sm sm:text-lg text-slate-800 uppercase tracking-tighter text-left truncate">
+                     {b.departureCity} <ArrowRight size={12} className="text-primary opacity-30 shrink-0" /> {b.arrivalCity}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                     <Badge variant="outline" className="text-[8px] font-black uppercase h-5 border-primary/20 text-primary">{b.classLabel}</Badge>
-                     <span className="text-[10px] font-bold text-muted-foreground uppercase">{b.companyName} • {new Date(b.departureDate).toLocaleDateString('fr-FR')} • {b.departureTime}</span>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5 sm:mt-1">
+                     <Badge variant="outline" className="text-[7px] sm:text-[8px] font-black uppercase h-4 sm:h-5 border-primary/20 text-primary">{b.classLabel}</Badge>
+                     <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">{b.companyName} • {new Date(b.departureDate).toLocaleDateString('fr-FR')}</span>
                   </div>
                </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-               <div className="text-right mr-4 hidden sm:block">
-                  <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Montant</p>
-                  <p className="font-black text-slate-900">{b.amount.toLocaleString()} F</p>
+            <div className="flex items-center gap-3 w-full md:w-auto shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 mt-1 sm:mt-0">
+               <div className="text-left md:text-right md:mr-4 flex-1 md:flex-none">
+                  <p className="text-[7px] sm:text-[8px] font-black text-slate-300 uppercase tracking-widest">Montant</p>
+                  <p className="font-black text-slate-900 text-sm sm:text-base">{b.amount.toLocaleString()} F</p>
                </div>
-               <Button onClick={() => navigate(`/ticket/${b.id}`)} variant="outline" className="flex-1 md:flex-none h-11 rounded-xl border-2 font-black text-[10px] uppercase gap-2">
-                 <Eye size={16} /> Billet
+               <Button onClick={() => navigate(`/ticket/${b.id}`)} variant="outline" className="flex-1 md:flex-none h-10 sm:h-11 rounded-lg sm:rounded-xl border-2 font-black text-[9px] sm:text-[10px] uppercase gap-2">
+                 <Eye size={14} /> Billet
                </Button>
                {showActions && b.status === 'Confirmé' && onCancel && (
                  <AlertDialog>
                    <AlertDialogTrigger asChild>
-                     <Button variant="ghost" className="h-11 w-11 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><X size={20}/></Button>
+                     <Button variant="ghost" className="h-10 w-10 sm:h-11 sm:w-11 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg sm:rounded-xl transition-colors shrink-0"><X size={18}/></Button>
                    </AlertDialogTrigger>
-                   <AlertDialogContent className="rounded-[2.5rem]">
+                   <AlertDialogContent className="rounded-[2rem] sm:rounded-[2.5rem] w-[90vw] max-w-md">
                      <AlertDialogHeader className="text-left">
-                       <AlertDialogTitle className="font-black italic uppercase">Annuler le voyage ?</AlertDialogTitle>
-                       <AlertDialogDescription className="font-medium text-slate-600">Cette action est soumise aux conditions de remboursement de {b.companyName}.</AlertDialogDescription>
+                       <AlertDialogTitle className="font-black italic uppercase text-lg sm:text-xl">Annuler le voyage ?</AlertDialogTitle>
+                       <AlertDialogDescription className="font-medium text-slate-600 text-sm">Cette action est soumise aux conditions de remboursement de {b.companyName}.</AlertDialogDescription>
                      </AlertDialogHeader>
-                     <AlertDialogFooter>
-                       <AlertDialogCancel className="rounded-xl font-bold">RETOUR</AlertDialogCancel>
+                     <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+                       <AlertDialogCancel className="rounded-xl font-bold mt-0">RETOUR</AlertDialogCancel>
                        <AlertDialogAction onClick={() => onCancel(b.id)} className="bg-red-600 rounded-xl font-bold">ANNULER BILLET</AlertDialogAction>
                      </AlertDialogFooter>
                    </AlertDialogContent>
@@ -293,33 +287,30 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
   );
 }
 
-/**
- * LISTE DES COLIS
- */
 function ParcelList({ parcels }: { parcels: Parcel[] }) {
   if (parcels.length === 0) return <EmptyState label="Aucun colis enregistré" icon={Package} />;
 
   return (
     <div className="grid gap-4">
       {parcels.map(p => (
-        <div key={p.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl transition-all flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-5 flex-1 w-full text-left">
-             <div className="h-14 w-14 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-100">
-                <Package size={24} />
+        <div key={p.id} className="bg-white border-2 border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 hover:shadow-xl transition-all flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 overflow-hidden">
+          <div className="flex items-center gap-4 sm:gap-5 flex-1 w-full text-left overflow-hidden">
+             <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl sm:rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-100">
+                <Package size={20} className="sm:w-6 sm:h-6" />
              </div>
-             <div>
-                <div className="flex items-center gap-2 font-black text-slate-800 uppercase tracking-tighter mb-1">
+             <div className="overflow-hidden">
+                <div className="flex items-center gap-2 font-black text-sm sm:text-base text-slate-800 uppercase tracking-tighter mb-1 truncate">
                    {p.departureCity} ➔ {p.arrivalCity}
                 </div>
-                <div className="flex items-center gap-2">
-                   <Badge className="bg-slate-900 text-white text-[8px] font-mono h-5">{p.trackingNumber}</Badge>
-                   <span className="text-[10px] font-bold text-muted-foreground uppercase">{p.companyName} • {p.status}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                   <Badge className="bg-slate-900 text-white text-[7px] sm:text-[8px] font-mono h-4 sm:h-5">{p.trackingNumber}</Badge>
+                   <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">{p.status}</span>
                 </div>
              </div>
           </div>
           <Link to={`/track?q=${p.trackingNumber}`} className="w-full md:w-auto">
-             <Button variant="outline" className="w-full h-11 rounded-xl border-2 font-black text-[10px] uppercase gap-2 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-100">
-               <Eye size={16} /> Suivre colis
+             <Button variant="outline" className="w-full h-10 sm:h-11 rounded-lg sm:rounded-xl border-2 font-black text-[9px] sm:text-[10px] uppercase gap-2 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-100">
+               <Eye size={14} /> Suivre colis
              </Button>
           </Link>
         </div>
@@ -330,19 +321,19 @@ function ParcelList({ parcels }: { parcels: Parcel[] }) {
 
 function StatItem({ label, value, icon: Icon, color }: any) {
   return (
-    <div className="bg-white border-2 border-slate-100 p-5 rounded-3xl shadow-sm hover:border-primary/20 transition-colors">
-      <Icon className={`h-5 w-5 ${color} mb-3`} />
-      <p className="text-2xl font-black text-slate-900 leading-none mb-1">{value}</p>
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
+    <div className="bg-white border-2 border-slate-100 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm hover:border-primary/20 transition-colors flex flex-col items-start">
+      <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${color} mb-2 sm:mb-3`} />
+      <p className="text-xl sm:text-2xl font-black text-slate-900 leading-none mb-1">{value}</p>
+      <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">{label}</p>
     </div>
   );
 }
 
 function EmptyState({ label, icon: Icon = Ticket }: any) {
   return (
-    <div className="py-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
-      <Icon className="h-12 w-12 mx-auto text-slate-200 mb-4" />
-      <p className="text-slate-400 font-bold uppercase text-xs tracking-[0.2em]">{label}</p>
+    <div className="py-12 sm:py-20 text-center border-2 border-dashed rounded-[2rem] sm:rounded-[3rem] bg-slate-50/50 px-4">
+      <Icon className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-slate-200 mb-4" />
+      <p className="text-slate-400 font-bold uppercase text-[10px] sm:text-xs tracking-[0.2em]">{label}</p>
     </div>
   );
 }

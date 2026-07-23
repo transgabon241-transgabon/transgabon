@@ -160,7 +160,7 @@ export default function PrivacyPage() {
         <footer className="pt-16 pb-10 flex flex-col md:flex-row justify-between items-center gap-6 border-t-2 border-slate-50">
           <div className="text-center md:text-left">
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.4em]">Archivé sous version : V1.2.0-2026</p>
-            <p className="text-[9px] font-bold text-slate-300 uppercase mt-1">Édité à Libreville • TransGabon-Connect</p>
+            <p className="text-[9px] font-bold text-slate-300 uppercase mt-1">Édité à Libreville par SCHOOL TECH • TransGabon-Connect</p>
           </div>
           <div className="flex items-center gap-3">
              <div className="h-px w-12 bg-slate-100" />
