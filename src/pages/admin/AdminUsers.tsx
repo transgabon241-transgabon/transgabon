@@ -134,22 +134,22 @@ export default function AdminUsers() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground">
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
       {/* HEADER PROFESSIONNEL */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3">
+        <div className="text-left">
+          <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3 leading-none">
              <UsersRound className="text-primary h-8 w-8" /> Communauté
           </h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Contrôle des accès et privilèges utilisateurs</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 leading-none">Contrôle des accès utilisateurs</p>
         </div>
         <Button variant="outline" onClick={loadData} className="rounded-xl border-border bg-card h-11 w-11 flex items-center justify-center hover:bg-muted transition-colors">
             <RefreshCw size={18} className="text-slate-400" />
         </Button>
       </div>
 
-      {/* FILTRES & RECHERCHE SOMBRE */}
+      {/* FILTRES & RECHERCHE */}
       <div className="bg-card border-2 border-border rounded-[2.5rem] p-6 shadow-2xl space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end text-left">
             <div className="lg:col-span-2 space-y-2">
@@ -181,7 +181,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* TABLEAU PREMIUM SOMBRE */}
+      {/* TABLEAU */}
       <div className="bg-card border-2 border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -189,7 +189,7 @@ export default function AdminUsers() {
               <tr>
                 <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-left">Utilisateur</th>
                 <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-left hidden md:table-cell">Contact</th>
-                <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-center">Niveau d'accès</th>
+                <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-center">Rôle</th>
                 <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-left hidden lg:table-cell">Compagnie</th>
                 <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-right">Actions</th>
               </tr>
@@ -200,20 +200,20 @@ export default function AdminUsers() {
               ) : (
                 paginatedUsers.map(u => (
                   <tr key={u.id} className="hover:bg-slate-800/40 transition-colors group">
-                    <td className="p-5">
+                    <td className="p-5 text-left">
                       <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-xl bg-slate-950 border border-border flex items-center justify-center text-primary font-black text-xs shadow-lg">
                             {u.firstName.charAt(0)}{u.lastName.charAt(0)}
                         </div>
                         <div className="text-left">
-                            <p className="font-black text-white uppercase leading-none">{u.firstName} {u.lastName}</p>
-                            <p className="text-[10px] font-bold text-slate-500 mt-1.5 lowercase italic truncate max-w-[150px]">{u.email}</p>
+                            <p className="font-black text-white uppercase leading-none truncate max-w-[140px]">{u.firstName} {u.lastName}</p>
+                            <p className="text-[10px] font-bold text-slate-500 mt-1.5 lowercase italic truncate max-w-[140px]">{u.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="p-5 hidden md:table-cell text-left">
                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                          <Phone size={12} className="text-primary" /> {u.phone || 'Non renseigné'}
+                          <Phone size={12} className="text-primary" /> {u.phone || 'N/A'}
                        </div>
                     </td>
                     <td className="p-5 text-center">
@@ -225,7 +225,7 @@ export default function AdminUsers() {
                             <Building2 size={12} /> {u.companyName}
                           </div>
                        ) : (
-                          <span className="text-[9px] font-bold text-slate-600 uppercase italic">Utilisateur Indépendant</span>
+                          <span className="text-[9px] font-bold text-slate-600 uppercase italic">Indépendant</span>
                        )}
                     </td>
                     <td className="p-5 text-right">
@@ -244,62 +244,61 @@ export default function AdminUsers() {
       {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
-          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"><ChevronLeft size={18}/></Button>
+          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronLeft size={18}/></Button>
           <div className="flex items-center gap-1 font-black text-[10px] uppercase text-slate-500 px-4">
-             <span className="text-primary">Page {currentPage}</span>
-             <span className="mx-1">/</span>
-             <span>{totalPages}</span>
+             <span className="text-primary">Page {currentPage} / {totalPages}</span>
           </div>
-          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"><ChevronRight size={18}/></Button>
+          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronRight size={18}/></Button>
         </div>
       )}
 
-      {/* MODAL D'ÉDITION SOMBRE */}
+      {/* --- MODAL D'ÉDITION CORRIGÉ (Auto-scroll & Max-height) --- */}
       <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) setEditUser(null); }}>
-        <DialogContent className="rounded-[2.5rem] p-8 md:p-10 max-w-md border-border bg-slate-900 text-white shadow-2xl overflow-hidden relative">
+        <DialogContent className="rounded-[2.5rem] p-6 md:p-10 max-w-md border-border bg-slate-900 text-white shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          {/* Icône de fond */}
           <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-white">
              <UserCog size={120} />
           </div>
 
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-left text-white leading-none">Configuration Privilèges</DialogTitle>
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Configuration Privilèges</DialogTitle>
           </DialogHeader>
           
           {editUser && (
-            <div className="space-y-8 mt-6">
-              <div className="p-5 bg-slate-950 rounded-3xl border border-border shadow-inner">
+            <div className="space-y-6 mt-6">
+              <div className="p-5 bg-slate-950 rounded-3xl border border-border shadow-inner text-left">
                 <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-slate-900 border border-border text-primary flex items-center justify-center font-black">
+                    <div className="h-12 w-12 rounded-2xl bg-slate-900 border border-border text-primary flex items-center justify-center font-black shrink-0 shadow-lg">
                         {editUser.firstName.charAt(0)}{editUser.lastName.charAt(0)}
                     </div>
-                    <div className="text-left">
-                        <p className="font-black text-white uppercase leading-none truncate max-w-[200px]">{editUser.firstName} {editUser.lastName}</p>
-                        <p className="text-[10px] font-bold text-slate-500 mt-1 truncate max-w-[200px]">{editUser.email}</p>
+                    <div className="min-w-0">
+                        <p className="font-black text-white uppercase leading-none truncate">{editUser.firstName} {editUser.lastName}</p>
+                        <p className="text-[10px] font-bold text-slate-500 mt-1 truncate">{editUser.email}</p>
                     </div>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="space-y-2 text-left">
+              <div className="space-y-6 text-left">
+                <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Rang hiérarchique</Label>
                     <Select value={editRole} onValueChange={setEditRole}>
                         <SelectTrigger className="h-14 rounded-2xl bg-slate-950 border-none font-black text-xs shadow-inner px-6 text-slate-200">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl bg-slate-900 border-border text-white">
-                            <SelectItem value="Voyageur" className="font-bold focus:bg-primary/20">VOYAGEUR (Membre standard)</SelectItem>
-                            <SelectItem value="Agent" className="font-bold focus:bg-primary/20">AGENT (Gestionnaire d'agence)</SelectItem>
-                            <SelectItem value="Administrateur" className="font-bold focus:bg-primary/20">ADMINISTRATEUR (Super accès)</SelectItem>
+                            <SelectItem value="Voyageur" className="font-bold focus:bg-primary/20">VOYAGEUR</SelectItem>
+                            <SelectItem value="Agent" className="font-bold focus:bg-primary/20">AGENT D'AGENCE</SelectItem>
+                            <SelectItem value="Administrateur" className="font-bold focus:bg-primary/20">ADMINISTRATEUR</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
 
                 {editRole === 'Agent' && (
-                    <div className="space-y-2 text-left animate-in slide-in-from-top-2">
-                        <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Compagnie de rattachement</Label>
+                    <div className="space-y-2 animate-in slide-in-from-top-2">
+                        <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Affectation Agence</Label>
                         <Select value={editCompany} onValueChange={setEditCompany}>
                             <SelectTrigger className="h-14 rounded-2xl bg-primary/10 border-2 border-primary/20 font-black text-primary px-6 shadow-sm">
-                                <SelectValue placeholder="Affecter à une agence" />
+                                <SelectValue placeholder="Choisir une compagnie" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl bg-slate-900 border-border text-white">
                                 <SelectItem value="none">Indépendant</SelectItem>
@@ -310,9 +309,9 @@ export default function AdminUsers() {
                 )}
               </div>
 
-              <Button onClick={handleSave} disabled={saving} className="w-full h-16 rounded-[2rem] font-black text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest mt-4 transition-all active:scale-95 border-none">
-                {saving ? <RefreshCw className="animate-spin mr-2" /> : <ShieldCheck className="mr-2 h-6 w-6" />}
-                Appliquer les droits
+              <Button onClick={handleSave} disabled={saving} className="w-full h-16 rounded-[2rem] font-black text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest transition-all active:scale-95 border-none mt-4">
+                {saving ? <RefreshCw className="animate-spin mr-2 h-6 w-6" /> : <ShieldCheck className="mr-2 h-6 w-6" />}
+                Appliquer
               </Button>
             </div>
           )}
@@ -326,7 +325,7 @@ function RoleBadge({ role }: { role: string }) {
   const configs: Record<string, { color: string, icon: any }> = {
     Voyageur: { color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', icon: UserIcon },
     Agent: { color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', icon: UserCog },
-    Administrateur: { color: 'bg-slate-950 text-white border-primary/30 shadow-lg shadow-primary/5', icon: ShieldCheck },
+    Administrateur: { color: 'bg-slate-950 text-white border-primary/30 shadow-lg', icon: ShieldCheck },
   };
   const config = configs[role] || { color: 'bg-slate-800 text-slate-500 border-slate-700', icon: MoreHorizontal };
   const Icon = config.icon;
