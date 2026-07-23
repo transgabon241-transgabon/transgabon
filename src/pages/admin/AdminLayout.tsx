@@ -1,22 +1,11 @@
 "use client"
 
-import { ReactNode, useEffect, useState } from 'react'; // Ajout de useState
+import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
 import { 
-  LayoutDashboard, 
-  Building2, 
-  UsersRound, 
-  CreditCard, 
-  LogOut, 
-  ArrowLeft, 
-  Shield, 
-  ArrowLeftRight,
-  Globe,
-  ChevronRight,
-  ShieldCheck,
-  Menu, // Icone Hamburger
-  X // Icone Fermer
+  LayoutDashboard, Building2, UsersRound, CreditCard, LogOut, ArrowLeft, Shield, 
+  ArrowLeftRight, Globe, ChevronRight, Menu, X 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,99 +21,80 @@ const NAV = [
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, isLoading, loginWithRedirect, logout } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // État du menu mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      loginWithRedirect({ initialView: 'signin' });
-    }
-  }, [isLoading, user, loginWithRedirect]);
+    if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
+  }, [isLoading, user]);
 
   useEffect(() => {
-    if (user && user.role !== 'Administrateur') {
-      navigate('/');
-    }
-  }, [user, navigate]);
+    if (user && user.role !== 'Administrateur') navigate('/');
+  }, [user]);
 
-  // Fermer le menu automatiquement lors du changement de page
-  useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [location.pathname]);
+  useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
 
   if (isLoading || !user) return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-100 font-sans relative overflow-x-hidden">
+    // bg-background = Bleu Marine du globals.css
+    <div className="min-h-screen flex flex-col md:flex-row bg-background font-sans relative overflow-x-hidden text-foreground">
       
-      {/* --- MOBILE TOP BAR (Visible uniquement sur téléphone) --- */}
-      <div className="md:hidden flex items-center justify-between bg-slate-900 text-white p-4 h-20 shadow-2xl z-[60]">
+      {/* --- MOBILE TOP BAR --- */}
+      <div className="md:hidden flex items-center justify-between bg-card text-white p-4 h-20 shadow-2xl z-[60] border-b border-border">
         <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
                 <Shield className="h-6 w-6 text-white" />
             </div>
-            <span className="font-black uppercase tracking-tighter italic text-lg">Admin Console</span>
+            <span className="font-black uppercase tracking-tighter italic text-lg text-white">Admin</span>
         </div>
-        <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-3 bg-white/5 rounded-2xl active:scale-90 transition-transform"
-        >
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-3 bg-white/5 rounded-2xl">
             {isSidebarOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
       </div>
 
-      {/* --- OVERLAY (Voile noir qui ferme le menu au clic extérieur) --- */}
-      {isSidebarOpen && (
-        <div 
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      {/* OVERLAY MOBILE */}
+      {isSidebarOpen && <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
-      {/* --- SIDEBAR ADMIN SOMBRE XXL --- */}
+      {/* --- SIDEBAR ADMIN --- */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-80 bg-slate-900 text-white flex flex-col shadow-2xl transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-80 bg-slate-950 text-white flex flex-col shadow-2xl transition-transform duration-300
         md:relative md:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        
         <div className="p-10">
-          <Link to="/" className="flex items-center gap-3 text-slate-400 hover:text-primary mb-10 transition-colors group text-left">
-            <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" /> 
-            <span className="text-[11px] font-black uppercase tracking-[0.25em]">Site Public</span>
+          <Link to="/" className="flex items-center gap-3 text-slate-500 hover:text-primary mb-10 transition-colors group">
+            <ArrowLeft className="h-5 w-5" /> 
+            <span className="text-[11px] font-black uppercase tracking-widest">Site Public</span>
           </Link>
           
-          <div className="flex items-center gap-4 text-left">
-            <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl">
                 <Shield className="h-7 w-7 text-white" />
             </div>
             <div>
-                <h2 className="font-black text-2xl tracking-tighter uppercase italic leading-none">Console</h2>
-                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1.5">Super Administration</p>
+                <h2 className="font-black text-2xl tracking-tighter uppercase italic leading-none text-white">Console</h2>
+                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1.5">Super Admin</p>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto scrollbar-hide">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {NAV.map(item => {
             const active = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center justify-between px-5 py-4 rounded-[1.25rem] text-[11px] font-black uppercase tracking-widest transition-all duration-300 group ${
-                  active 
-                    ? 'bg-primary text-white shadow-xl shadow-primary/20 translate-x-2' 
-                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              <Link key={item.path} to={item.path}
+                className={`flex items-center justify-between px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                  active ? 'bg-primary text-white shadow-lg translate-x-2' : 'text-slate-400 hover:bg-white/5'
                 }`}
               >
-                <div className="flex items-center gap-4 text-left">
-                    <item.icon className={`h-5 w-5 ${active ? 'text-white' : 'text-slate-500 group-hover:text-primary'}`} />
+                <div className="flex items-center gap-4">
+                    <item.icon className={`h-5 w-5 ${active ? 'text-white' : 'text-slate-600'}`} />
                     {item.label}
                 </div>
                 {active && <ChevronRight className="h-4 w-4" />}
@@ -133,34 +103,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="p-8 mt-auto border-t border-white/5 bg-black/20 text-left">
-          <div className="flex items-center gap-4 mb-6">
-             <div className="h-12 w-12 rounded-2xl bg-slate-800 border-2 border-white/10 flex items-center justify-center font-black text-primary text-lg shrink-0">
-                {user.firstName?.charAt(0) || 'A'}
-             </div>
-             <div className="overflow-hidden">
-                <p className="text-sm font-black uppercase truncate text-white leading-none">{user.firstName} {user.lastName}</p>
-                <Badge variant="outline" className="mt-2 border-emerald-500/50 text-emerald-400 uppercase font-black text-[7px] px-2 py-0.5">Super Admin</Badge>
-             </div>
-          </div>
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start gap-4 text-slate-500 hover:text-red-400 hover:bg-red-500/10 font-black text-[10px] uppercase tracking-[0.2em] h-14 rounded-2xl transition-all" 
-            onClick={() => logout()}
-          >
+        <div className="p-8 mt-auto border-t border-white/5 bg-black/20">
+          <Button variant="ghost" onClick={() => logout()} className="w-full justify-start gap-4 text-slate-500 hover:text-red-400 font-black text-[10px] uppercase tracking-widest h-14 rounded-2xl">
             <LogOut size={20} /> Déconnexion Système
           </Button>
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA - OPTIMISÉE POUR MOBILE */}
-      <main className="flex-1 flex flex-col min-w-0 w-full h-screen overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 md:p-10">
-            <div className="min-h-full w-full bg-white rounded-[2rem] md:rounded-[3rem] shadow-sm border border-slate-200/50 p-6 md:p-12 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-20 opacity-[0.02] pointer-events-none">
+      {/* --- MAIN CONTENT : Utilise bg-card pour se détacher du fond --- */}
+      <main className="flex-1 flex flex-col min-w-0 w-full h-screen overflow-hidden bg-background">
+        <div className="flex-1 overflow-y-auto p-3 md:p-8">
+            <div className="min-h-full w-full bg-card rounded-[1.5rem] md:rounded-[3rem] shadow-2xl border border-border p-6 md:p-12 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-20 opacity-[0.03] pointer-events-none text-white">
                     <Shield size={500} />
                 </div>
-                <div className="relative z-10 animate-in fade-in slide-in-from-bottom-3 duration-700">
+                <div className="relative z-10 animate-in fade-in duration-700">
                     {children}
                 </div>
             </div>
