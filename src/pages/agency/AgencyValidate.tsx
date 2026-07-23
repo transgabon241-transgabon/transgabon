@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export default function AgencyValidate() {
-  const { user } = userAuth();
+  const { user } = useAuth(); // Correction ici : useAuth au lieu de userAuth
   const [qrInput, setQrInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -123,7 +123,6 @@ export default function AgencyValidate() {
     }
   };
 
-  // NOUVELLE FONCTION : SUPPRIMER UN BAGAGE (Si erreur client)
   const handleDeleteLuggage = async (lugId: string) => {
     try {
       const { error } = await supabase.from('luggages').delete().eq('id', lugId);
@@ -228,6 +227,21 @@ export default function AgencyValidate() {
                 </div>
               </div>
               <Badge variant="outline" className="shrink-0 border-primary/20 text-primary font-black text-[8px] uppercase">{result.booking.classLabel}</Badge>
+            </div>
+
+            {/* TRAJET RÉCOMPACTÉ */}
+            <div className={`rounded-[1.2rem] p-4 mb-4 relative overflow-hidden shadow-md text-white ${result.booking.isEscale ? 'bg-amber-600' : 'bg-slate-900'}`}>
+                <div className="flex justify-between items-center gap-2 relative z-10">
+                    <div className="flex-1 min-w-0">
+                        <Label className="text-[8px] font-black uppercase text-white/50">Départ</Label>
+                        <p className="text-xs font-black uppercase truncate">{result.booking.departureCity}</p>
+                    </div>
+                    <ArrowRight size={14} className="text-white shrink-0" />
+                    <div className="flex-1 min-w-0 text-right">
+                        <Label className="text-[8px] font-black uppercase text-white/50">Arrivée</Label>
+                        <p className="text-xs font-black uppercase truncate">{result.booking.arrivalCity}</p>
+                    </div>
+                </div>
             </div>
 
             {/* --- LISTE DES BAGAGES ACTUELS (MODIFIABLE) --- */}
