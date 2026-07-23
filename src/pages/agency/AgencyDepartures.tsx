@@ -286,29 +286,29 @@ export default function AgencyDepartures() {
                    </div>
                 </div>
 
-                {dep.stops.length > 0 ? (
-                  <div className="pt-4 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {dep.stops.map((s, idx) => (
-                      <div key={idx} className="flex items-center gap-2 shrink-0 bg-slate-950 px-4 py-2.5 rounded-2xl border border-border shadow-inner">
-                        <MapPin size={10} className="text-primary" />
-                        <div className="leading-tight text-left">
-                          <p className="text-[10px] font-black uppercase text-white">{s.cityName}</p>
-                          <p className="text-[8px] font-bold text-slate-600 mt-0.5">Arrêt: {s.arrivalTime} • {(s.priceFromStart || 0).toLocaleString()}F</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="pt-4 px-2">
-                    <p className="text-[9px] md:text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] italic opacity-60">PAS D'ESCALE PROGRAMMÉE</p>
-                  </div>
-                )}
-              </div>
+            {dep.stops.length > 0 ? (
+              <div className="pt-4 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                {dep.stops.map((s, idx) => (
+                  <div key={idx} className="flex items-center gap-2 shrink-0 bg-slate-950 px-4 py-2.5 rounded-2xl border border-border shadow-inner">
+                    <MapPin size={10} className="text-primary" />
+                    <div className="leading-tight text-left">
+                      <p className="text-[10px] font-black uppercase text-white">{s.cityName}</p>
+                      <p className="text-[8px] font-bold text-slate-600 mt-0.5">Arrêt: {s.arrivalTime} • {(s.priceFromStart || 0).toLocaleString()}F</p>
+                    </div>
+                </div>
+              ))}
             </div>
-          );
-        })}
-      </div>
-
+      ) : (
+        <div className="pt-4 px-1">
+          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-slate-950 border border-dashed border-primary/30">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              <p className="text-[9px] md:text-[10px] font-black text-primary/70 uppercase tracking-widest italic">
+                Trajet Direct — Aucune escale
+              </p>
+          </div>
+        </div>
+      )}
+      
       {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 bg-card p-3 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
