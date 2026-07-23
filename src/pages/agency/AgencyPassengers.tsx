@@ -20,7 +20,8 @@ import {
   Bus,
   Train,
   MapPin,
-  UserCheck
+  UserCheck,
+  Lock // Ajout de l'icône de verrouillage
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -135,14 +136,20 @@ export default function AgencyPassengers() {
 
   useEffect(() => { loadPassengersData(); }, [departureId, user]);
 
-  const handleBoardPassenger = async (passengerId: string) => {
-    setBoardingId(passengerId);
+  const handleBoardPassenger = async (passenger: Passenger) => {
+    // Sécurité supplémentaire : vérification du paiement avant action
+    if (passenger.paymentStatus !== 'Payé') {
+        toast.error("Embarquement impossible : paiement non validé en caisse.");
+        return;
+    }
+
+    setBoardingId(passenger.id);
     try {
-      const { error } = await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
+      const { error } = await supabase.from('passengers').update({ boarded: true }).eq('id', passenger.id);
       if (error) throw error;
       setData(prev => prev ? {
         ...prev,
-        passengers: prev.passengers.map(p => p.id === passengerId ? { ...p, boarded: true } : p)
+        passengers: prev.passengers.map(p => p.id === passenger.id ? { ...p, boarded: true } : p)
       } : null);
       toast.success("Embarquement validé");
     } catch (err) { toast.error("Erreur technique"); }
@@ -255,11 +262,20 @@ export default function AgencyPassengers() {
                       <div className="flex items-center justify-center gap-2 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
                           <CheckCircle2 className="h-5 w-5 md:h-6 md:w-6" strokeWidth={3} /> <span className="hidden sm:inline">À BORD</span>
                       </div>
+                    ) : p.paymentStatus !== 'Payé' ? (
+                      /* État si le paiement n'est pas encore validé par le caissier */
+                      <div className="flex flex-col items-center gap-1.5 opacity-60">
+                        <div className="h-10 md:h-14 px-4 md:px-6 flex items-center justify-center rounded-xl md:rounded-2xl bg-slate-950 border border-red-900/30 text-red-500/80 font-black uppercase text-[8px] md:text-[9px] tracking-widest cursor-not-allowed">
+                           <Lock className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Impayé
+                        </div>
+                        <p className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase tracking-tighter italic">Validation caisse requise</p>
+                      </div>
                     ) : (
+                      /* État si payé : l'agent d'embarquement peut cliquer */
                       <Button 
                           size="sm"
                           className="h-10 md:h-14 px-4 md:px-8 font-black uppercase rounded-xl md:rounded-2xl bg-slate-950 text-slate-300 border border-slate-800 hover:bg-emerald-600 hover:text-white hover:border-transparent shadow-lg text-[9px] md:text-xs transition-all"
-                          onClick={() => handleBoardPassenger(p.id)}
+                          onClick={() => handleBoardPassenger(p)}
                           disabled={boardingId === p.id}
                       >
                           {boardingId === p.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4 md:h-5 md:w-5 mr-0 md:mr-2" />}
