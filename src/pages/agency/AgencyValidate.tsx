@@ -298,7 +298,7 @@ export default function AgencyValidate() {
                         onClick={handleConfirmWeighing} 
                         className="w-full h-12 rounded-xl font-black bg-primary text-black hover:bg-primary/90 uppercase text-[9px] gap-2 shadow-lg active:scale-95 transition-all"
                     >
-                        <CheckCircle size={10} /> Confirmer Pesée & Valider
+                        <CheckCircle size={6} /> Confirmer Pesée & Valider
                     </Button>
                 </div>
             </div>
