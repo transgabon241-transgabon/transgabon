@@ -295,14 +295,14 @@ export default function AgencyValidate() {
                     )}
 
                     <Button 
-  onClick={handleConfirmWeighing} 
-  className="w-full min-h-[3rem] h-auto py-2 px-2 rounded-xl font-black bg-primary text-black hover:bg-primary/90 uppercase text-[10px] sm:text-xs gap-2 shadow-lg active:scale-95 transition-all flex items-center justify-center text-center leading-tight"
->
-  <CheckCircle size={18} className="shrink-0" /> 
-  <span className="whitespace-normal break-words">
-    Confirmer la pesée
-  </span>
-</Button>
+                      onClick={handleConfirmWeighing} 
+                      className="w-full min-h-[3rem] h-auto py-2 px-2 rounded-xl font-black bg-primary text-black hover:bg-primary/90 uppercase text-[10px] sm:text-xs gap-2 shadow-lg active:scale-95 transition-all flex items-center justify-center text-center leading-tight"
+                    >
+                      <CheckCircle size={18} className="shrink-0" /> 
+                      <span className="whitespace-normal break-words">
+                        Confirmer la pesée
+                      </span>
+                    </Button>
                 </div>
             </div>
 
@@ -333,9 +333,12 @@ export default function AgencyValidate() {
                     </div>
 
                     {canCollectMoney ? (
-                        <Button onClick={handleProcessPayment} className="w-full h-12 bg-white text-emerald-700 rounded-xl font-black text-xs uppercase mt-4 shadow-lg">
-                            ENCAISSER LE MONTANT
-                        </Button>
+                        <Button 
+                          onClick={handleProcessPayment} 
+                          className="w-full min-h-[3rem] h-auto py-2 px-4 bg-white text-emerald-700 hover:bg-slate-50 rounded-xl font-black text-[11px] sm:text-xs uppercase mt-4 shadow-lg flex items-center justify-center text-center leading-tight whitespace-normal break-words"
+                      >
+                          Encaisser le montant dû
+                      </Button>
                     ) : (
                         <div className="mt-3 flex items-center gap-2 justify-center text-[8px] font-black uppercase bg-black/20 p-2 rounded-lg italic">
                             <Info size={12}/> Envoyer le passager à la caisse pour régler
