@@ -88,6 +88,7 @@ export default function SendParcelPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ trackingNumber: string; price: number; method: string } | null>(null);
 
+  // Charger les villes
   useEffect(() => {
     const fetchCities = async () => {
       const { data } = await supabase.from('cities').select('id, name').order('name');
@@ -96,6 +97,7 @@ export default function SendParcelPage() {
     fetchCities();
   }, []);
 
+  // Sync info expéditeur
   useEffect(() => {
     if (user) {
       setSenderName(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email);
@@ -103,10 +105,12 @@ export default function SendParcelPage() {
     }
   }, [user]);
 
+  // Redirection Auth
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
   }, [isLoading, user, loginWithRedirect]);
 
+  // Charger les tarifs
   useEffect(() => {
     if (selectedTrip?.companyId) {
       const fetchTariffs = async () => {
@@ -231,7 +235,7 @@ export default function SendParcelPage() {
   
             <div className="p-8 space-y-10">
               <div className="flex justify-between items-start gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Référence suivi</Label>
                   <p className="text-4xl md:text-5xl font-mono font-black text-primary tracking-tighter">{result.trackingNumber}</p>
                   <div className="pt-2">
@@ -240,11 +244,11 @@ export default function SendParcelPage() {
                     </Badge>
                   </div>
                 </div>
-                <div className="h-28 w-28 bg-slate-950 border-2 border-slate-800 rounded-3xl flex flex-col items-center justify-center p-3 shadow-inner">
+                <div className="h-28 w-28 bg-slate-950 border-2 border-border rounded-3xl flex flex-col items-center justify-center p-3 shadow-inner">
                    <div className="grid grid-cols-4 gap-1 opacity-20">
                       {[...Array(16)].map((_, i) => <div key={i} className="h-2 w-2 bg-primary rounded-sm" />)}
                    </div>
-                   <span className="text-[7px] font-black text-slate-500 uppercase mt-2">Scan Agence</span>
+                   <span className="text-[7px] font-black text-slate-500 uppercase mt-2 text-center">Scan Agence</span>
                 </div>
               </div>
   
@@ -321,7 +325,7 @@ export default function SendParcelPage() {
                 <Button onClick={() => window.print()} variant="outline" className="h-14 font-black rounded-2xl border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800 gap-3">
                     <Printer size={18} /> IMPRIMER / PDF
                 </Button>
-                <Button onClick={() => navigate('/dashboard')} className="h-14 font-black rounded-2xl shadow-xl bg-primary text-white hover:bg-primary/90 uppercase text-xs tracking-widest">
+                <Button onClick={() => navigate('/dashboard')} className="h-14 font-black rounded-2xl shadow-xl bg-primary text-white hover:bg-primary/90 uppercase text-xs tracking-widest border-none">
                     MON ESPACE CLIENT
                 </Button>
             </div>
@@ -350,23 +354,35 @@ export default function SendParcelPage() {
               <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Départ</Label>
                 <Select value={fromId} onValueChange={setFromId}>
-                  <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200"><SelectValue placeholder="Ville" /></SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200">
+                    <SelectValue placeholder="Ville" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 z-[200]">
+                    {cities.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="font-bold focus:bg-primary/20">{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Arrivée</Label>
                 <Select value={toId} onValueChange={setToId}>
-                  <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200"><SelectValue placeholder="Ville" /></SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200">
+                    <SelectValue placeholder="Ville" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 z-[200]">
+                    {cities.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="font-bold focus:bg-primary/20">{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Date</Label>
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-sm text-slate-200" min={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-sm text-slate-200 appearance-none" min={new Date().toISOString().split('T')[0]} />
               </div>
             </div>
-            <Button onClick={handleSearchTrips} disabled={searchingTrips} className="w-full h-14 font-black rounded-2xl shadow-xl uppercase tracking-widest text-xs bg-primary text-white hover:bg-primary/90 transition-all">
+            <Button onClick={handleSearchTrips} disabled={searchingTrips} className="w-full h-14 font-black rounded-2xl shadow-xl uppercase tracking-widest text-xs bg-primary text-white hover:bg-primary/90 transition-all border-none">
               {searchingTrips ? <RefreshCw className="animate-spin h-5 w-5" /> : "Rechercher départs"}
             </Button>
           </div>
@@ -427,7 +443,7 @@ export default function SendParcelPage() {
 
           <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 md:p-8 space-y-6 shadow-2xl text-left">
             <div className="space-y-5">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Nature du colis</Label>
                 <div className="relative">
                   <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
@@ -436,27 +452,32 @@ export default function SendParcelPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Type de fret agence</Label>
                   <Select value={selectedTariffId} onValueChange={setSelectedTariffId}>
                     <SelectTrigger className="h-12 rounded-xl font-bold border-slate-800 bg-slate-950 text-slate-200">
                         <SelectValue placeholder="Choisir tarif" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                      {tariffs.map(t => (
-                        <SelectItem key={t.id} value={t.id.toString()} className="font-bold">
-                          {t.label} ({t.price.toLocaleString()} F{t.is_weight_based ? '/kg' : ''})
-                        </SelectItem>
-                      ))}
+                    {/* Z-INDEX ÉLEVÉ POUR ÉVITER LES BLOCAGES */}
+                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 z-[200]">
+                      {tariffs.length > 0 ? (
+                        tariffs.map(t => (
+                          <SelectItem key={t.id} value={t.id.toString()} className="font-bold focus:bg-primary/20">
+                            {t.label} ({t.price.toLocaleString()} F{t.is_weight_based ? '/kg' : ''})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-[10px] font-black uppercase text-slate-500">Aucun tarif disponible</div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Poids Estimé (kg)</Label>
                   <Input type="number" step="0.5" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="h-12 rounded-xl font-black border-slate-800 bg-slate-950 text-white shadow-inner" disabled={selectedTariffId !== "" && !selectedTariff?.is_weight_based} />
                 </div>
               </div>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Précisions supplémentaires..." className="rounded-xl font-medium border-slate-800 bg-slate-950 text-white min-h-[100px]" />
+              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Précisions supplémentaires..." className="rounded-xl font-medium border-slate-800 bg-slate-950 text-white min-h-[100px] text-left" />
             </div>
 
             <div className="bg-emerald-600 rounded-2xl p-6 flex items-center justify-between text-white shadow-xl shadow-emerald-950/20">
@@ -473,12 +494,16 @@ export default function SendParcelPage() {
           <div className="bg-slate-950/50 border-2 border-slate-800 rounded-[2rem] p-6 text-left">
             <h2 className="font-black text-[10px] uppercase text-slate-500 mb-4 tracking-widest">Mode de règlement</h2>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger className="h-12 rounded-xl font-black bg-slate-900 border-none text-slate-200 px-5 shadow-inner"><SelectValue placeholder="Choisir une méthode" /></SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">{PAYMENT_METHODS.map(m => <SelectItem key={m.id} value={m.id} className="font-bold">{m.label}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="h-12 rounded-xl font-black bg-slate-900 border-none text-slate-200 px-5 shadow-inner">
+                <SelectValue placeholder="Choisir une méthode" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 z-[200]">
+                {PAYMENT_METHODS.map(m => <SelectItem key={m.id} value={m.id} className="font-bold focus:bg-primary/20">{m.label}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
 
-          <Button onClick={handleSubmit} disabled={submitting} className="w-full h-16 rounded-[2rem] font-black text-lg md:text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest transition-all">
+          <Button onClick={handleSubmit} disabled={submitting} className="w-full h-16 rounded-[2rem] font-black text-lg md:text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest transition-all border-none active:scale-95">
             {submitting ? <RefreshCw className="animate-spin h-6 w-6" /> : "VALIDER L'EXPÉDITION"}
           </Button>
         </div>
