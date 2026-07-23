@@ -138,11 +138,11 @@ export default function AgencyVehicles() {
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter">Ma Flotte</h1>
+          <h1 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter">Mon Parc</h1>
           <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Inventaire des bus, trains et navires</p>
         </div>
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-12 shadow-lg shadow-primary/20">
-          <Plus size={20} /> ENREGISTRER UN APPAREIL
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-9 shadow-lg shadow-primary/15">
+          <Plus size={15} /> NOUVEAU VEHICULE
         </Button>
       </div>
 
