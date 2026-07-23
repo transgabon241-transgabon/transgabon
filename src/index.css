@@ -1,32 +1,32 @@
 /* 
-   Thème Global : Bleu Marine Professionnel (Midnight Navy)
-   Optimisé pour la lisibilité et le confort visuel.
+   Thème Global Sombre Confortable - Anthracite & Slate
+   Rendu net, reposant pour les yeux.
 */
 @import "tailwindcss/index.css";
 
 :root {
-  /* Fond de page - Bleu Marine très profond */
-  --background: 222 47% 7%; 
-  /* Texte principal - Blanc cassé (évite l'éblouissement) */
+  /* Fond de page - Ardoise presque noire */
+  --background: 222 47% 4%; 
+  /* Texte principal - Blanc cassé pour éviter l'éblouissement */
   --foreground: 210 40% 98%; 
 
-  /* Éléments secondaires (boutons grisés, etc.) */
-  --muted: 217 32% 15%;
-  --muted-foreground: 215 20% 70%;
+  /* Éléments secondaires et désactivés */
+  --muted: 217 32% 17%;
+  --muted-foreground: 215 20% 65%;
 
   /* Fenêtres et menus contextuels */
-  --popover: 222 47% 8%;
+  --popover: 222 47% 5%;
   --popover-foreground: 210 40% 98%;
 
-  /* Bordures et entrées - Bleu ardoise discret */
-  --border: 217 32% 20%;
-  --input: 217 32% 20%;
+  /* Bordures et entrées - Gris ardoise sombre */
+  --border: 217 32% 17%;
+  --input: 217 32% 17%;
 
-  /* Cartes et sections - Bleu Marine légèrement plus clair que le fond */
-  --card: 222 47% 10%;
+  /* Cartes et sections - Un peu plus clair que le fond */
+  --card: 222 47% 6%;
   --card-foreground: 210 40% 98%; 
 
-  /* Couleur Primaire (Émeraude de TransGabon) */
+  /* Couleur Primaire (Émeraude conservé car il ressort bien sur le sombre) */
   --primary: 158 94% 30%;
   --primary-foreground: 0 0% 100%;
 
@@ -35,7 +35,7 @@
   --secondary-foreground: 224 71% 4%;
 
   /* Accents de sélection */
-  --accent: 217 32% 20%;
+  --accent: 217 32% 25%;
   --accent-foreground: 210 40% 98%;
 
   /* Alertes */
@@ -73,42 +73,67 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
+
+  /* Ombres adaptées au sombre (plus diffuses et noires) */
+  --shadow-premium: 0 20px 50px rgba(0, 0, 0, 0.4);
+  --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
 html {
   font-size: 100%;
   overflow-x: hidden;
   width: 100%;
-  background-color: hsl(var(--background));
+  -webkit-text-size-adjust: 100%;
+  background-color: hsl(var(--background)); /* Couleur de sécurité */
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 95%; 
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
   
   body {
-    /* Utilisation forcée des variables pour tout le corps du texte */
+    /* Mise à jour : background et texte utilisent les variables CSS */
     @apply bg-background text-foreground antialiased;
-    background-color: hsl(var(--background)) !important;
-    color: hsl(var(--foreground)) !important;
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
   }
 
-  /* Correction automatique pour les inputs et selects */
+  /* Amélioration de la visibilité des inputs en mode sombre */
   input, select, textarea {
-    @apply bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500;
+    @apply bg-slate-900 border-slate-800 text-white;
+    font-size: 16px !important;
+  }
+
+  button {
+    font-size: 16px !important;
   }
 }
 
-/* Utilitaires pour forcer le thème sur les composants récalcitrants */
-.dark-card {
-  background-color: hsl(var(--card));
-  color: hsl(var(--card-foreground));
-  border: 1px solid hsl(var(--border));
-}
-
+/* UTILITAIRE POUR LES TABLEAUX */
 .responsive-table {
   width: 100%;
   overflow-x: auto;
   display: block;
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
