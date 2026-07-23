@@ -1,39 +1,28 @@
 /* 
    Thème Global : Bleu Marine Professionnel (Midnight Navy)
-   OPTIMISÉ : Correction visibilité Inputs & Selects
+   CORRIGÉ : Compatibilité Vercel & Tailwind v4
 */
 @import "tailwindcss/index.css";
 
 :root {
-  /* Fond de page - Bleu Marine très profond */
   --background: 222 47% 7%; 
-  /* Texte principal - Blanc cassé */
   --foreground: 210 40% 98%; 
-
   --muted: 217 32% 15%;
   --muted-foreground: 215 20% 70%;
-
   --popover: 222 47% 8%;
   --popover-foreground: 210 40% 98%;
-
   --border: 217 32% 20%;
   --input: 217 32% 20%;
-
   --card: 222 47% 10%;
   --card-foreground: 210 40% 98%; 
-
   --primary: 158 94% 30%;
   --primary-foreground: 0 0% 100%;
-
   --secondary: 40 95% 55%;
   --secondary-foreground: 224 71% 4%;
-
   --accent: 217 32% 20%;
   --accent-foreground: 210 40% 98%;
-
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
-
   --ring: 158 94% 30%;
   --radius: 1.25rem;
 }
@@ -68,18 +57,19 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    /* On utilise les propriétés standards au lieu de @apply !important */
     background-color: hsl(var(--background)) !important;
     color: hsl(var(--foreground)) !important;
   }
 
-  /* --- FIX INPUTS (Texte blanc sur fond sombre) --- */
+  /* --- FIX INPUTS (Correction visibilité texte blanc) --- */
   input, select, textarea {
-    @apply bg-slate-950 border-slate-800 text-white !important;
-    background-color: #05080f !important; /* Force le noir marine */
+    @apply bg-slate-950 border-slate-800;
+    background-color: #05080f !important;
     color: white !important;
   }
 
-  /* Fix pour l'autocomplétion (quand le navigateur remplit le mot de passe) */
+  /* Fix pour l'autocomplétion (quand le navigateur remplit les champs) */
   input:-webkit-autofill,
   input:-webkit-autofill:hover, 
   input:-webkit-autofill:focus {
@@ -88,28 +78,29 @@
     transition: background-color 5000s ease-in-out 0s;
   }
 
-  /* --- FIX SELECTS & DROPDOWNS (Menus qui apparaissent blancs) --- */
+  /* --- FIX SELECTS & DROPDOWNS --- */
   [role="listbox"], [role="menu"], .dropdown-content, .select-content {
-    @apply bg-slate-900 border-slate-800 text-white !important;
     background-color: #0f172a !important;
+    border: 1px solid hsl(var(--border)) !important;
+    color: white !important;
   }
 
-  /* Texte à l'intérieur des options du Select */
   [role="option"], [role="menuitem"] {
-    @apply text-slate-200 !important;
+    color: #e2e8f0 !important; /* text-slate-200 */
   }
 
   [role="option"][data-highlighted], [role="menuitem"]:hover {
-    @apply bg-primary text-white !important;
+    background-color: hsl(var(--primary)) !important;
+    color: white !important;
   }
 
-  /* Pour les éléments de texte spécifiques */
+  /* Force la couleur pour les textes Slate 900 qui deviennent invisibles */
   .text-slate-900, .text-black {
-    @apply text-slate-100 !important;
+    color: #f8fafc !important; /* text-slate-50 */
   }
 }
 
-/* Sélection de texte (Curseur) */
+/* Sélection de texte au curseur */
 ::selection {
   background-color: hsl(var(--primary));
   color: white;
