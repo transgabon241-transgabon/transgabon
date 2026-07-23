@@ -1,27 +1,48 @@
 /* 
-   Polices Système : Rendu net, rapide et sans flou.
+   Thème Global Sombre Confortable - Anthracite & Slate
+   Rendu net, reposant pour les yeux.
 */
 @import "tailwindcss/index.css";
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%; 
-  --muted: 220 14% 96%;
-  --muted-foreground: 215 16% 35%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%; 
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%; 
+  /* Fond de page - Ardoise presque noire */
+  --background: 222 47% 4%; 
+  /* Texte principal - Blanc cassé pour éviter l'éblouissement */
+  --foreground: 210 40% 98%; 
+
+  /* Éléments secondaires et désactivés */
+  --muted: 217 32% 17%;
+  --muted-foreground: 215 20% 65%;
+
+  /* Fenêtres et menus contextuels */
+  --popover: 222 47% 5%;
+  --popover-foreground: 210 40% 98%;
+
+  /* Bordures et entrées - Gris ardoise sombre */
+  --border: 217 32% 17%;
+  --input: 217 32% 17%;
+
+  /* Cartes et sections - Un peu plus clair que le fond */
+  --card: 222 47% 6%;
+  --card-foreground: 210 40% 98%; 
+
+  /* Couleur Primaire (Émeraude conservé car il ressort bien sur le sombre) */
   --primary: 158 94% 30%;
   --primary-foreground: 0 0% 100%;
+
+  /* Couleur Secondaire (Orange/Or) */
   --secondary: 40 95% 55%;
   --secondary-foreground: 224 71% 4%;
-  --accent: 152 30% 92%;
-  --accent-foreground: 152 55% 28%;
+
+  /* Accents de sélection */
+  --accent: 217 32% 25%;
+  --accent-foreground: 210 40% 98%;
+
+  /* Alertes */
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
+
+  /* Anneau de focus */
   --ring: 158 94% 30%;
 
   --radius: 1.25rem;
@@ -56,21 +77,21 @@
   --radius-4xl: 2rem;
   --radius-5xl: 2.5rem;
 
-  --shadow-premium: 0 20px 50px rgba(0, 0, 0, 0.08);
-  --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07);
+  /* Ombres adaptées au sombre (plus diffuses et noires) */
+  --shadow-premium: 0 20px 50px rgba(0, 0, 0, 0.4);
+  --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
-/* --- LOGIQUE DE TAILLE RESPONSIVE --- */
 html {
-  font-size: 100%; /* Ton réglage Ordi */
-  overflow-x: hidden; /* EMPÊCHE LE DÉBORDEMENT */
+  font-size: 100%;
+  overflow-x: hidden;
   width: 100%;
   -webkit-text-size-adjust: 100%;
+  background-color: hsl(var(--background)); /* Couleur de sécurité */
 }
 
 @media (max-width: 768px) {
   html {
-    /* Sur mobile, on repasse à 95% ou 100% car 120% est trop gros pour les petits écrans et fait tout déborder */
     font-size: 95%; 
   }
 }
@@ -78,23 +99,29 @@ html {
 @layer base {
   * {
     @apply border-border;
-    box-sizing: border-box; /* Crucial pour les calculs de largeur */
+    box-sizing: border-box;
   }
   
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
-    overflow-x: hidden; /* DOUBLE SÉCURITÉ */
+    /* Mise à jour : background et texte utilisent les variables CSS */
+    @apply bg-background text-foreground antialiased;
+    overflow-x: hidden;
     width: 100%;
     position: relative;
   }
 
-  /* EMPÊCHE LE ZOOM iOS MAIS GARDE LA LISIBILITÉ */
-  input, select, textarea, button {
+  /* Amélioration de la visibilité des inputs en mode sombre */
+  input, select, textarea {
+    @apply bg-slate-900 border-slate-800 text-white;
+    font-size: 16px !important;
+  }
+
+  button {
     font-size: 16px !important;
   }
 }
 
-/* UTILITAIRE POUR LES TABLEAUX : AJOUTE ÇA À TOUS TES TABLEAUX */
+/* UTILITAIRE POUR LES TABLEAUX */
 .responsive-table {
   width: 100%;
   overflow-x: auto;
