@@ -32,8 +32,8 @@ type Booking = {
   amount: number;
   companyId: string;
   companyName: string;
-  classLabel: string; // NOUVEAU
-  destination: string; // NOUVEAU
+  classLabel: string;
+  destination: string;
 };
 
 export default function AdminPayments() {
@@ -51,7 +51,6 @@ export default function AdminPayments() {
     try {
       setLoading(true);
       
-      // 1. Récupération des compagnies
       const { data: companiesData } = await supabase
         .from('companies')
         .select('id, name')
@@ -59,7 +58,6 @@ export default function AdminPayments() {
       
       if (companiesData) setCompanies(companiesData);
 
-      // 2. Récupération globale avec jointures enrichies
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -83,8 +81,6 @@ export default function AdminPayments() {
         const lead = b.passengers[0];
         const methodLabel: Record<string, string> = {
           AGENCE: 'Espèces',
-          // AIRTEL_MONEY: 'Airtel Money',
-          // MOOV_MONEY: 'Moov Money',
         };
 
         return {
@@ -104,7 +100,7 @@ export default function AdminPayments() {
 
       setBookings(formatted);
     } catch (e: any) {
-      toast.error('Erreur de chargement des flux financiers');
+      toast.error('Erreur de chargement');
     } finally {
       setLoading(false);
     }
@@ -112,7 +108,6 @@ export default function AdminPayments() {
 
   useEffect(() => { loadData(); }, []);
 
-  // Filtrage
   const filtered = useMemo(() => {
     return bookings.filter(b => {
       if (filter !== 'all' && b.paymentStatus !== filter) return false;
@@ -127,71 +122,75 @@ export default function AdminPayments() {
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
-  // Statistiques dynamiques selon le filtre agence
   const statsSource = companyFilter === 'all' ? bookings : bookings.filter(b => b.companyId === companyFilter);
   const totalPaid = statsSource.filter(b => b.status === 'PAYE').reduce((s, b) => s + b.amount, 0);
   const totalPending = statsSource.filter(b => b.status === 'ATTENTE_PAIEMENT').reduce((s, b) => s + b.amount, 0);
 
-  if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48" /><Skeleton className="h-64 w-full rounded-[2rem]" /></div>;
+  if (loading) return (
+    <div className="p-8 space-y-4 bg-background min-h-screen">
+      <Skeleton className="h-12 w-48 bg-card" />
+      <Skeleton className="h-64 w-full rounded-[2rem] bg-card" />
+    </div>
+  );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground">
       
-      {/* HEADER ADMIM */}
+      {/* HEADER ADMIM SOMBRE */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black italic text-slate-100 uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3">
             <BarChart3 className="h-8 w-8 text-primary" /> Flux Financiers
           </h1>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Supervision globale des encaissements réseau</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Supervision globale des encaissements réseau</p>
         </div>
         
-        <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border-2 border-slate-50 shadow-sm">
+        <div className="flex items-center gap-3 bg-card p-2 rounded-2xl border-2 border-border shadow-xl">
           <Building2 className="h-4 w-4 text-primary ml-2" />
           <Select value={companyFilter} onValueChange={setCompanyFilter}>
-            <SelectTrigger className="w-[220px] border-none font-bold text-xs focus:ring-0">
+            <SelectTrigger className="w-[220px] border-none bg-transparent font-bold text-xs focus:ring-0 text-slate-200">
               <SelectValue placeholder="Toutes les agences" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl shadow-xl">
-              <SelectItem value="all" className="font-bold">Toutes les agences</SelectItem>
+            <SelectContent className="rounded-xl shadow-2xl bg-slate-900 border-border text-slate-200">
+              <SelectItem value="all" className="font-bold focus:bg-primary/20">Toutes les agences</SelectItem>
               {companies.map(c => (
-                <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id} className="font-bold focus:bg-primary/20">{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button variant="ghost" size="icon" onClick={loadData} className="rounded-xl h-9 w-9 text-slate-300 hover:text-primary"><RefreshCw size={16}/></Button>
+          <Button variant="ghost" size="icon" onClick={loadData} className="rounded-xl h-9 w-9 text-slate-600 hover:text-primary transition-colors"><RefreshCw size={16}/></Button>
         </div>
       </div>
 
-      {/* SUMMARY CARDS PREMIUM */}
+      {/* SUMMARY CARDS SOMBRES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <SummaryCard label="Volume Encaissé" value={`${totalPaid.toLocaleString()} F`} color="text-emerald-600" bg="bg-emerald-50" icon={DollarSign} sub="Paiements confirmés" />
-        <SummaryCard label="En attente agence" value={`${totalPending.toLocaleString()} F`} color="text-amber-600" bg="bg-amber-50" icon={CreditCard} sub="Réservations non soldées" />
-        <SummaryCard label="Transactions" value={filtered.length} color="text-primary" bg="bg-primary/5" icon={Tag} sub="Volume total traité" />
+        <SummaryCard label="Volume Encaissé" value={`${totalPaid.toLocaleString()} F`} color="text-emerald-400" bg="bg-emerald-500/10" icon={DollarSign} sub="Paiements confirmés" />
+        <SummaryCard label="En attente agence" value={`${totalPending.toLocaleString()} F`} color="text-amber-400" bg="bg-amber-500/10" icon={CreditCard} sub="Réservations non soldées" />
+        <SummaryCard label="Transactions" value={filtered.length} color="text-primary" bg="bg-primary/10" icon={Tag} sub="Volume total traité" />
       </div>
 
-      {/* RECHERCHE ET FILTRES RAPIDES */}
-      <div className="bg-card border-2 rounded-[2.5rem] p-6 shadow-sm grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
+      {/* RECHERCHE SOMBRE */}
+      <div className="bg-card border border-border rounded-[2.5rem] p-6 shadow-2xl grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
         <div className="lg:col-span-2 space-y-2">
-           <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Recherche multicritères</Label>
+           <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Recherche multicritères</Label>
            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600 group-focus-within:text-primary transition-colors" />
               <Input 
                 value={search} 
                 onChange={e => setSearch(e.target.value)} 
                 placeholder="Billet, Passager, Agence ou Destination..." 
-                className="pl-12 h-14 rounded-2xl border-2 border-slate-100 bg-white font-medium text-base shadow-inner focus:border-primary transition-all" 
+                className="pl-12 h-14 rounded-2xl border-none bg-slate-950 text-white font-medium text-base shadow-inner focus-visible:ring-1 focus-visible:ring-primary/40" 
               />
            </div>
         </div>
         <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Filtre Statut</Label>
-            <div className="flex bg-slate-100 p-1 rounded-xl border-2 border-white shadow-sm">
+            <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtre Statut</Label>
+            <div className="flex bg-slate-950 p-1 rounded-xl border border-border shadow-inner">
                 {(['all', 'Payé', 'Non payé'] as const).map(f => (
                 <button 
                     key={f} 
                     onClick={() => setFilter(f)}
-                    className={`flex-1 text-[10px] font-black uppercase py-3 rounded-lg transition-all ${filter === f ? 'bg-white shadow-sm text-primary' : 'text-slate-400'}`}
+                    className={`flex-1 text-[10px] font-black uppercase py-3 rounded-lg transition-all ${filter === f ? 'bg-primary text-white shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}
                 >
                     {f === 'all' ? 'Tous' : f}
                 </button>
@@ -200,37 +199,37 @@ export default function AdminPayments() {
         </div>
       </div>
 
-      {/* TABLEAU FINANCIER REFAIT */}
-      <div className="bg-card border-2 rounded-[2.5rem] overflow-hidden shadow-sm overflow-x-auto">
+      {/* TABLEAU FINANCIER SOMBRE */}
+      <div className="bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-2xl overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b">
+          <thead className="bg-slate-950 border-b border-border">
             <tr>
-              <th className="p-5 font-black uppercase text-[10px] text-slate-400 text-left">Réf. Billet</th>
-              <th className="p-5 font-black uppercase text-[10px] text-slate-400 text-left">Passager / Agence</th>
-              <th className="p-5 font-black uppercase text-[10px] text-slate-400 text-center">Destination / Cl.</th>
-              <th className="p-5 font-black uppercase text-[10px] text-slate-400 text-center">Paiement</th>
-              <th className="p-5 font-black uppercase text-[10px] text-right">Montant</th>
+              <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-left">Réf. Billet</th>
+              <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-left">Passager / Agence</th>
+              <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-center">Destination / Cl.</th>
+              <th className="p-5 font-black uppercase text-[10px] text-slate-500 text-center">Paiement</th>
+              <th className="p-5 font-black uppercase text-[10px] text-white text-right">Montant</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-border">
             {paginated.length === 0 ? (
-              <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs italic">Aucune donnée correspondante</td></tr>
+              <tr><td colSpan={5} className="p-20 text-center text-slate-600 font-bold uppercase tracking-widest text-xs italic">Aucune donnée correspondante</td></tr>
             ) : (
               paginated.map(b => (
-                <tr key={b.id} className="hover:bg-slate-50/50 transition-colors group">
+                <tr key={b.id} className="hover:bg-slate-800/40 transition-colors group">
                   <td className="p-5">
                     <p className="font-mono font-black text-primary text-xs tracking-tighter">{b.bookingNumber}</p>
                   </td>
                   <td className="p-5">
-                    <p className="font-bold text-slate-100 leading-none">{b.passengerName}</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase mt-1.5 flex items-center gap-1">
+                    <p className="font-bold text-slate-200 leading-none group-hover:text-white transition-colors">{b.passengerName}</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase mt-1.5 flex items-center gap-1">
                         <Building2 size={10} /> {b.companyName}
                     </p>
                   </td>
                   <td className="p-5 text-center">
                     <div className="flex flex-col items-center gap-1.5">
-                        <div className="flex items-center gap-1 text-[10px] font-black text-slate-700 uppercase">
-                            <MapPin size={10} className="text-primary" /> {b.destination}
+                        <div className="flex items-center gap-1 text-[10px] font-black text-slate-300 uppercase truncate max-w-[120px]">
+                            <MapPin size={10} className="text-primary/50" /> {b.destination}
                         </div>
                         <Badge variant="outline" className="text-[7px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2 py-0">
                             {b.classLabel}
@@ -238,17 +237,17 @@ export default function AdminPayments() {
                     </div>
                   </td>
                   <td className="p-5 text-center">
-                    <span className={`inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase border-2 ${
-                      b.paymentStatus === 'Payé' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      b.paymentStatus === 'Remboursé' ? 'bg-red-50 text-red-700 border-red-100' :
-                      'bg-amber-50 text-amber-700 border-amber-200'
+                    <span className={`inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase border ${
+                      b.paymentStatus === 'Payé' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                      b.paymentStatus === 'Remboursé' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                      'bg-amber-500/10 text-amber-400 border-amber-500/20'
                     }`}>
                       {b.paymentStatus}
                     </span>
-                    <p className="text-[8px] font-bold text-slate-300 mt-1 uppercase italic">{b.paymentMethod}</p>
+                    <p className="text-[8px] font-bold text-slate-600 mt-1 uppercase italic tracking-tighter">{b.paymentMethod}</p>
                   </td>
-                  <td className="p-5 text-right font-black text-slate-100 text-lg tracking-tighter">
-                    {b.amount.toLocaleString()} F
+                  <td className="p-5 text-right font-black text-white text-lg tracking-tighter">
+                    {b.amount.toLocaleString()} <span className="text-[10px] text-slate-500">F</span>
                   </td>
                 </tr>
               ))
@@ -257,21 +256,21 @@ export default function AdminPayments() {
         </table>
       </div>
 
-      {/* PAGINATION */}
+      {/* PAGINATION SOMBRE */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
-          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronLeft size={18}/></Button>
-          <div className="flex items-center gap-1 font-black text-[10px] uppercase text-slate-400 px-4">
+        <div className="flex items-center justify-center gap-4 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
+          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"><ChevronLeft size={18}/></Button>
+          <div className="flex items-center gap-1 font-black text-[10px] uppercase text-slate-500 px-4">
              <span className="text-primary">Page {currentPage}</span>
-             <span>/</span>
+             <span className="mx-1">/</span>
              <span>{totalPages}</span>
           </div>
-          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronRight size={18}/></Button>
+          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"><ChevronRight size={18}/></Button>
         </div>
       )}
 
-      <footer className="text-center pb-10 opacity-30">
-        <p className="text-[8px] font-black uppercase text-slate-400 tracking-[0.5em]">Console d'Administration Financière • Gabon Mobilité</p>
+      <footer className="text-center pb-10 opacity-10">
+        <p className="text-[8px] font-black uppercase text-white tracking-[0.5em]">Console Financière • TransGabon Connect</p>
       </footer>
     </div>
   );
@@ -279,14 +278,14 @@ export default function AdminPayments() {
 
 function SummaryCard({ label, value, color, bg, icon: Icon, sub }: any) {
   return (
-    <div className="bg-white border-2 border-slate-50 rounded-[2.5rem] p-6 shadow-xl shadow-slate-100/50 flex items-center gap-5 group hover:scale-[1.02] transition-all">
-      <div className={`h-16 w-16 rounded-[1.5rem] ${bg} flex items-center justify-center shrink-0 border-2 border-white shadow-sm`}>
+    <div className="bg-card border border-border rounded-[2.5rem] p-6 shadow-2xl flex items-center gap-5 group hover:border-primary/20 transition-all">
+      <div className={`h-16 w-16 rounded-[1.5rem] ${bg} flex items-center justify-center shrink-0 border border-border shadow-inner group-hover:scale-110 transition-transform`}>
         <Icon className={`h-8 w-8 ${color}`} />
       </div>
-      <div>
-        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-2">{label}</p>
+      <div className="text-left">
+        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none mb-2">{label}</p>
         <div className={`text-2xl font-black tracking-tighter leading-none ${color}`}>{value}</div>
-        <p className="text-[8px] font-bold text-slate-300 mt-2 uppercase italic">{sub}</p>
+        <p className="text-[9px] font-bold text-slate-600 mt-2 uppercase italic leading-none">{sub}</p>
       </div>
     </div>
   );

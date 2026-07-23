@@ -122,54 +122,59 @@ export default function AgencyPayments() {
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  if (loading) return <div className="p-8 space-y-4 bg-slate-950 min-h-screen"><Skeleton className="h-12 w-48 bg-slate-800" /><Skeleton className="h-64 w-full bg-slate-800" /></div>;
+  if (loading) return (
+    <div className="p-8 space-y-4 bg-background min-h-screen">
+      <Skeleton className="h-12 w-48 bg-card" />
+      <Skeleton className="h-64 w-full bg-card rounded-3xl" />
+    </div>
+  );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 pb-20 bg-background text-foreground">
       
-      {/* HEADER - Texte passé en Blanc/Slate-200 */}
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-black italic text-white flex items-center gap-3">
             <BarChart3 className="h-8 w-8 text-primary" /> État de Caisse
           </h1>
-          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Suivi des encaissements agence</p>
+          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Suivi des encaissements agence</p>
         </div>
         <div className="flex gap-2">
-            <Button variant="outline" onClick={() => window.print()} className="rounded-xl font-bold border-slate-700 bg-slate-900 text-slate-200 h-11 print:hidden hover:bg-slate-800">
+            <Button variant="outline" onClick={() => window.print()} className="rounded-xl font-bold border-border bg-card text-foreground h-11 print:hidden hover:bg-muted transition-colors">
               <Printer className="h-4 w-4 mr-2" /> Imprimer
             </Button>
-            <Button variant="outline" onClick={loadData} className="rounded-xl border-slate-700 bg-slate-900 h-11 w-11 flex items-center justify-center print:hidden hover:bg-slate-800">
-              <RefreshCw className="h-4 w-4 text-slate-400" />
+            <Button variant="outline" onClick={loadData} className="rounded-xl border-border bg-card h-11 w-11 flex items-center justify-center print:hidden hover:bg-muted transition-colors">
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </Button>
         </div>
       </div>
 
-      {/* RECAP CARTES - bg-slate-900 au lieu de white */}
+      {/* RECAP CARTES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <SummaryCard label="Recettes Jour" value={`${stats.totalToday.toLocaleString()} F`} color="text-emerald-400" bg="bg-emerald-500/10" icon={CalendarIcon} sub={`${stats.countToday} billets aujourd'hui`} />
         <SummaryCard label="Recettes Mois" value={`${stats.totalMonth.toLocaleString()} F`} color="text-blue-400" bg="bg-blue-500/10" icon={TrendingUp} sub="Mois en cours" />
         <SummaryCard label="Total Billets" value={filtered.length} color="text-primary" bg="bg-primary/10" icon={Tag} sub="Transactions listées" />
       </div>
 
-      {/* FILTRES - fond sombre border-slate-800 */}
-      <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 shadow-2xl print:hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* FILTRES SOMBRES */}
+      <div className="bg-card border border-border rounded-[2.5rem] p-6 shadow-2xl print:hidden grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-1.5">
-             <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Recherche rapide</Label>
+             <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Recherche rapide</Label>
              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                <Input placeholder="Billet, Nom, Ville..." value={search} onChange={e => setSearch(e.target.value)} className="h-11 pl-10 rounded-xl border-slate-800 bg-slate-950 text-white" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Billet, Nom, Ville..." value={search} onChange={e => setSearch(e.target.value)} className="h-11 pl-10 rounded-xl border-border bg-background text-foreground focus-visible:ring-primary/50" />
              </div>
           </div>
           <div className="space-y-1.5">
-             <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtrer par date</Label>
-             <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="h-11 rounded-xl border-slate-800 bg-slate-950 text-white font-bold" />
+             <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Filtrer par date</Label>
+             <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="h-11 rounded-xl border-border bg-background text-foreground font-bold appearance-none" />
           </div>
           <div className="space-y-1.5">
-             <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Règlement</Label>
-             <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+             <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Règlement</Label>
+             <div className="flex bg-background p-1 rounded-xl border border-border shadow-inner">
                 {(['all', 'Payé', 'Non payé'] as const).map(f => (
-                  <button key={f} onClick={() => setStatusFilter(f)} className={`flex-1 text-[10px] font-black uppercase py-2 rounded-lg transition-all ${statusFilter === f ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                  <button key={f} onClick={() => setStatusFilter(f)} className={`flex-1 text-[10px] font-black uppercase py-2 rounded-lg transition-all ${statusFilter === f ? 'bg-primary text-white shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}>
                     {f === 'all' ? 'Tous' : f}
                   </button>
                 ))}
@@ -177,31 +182,31 @@ export default function AgencyPayments() {
           </div>
       </div>
 
-      {/* TABLEAU - Totalement revu pour le mode sombre */}
-      <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl overflow-x-auto">
+      {/* TABLEAU HARMONISÉ */}
+      <div className="bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-2xl overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-950/50 border-b border-slate-800">
+          <thead className="bg-muted/50 border-b border-border">
             <tr>
-              <th className="p-4 font-black uppercase text-[10px] text-slate-500 text-left">Billet / Date</th>
-              <th className="p-4 font-black uppercase text-[10px] text-slate-500 text-left">Voyageur / Destination</th>
-              <th className="p-4 font-black uppercase text-[10px] text-slate-500 text-center">Classe</th>
-              <th className="p-4 font-black uppercase text-[10px] text-slate-500 text-center">Paiement</th>
+              <th className="p-4 font-black uppercase text-[10px] text-muted-foreground text-left">Billet / Date</th>
+              <th className="p-4 font-black uppercase text-[10px] text-muted-foreground text-left">Voyageur / Destination</th>
+              <th className="p-4 font-black uppercase text-[10px] text-muted-foreground text-center">Classe</th>
+              <th className="p-4 font-black uppercase text-[10px] text-muted-foreground text-center">Paiement</th>
               <th className="p-4 font-black uppercase text-[10px] text-white text-right">Montant</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-border">
             {paginated.length === 0 ? (
-              <tr><td colSpan={5} className="p-16 text-center text-slate-500 italic">Aucune transaction trouvée</td></tr>
+              <tr><td colSpan={5} className="p-16 text-center text-muted-foreground italic">Aucune transaction trouvée</td></tr>
             ) : (
               paginated.map(b => (
-                <tr key={b.id} className="hover:bg-slate-800/40 transition-colors group">
+                <tr key={b.id} className="hover:bg-muted/30 transition-colors group">
                   <td className="p-4">
                     <p className="font-mono font-black text-primary text-xs tracking-tighter">{b.bookingNumber}</p>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{b.dateStr}</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase mt-0.5">{b.dateStr}</p>
                   </td>
                   <td className="p-4">
                     <p className="font-bold text-slate-200 group-hover:text-white transition-colors">{b.passengerName}</p>
-                    <div className="flex items-center gap-1 text-[9px] font-black text-slate-500 uppercase">
+                    <div className="flex items-center gap-1 text-[9px] font-black text-muted-foreground uppercase">
                        <MapPin size={10} className="text-primary/50" /> {b.destination}
                     </div>
                   </td>
@@ -218,10 +223,10 @@ export default function AgencyPayments() {
                     }`}>
                       {b.paymentStatus}
                     </span>
-                    <p className="text-[8px] font-bold text-slate-500 mt-1 uppercase">{b.paymentMethod}</p>
+                    <p className="text-[8px] font-bold text-muted-foreground mt-1 uppercase">{b.paymentMethod}</p>
                   </td>
                   <td className="p-4 text-right font-black text-white text-base">
-                    {b.amount.toLocaleString()} F CFA
+                    {b.amount.toLocaleString()} <span className="text-[10px] text-muted-foreground">F CFA</span>
                   </td>
                 </tr>
               ))
@@ -230,33 +235,32 @@ export default function AgencyPayments() {
         </table>
       </div>
 
-      {/* PAGINATION SOMBRE */}
+      {/* PAGINATION */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 bg-slate-900 p-2 rounded-2xl border-2 border-slate-800 w-fit mx-auto shadow-xl print:hidden">
-          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 text-slate-400 hover:bg-slate-800 hover:text-white"><ChevronLeft size={18}/></Button>
-          <span className="text-[10px] font-black uppercase text-slate-500 px-4">Page {currentPage} / {totalPages}</span>
-          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 text-slate-400 hover:bg-slate-800 hover:text-white"><ChevronRight size={18}/></Button>
+        <div className="flex items-center justify-center gap-4 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-xl print:hidden">
+          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronLeft size={18}/></Button>
+          <span className="text-[10px] font-black uppercase text-muted-foreground px-4">Page {currentPage} / {totalPages}</span>
+          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronRight size={18}/></Button>
         </div>
       )}
 
       <footer className="text-center pb-10 opacity-20">
-        <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em]">Document Comptable Interne • TransGabon-Connect</p>
+        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.3em]">Document Comptable Interne • TransGabon-Connect</p>
       </footer>
     </div>
   );
 }
 
-// Sous-composant SummaryCard adapté au mode sombre
 function SummaryCard({ label, value, color, bg, icon: Icon, sub }: any) {
   return (
-    <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 shadow-2xl flex items-center gap-5 group hover:border-primary/30 transition-all">
-      <div className={`h-14 w-14 rounded-2xl ${bg} flex items-center justify-center shrink-0 border border-slate-800 shadow-inner group-hover:scale-110 transition-transform`}>
+    <div className="bg-card border border-border rounded-[2.5rem] p-6 shadow-2xl flex items-center gap-5 group hover:border-primary/30 transition-all">
+      <div className={`h-14 w-14 rounded-2xl ${bg} flex items-center justify-center shrink-0 border border-border shadow-inner group-hover:scale-110 transition-transform`}>
         <Icon className={`h-7 w-7 ${color}`} />
       </div>
-      <div>
-        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none mb-1.5">{label}</p>
+      <div className="text-left">
+        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1.5">{label}</p>
         <div className={`text-2xl font-black tracking-tighter leading-none ${color}`}>{value}</div>
-        <p className="text-[9px] font-bold text-slate-600 mt-2 uppercase italic leading-none">{sub}</p>
+        <p className="text-[9px] font-bold text-muted-foreground mt-2 uppercase italic leading-none">{sub}</p>
       </div>
     </div>
   );

@@ -125,8 +125,8 @@ export default function TicketPage() {
     loadTicketDetails();
   }, [user, bookingId]);
 
-  if (isLoading) return <div className="p-20 text-center animate-pulse font-black uppercase text-slate-400">Vérification...</div>;
-  if (loading) return <div className="max-w-lg mx-auto p-8"><Skeleton className="h-[500px] w-full rounded-[3rem]" /></div>;
+  if (isLoading) return <div className="p-20 text-center animate-pulse font-black uppercase text-slate-500">Vérification...</div>;
+  if (loading) return <div className="max-w-lg mx-auto p-8"><Skeleton className="h-[500px] w-full rounded-[3rem] bg-slate-900" /></div>;
   if (!booking) return <div className="p-20 text-center font-bold text-red-500 uppercase">Billet introuvable</div>;
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(booking.qrCodeData)}`;
@@ -135,33 +135,33 @@ export default function TicketPage() {
   return (
     <div className="container mx-auto px-4 py-10 max-w-lg animate-in fade-in duration-700">
       
-      <Link to="/dashboard" className="inline-flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 hover:text-primary mb-6 print:hidden tracking-widest">
+      <Link to="/dashboard" className="inline-flex items-center gap-2 text-[10px] font-black uppercase text-slate-500 hover:text-primary mb-6 print:hidden tracking-widest">
         <ArrowLeft size={14} /> Retour à mon espace
       </Link>
 
-      <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] overflow-hidden shadow-2xl print:border-none print:shadow-none">
+      <div className="bg-card border-2 border-border rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] print:border-none print:shadow-none">
         
-        {/* HEADER */}
+        {/* HEADER - Couleurs d'accent conservées pour la distinction */}
         <div className={`p-8 text-white ${
           booking.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 
-          booking.transportTypeCode === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'
+          booking.transportTypeCode === 'TRAIN' ? 'bg-slate-950' : 'bg-primary'
         }`}>
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2">
-              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
                  <TransportIcon size={20} />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Billet Officiel</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-90">Billet Officiel</span>
             </div>
             <div className="text-right">
-               <p className="text-[8px] font-bold uppercase opacity-60">Référence</p>
-               <p className="font-mono font-black text-sm">{booking.bookingNumber}</p>
+               <p className="text-[8px] font-bold uppercase opacity-50">Référence</p>
+               <p className="font-mono font-black text-sm tracking-tighter">{booking.bookingNumber}</p>
             </div>
           </div>
           
           <div className="space-y-1">
              <h2 className="text-3xl font-black leading-none tracking-tighter uppercase">{booking.departureCity}</h2>
-             <div className="flex items-center gap-3 opacity-30 py-1">
+             <div className="flex items-center gap-3 opacity-20 py-1">
                 <div className="h-px flex-1 bg-white" />
                 <ArrowRight size={14} />
                 <div className="h-px flex-1 bg-white" />
@@ -169,89 +169,91 @@ export default function TicketPage() {
              <h2 className="text-3xl font-black leading-none tracking-tighter uppercase">{booking.arrivalCity}</h2>
           </div>
           
-          <p className="mt-6 text-[10px] font-black uppercase tracking-widest opacity-80 italic">{booking.companyName}</p>
+          <p className="mt-6 text-[10px] font-black uppercase tracking-widest text-white/60 italic">{booking.companyName}</p>
         </div>
 
-        {/* QR CODE */}
-        <div className="p-8 flex flex-col items-center justify-center bg-white border-b-2 border-dashed border-slate-100 relative">
-          <div className="absolute -left-4 top-full -translate-y-1/2 h-8 w-8 bg-slate-50 rounded-full border-r-2 border-slate-100 print:hidden" />
-          <div className="absolute -right-4 top-full -translate-y-1/2 h-8 w-8 bg-slate-50 rounded-full border-l-2 border-slate-100 print:hidden" />
+        {/* SECTION QR CODE */}
+        <div className="p-8 flex flex-col items-center justify-center bg-card border-b-2 border-dashed border-border relative">
+          {/* Cercles de découpe ticket (doivent matcher la couleur de fond du site) */}
+          <div className="absolute -left-4 top-full -translate-y-1/2 h-8 w-8 bg-background rounded-full border-r-2 border-border print:hidden" />
+          <div className="absolute -right-4 top-full -translate-y-1/2 h-8 w-8 bg-background rounded-full border-l-2 border-border print:hidden" />
           
-          <div className="p-4 bg-slate-50 rounded-[2.5rem] border-2 border-slate-100 mb-4 shadow-inner">
-            <img src={qrUrl} alt="QR Code" className="h-40 w-40" />
+          <div className="p-4 bg-slate-950 rounded-[2.5rem] border-2 border-border mb-4 shadow-inner">
+            <img src={qrUrl} alt="QR Code" className="h-40 w-40 brightness-90 contrast-125" />
           </div>
-          <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">Scanner au contrôle</p>
+          <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em]">Scanner au contrôle</p>
         </div>
 
-        {/* DÉTAILS */}
-        <div className="p-8 space-y-8 bg-white">
+        {/* DÉTAILS - bg-card au lieu de bg-white */}
+        <div className="p-8 space-y-8 bg-card">
             <div className="grid grid-cols-2 gap-y-8 text-left">
                 <InfoField label="Voyageur" value={booking.passengerName} />
                 <InfoField label="Siège">
-                   <span className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-xs shadow-md">
+                   <span className="bg-slate-950 text-primary border border-primary/20 px-3 py-1 rounded-lg font-black text-xs shadow-lg">
                      {booking.seatNumber}
                    </span>
                 </InfoField>
 
                 <InfoField label="Véhicule / Train">
-                    <div className="flex items-center gap-1.5 font-black text-xs text-slate-700 uppercase">
+                    <div className="flex items-center gap-1.5 font-black text-xs text-slate-200 uppercase">
                         <Hash size={12} className="text-primary" /> {booking.registration}
                     </div>
                 </InfoField>
 
                 <InfoField label="Confort choisi">
-                    <div className="flex items-center gap-1.5 font-black text-[10px] text-primary uppercase italic">
+                    <div className="flex items-center gap-1.5 font-black text-[10px] text-primary uppercase italic tracking-wider">
                         {booking.travelClass}
                     </div>
                 </InfoField>
             </div>
 
-            {/* SECTION BAGAGES */}
+            {/* SECTION BAGAGES SOMBRE */}
             {booking.luggages.length > 0 ? (
-              <div className="p-5 bg-slate-50 rounded-[2rem] border-2 border-slate-100 animate-in slide-in-from-bottom-2">
-                <div className="flex items-center gap-2 text-slate-400 mb-4">
+              <div className="p-5 bg-slate-950 rounded-[2rem] border-2 border-border animate-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-2 text-slate-500 mb-4">
                    <Package size={14} className="text-primary" />
                    <span className="text-[10px] font-black uppercase tracking-widest">Bagages enregistrés</span>
                 </div>
                 <div className="space-y-2">
                    {booking.luggages.map((lug) => (
-                     <div key={lug.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                        <span className="text-[10px] font-black text-slate-100 uppercase">{lug.label}</span>
-                        <Badge className="bg-slate-100 text-slate-600 border-none font-black text-[10px]">x{lug.quantity}</Badge>
+                     <div key={lug.id} className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-border shadow-sm">
+                        <span className="text-[10px] font-black text-slate-300 uppercase">{lug.label}</span>
+                        <Badge className="bg-slate-800 text-slate-400 border-none font-black text-[10px]">x{lug.quantity}</Badge>
                      </div>
                    ))}
                 </div>
               </div>
             ) : (
-              <div className="p-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 flex items-center gap-3">
-                 <Info size={14} className="text-slate-300" />
-                 <p className="text-[9px] font-bold text-slate-400 uppercase italic">Aucun supplément déclaré</p>
+              <div className="p-4 bg-slate-950/50 rounded-2xl border border-dashed border-slate-800 flex items-center gap-3">
+                 <Info size={14} className="text-slate-700" />
+                 <p className="text-[9px] font-bold text-slate-600 uppercase italic">Aucun supplément déclaré</p>
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-2 bg-slate-900 p-6 rounded-[2rem] shadow-xl text-white">
+            {/* BOX RÉCAPITULATIF SOMBRE */}
+            <div className="grid grid-cols-3 gap-2 bg-slate-950 p-6 rounded-[2rem] border border-border shadow-xl text-white">
                <div className="text-left">
-                  <p className="text-[8px] font-black text-primary uppercase">Date</p>
-                  <p className="font-black text-xs">{new Date(booking.departureDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</p>
+                  <p className="text-[8px] font-black text-primary uppercase opacity-70">Date</p>
+                  <p className="font-black text-xs text-slate-200">{new Date(booking.departureDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</p>
                </div>
-               <div className="text-center">
-                  <p className="text-[8px] font-black text-primary uppercase">Heure</p>
-                  <p className="font-black text-xs">{booking.departureTime}</p>
+               <div className="text-center border-x border-white/5">
+                  <p className="text-[8px] font-black text-primary uppercase opacity-70">Heure</p>
+                  <p className="font-black text-xs text-slate-200">{booking.departureTime}</p>
                </div>
                <div className="text-right">
-                  <p className="text-[8px] font-black text-primary uppercase">Montant</p>
-                  <p className="font-black text-xs">{booking.amount.toLocaleString()} F</p>
+                  <p className="text-[8px] font-black text-primary uppercase opacity-70">Montant</p>
+                  <p className="font-black text-xs text-slate-200">{booking.amount.toLocaleString()} F</p>
                </div>
             </div>
         </div>
 
-        <div className="p-8 pt-0 flex flex-col gap-4 print:hidden">
-          <Button onClick={() => window.print()} variant="outline" className="w-full h-14 rounded-2xl font-black border-2 gap-2">
+        <div className="p-8 pt-0 flex flex-col gap-4 print:hidden bg-card">
+          <Button onClick={() => window.print()} variant="outline" className="w-full h-14 rounded-2xl font-black border-border bg-slate-900 text-slate-200 hover:bg-slate-800 gap-2">
             <Printer size={18} /> IMPRIMER LE BILLET
           </Button>
           <div className="flex items-center justify-center gap-2">
              <div className={`h-2 w-2 rounded-full ${booking.paymentStatus === 'Réglé' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-             <span className="text-[10px] font-black uppercase text-slate-400">Statut : {booking.paymentStatus}</span>
+             <span className="text-[10px] font-black uppercase text-slate-500 tracking-tighter">Statut : {booking.paymentStatus}</span>
           </div>
         </div>
       </div>
@@ -262,8 +264,8 @@ export default function TicketPage() {
 function InfoField({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <div className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none">{label}</div>
-      <div className="text-sm font-black text-slate-100 truncate uppercase mt-1">
+      <div className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">{label}</div>
+      <div className="text-sm font-black text-slate-200 truncate uppercase mt-1">
         {children || value || '—'}
       </div>
     </div>

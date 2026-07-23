@@ -9,9 +9,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, 
-  ArrowRight, 
   Users, 
-  UserCheck, 
   CheckCircle2, 
   RefreshCw,
   ChevronLeft,
@@ -21,10 +19,8 @@ import {
   Ship,
   Bus,
   Train,
-  Phone,
-  CreditCard,
   MapPin,
-  Gem
+  UserCheck
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -170,99 +166,99 @@ export default function AgencyPassengers() {
   const totalPages = Math.ceil((data?.passengers.length || 0) / itemsPerPage);
   const TransportIcon = data?.transportType === 'TRAIN' ? Train : data?.transportType === 'BOAT' ? Ship : Bus;
 
-  if (loading) return <div className="p-4 space-y-4"><Skeleton className="h-12 w-48" /><Skeleton className="h-64 w-full rounded-3xl" /></div>;
+  if (loading) return <div className="p-4 space-y-4 bg-background min-h-screen"><Skeleton className="h-12 w-48 bg-slate-800" /><Skeleton className="h-64 w-full rounded-3xl bg-slate-800" /></div>;
   if (!data) return null;
 
   return (
-    <div className="text-foreground text-left p-2 md:p-4 max-w-6xl mx-auto animate-in fade-in duration-500">
+    <div className="bg-background text-foreground text-left p-2 md:p-4 max-w-6xl mx-auto animate-in fade-in duration-500">
       
       {/* HEADER WEB */}
       <div className="print:hidden">
-        <Link to="/agency/departures" className="inline-flex items-center gap-3 text-xs font-black uppercase text-slate-100 opacity-60 hover:text-primary mb-6 transition-all tracking-widest">
+        <Link to="/agency/departures" className="inline-flex items-center gap-3 text-xs font-black uppercase text-slate-500 hover:text-primary mb-6 transition-all tracking-widest">
           <ArrowLeft size={16} /> <span className="hidden sm:inline">Retour aux départs</span>
         </Link>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-4">
-            <div className={`p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl ${data.transportType === 'BOAT' ? 'bg-blue-600' : data.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'} text-white`}>
+            <div className={`p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl ${data.transportType === 'BOAT' ? 'bg-blue-600' : data.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'} text-white`}>
                <TransportIcon className="h-6 w-6 md:h-10 md:w-10" />
             </div>
-            <div>
-              <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-slate-100 leading-none">Manifeste</h1>
+            <div className="text-left">
+              <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">Manifeste</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2">
-                <Badge variant="outline" className="font-black text-[10px] border-primary/20 text-primary bg-primary/5 px-2 py-0.5">{data.departureCity} ➔ {data.arrivalCity}</Badge>
-                <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border uppercase tracking-tighter">
+                <Badge variant="outline" className="font-black text-[10px] border-primary/30 text-primary bg-primary/5 px-2 py-0.5">{data.departureCity} ➔ {data.arrivalCity}</Badge>
+                <span className="text-[10px] font-black text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 uppercase tracking-tighter">
                    {data.vehicleRegistration}
                 </span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-3 w-full lg:w-auto">
-             <div className="bg-white border-2 border-slate-100 p-3 md:p-5 rounded-[1.25rem] md:rounded-[1.5rem] flex items-center gap-4 md:gap-8 shadow-sm flex-1 lg:flex-none">
+             <div className="bg-slate-900 border border-slate-800 p-3 md:p-5 rounded-[1.25rem] md:rounded-[1.5rem] flex items-center gap-4 md:gap-8 shadow-xl flex-1 lg:flex-none">
                 <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-100 opacity-60 uppercase tracking-widest mb-1">Présents</p>
-                    <p className="text-xl md:text-3xl font-black text-emerald-600 leading-none">{stats.boarded}</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Présents</p>
+                    <p className="text-xl md:text-3xl font-black text-emerald-400 leading-none">{stats.boarded}</p>
                 </div>
-                <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-100 opacity-60 uppercase tracking-widest mb-1">Total</p>
-                    <p className="text-xl md:text-3xl font-black text-slate-100 leading-none">{stats.total}</p>
+                <div className="text-center border-l border-slate-800 pl-4 md:pl-8">
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Total</p>
+                    <p className="text-xl md:text-3xl font-black text-white leading-none">{stats.total}</p>
                 </div>
              </div>
-             <Button onClick={() => window.print()} className="gap-3 font-black rounded-xl h-14 md:h-20 px-6 md:px-10 shadow-xl text-xs md:text-base flex-1 md:flex-none">
+             <Button onClick={() => window.print()} className="gap-3 font-black rounded-xl h-14 md:h-20 px-6 md:px-10 shadow-xl text-xs md:text-base flex-1 md:flex-none bg-primary text-white hover:bg-primary/90">
                 <Printer size={20} /> <span className="hidden sm:inline">IMPRIMER</span>
              </Button>
           </div>
         </div>
       </div>
 
-      {/* TABLEAU "HAUTE VISIBILITÉ" AVEC SCROLL HORIZONTAL MOBILE */}
-      <div className="border-2 border-slate-100 rounded-[2rem] md:rounded-[3rem] overflow-hidden bg-white shadow-2xl print:shadow-none print:border-slate-900 print:rounded-none">
-        <div className="overflow-x-auto"> {/* AJOUT DU SCROLL HORIZONTAL ICI */}
-          <table className="w-full text-base min-w-[600px]"> {/* min-w force le tableau à ne pas s'écraser */}
-            <thead className="bg-slate-50 border-b-4 border-slate-100 print:bg-slate-100">
+      {/* TABLEAU */}
+      <div className="border border-slate-800 rounded-[2rem] md:rounded-[3rem] overflow-hidden bg-slate-900 shadow-2xl print:shadow-none print:border-slate-900 print:rounded-none">
+        <div className="overflow-x-auto">
+          <table className="w-full text-base min-w-[600px]">
+            <thead className="bg-slate-950 border-b border-slate-800 print:bg-slate-100">
               <tr>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest">#</th>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest">Passager</th>
-                <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest">Siège</th>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest hidden sm:table-cell">Classe</th>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest">Destination</th>
-                <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-100 opacity-70 tracking-widest print:hidden">Contrôle</th>
-                <th className="hidden print:table-cell text-left p-6 font-black uppercase text-[10px] border-l-4 border-slate-200">Signature</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">#</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">Passager</th>
+                <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">Siège</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest hidden sm:table-cell">Classe</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">Destination</th>
+                <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest print:hidden">Contrôle</th>
+                <th className="hidden print:table-cell text-left p-6 font-black uppercase text-[10px] border-l border-slate-200">Signature</th>
               </tr>
             </thead>
-            <tbody className="divide-y-4 divide-slate-50">
+            <tbody className="divide-y divide-slate-800">
               {currentPassengers.map((p, i) => (
-                <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="p-4 md:p-6 text-slate-300 font-black text-sm md:text-lg">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
+                <tr key={p.id} className="hover:bg-slate-800/40 transition-colors group">
+                  <td className="p-4 md:p-6 text-slate-600 font-black text-sm md:text-lg">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
                   <td className="p-4 md:p-6">
-                      <p className="font-black text-slate-100 uppercase text-sm md:text-lg leading-tight mb-1">{p.passengerName}</p>
+                      <p className="font-black text-white uppercase text-sm md:text-lg leading-tight mb-1">{p.passengerName}</p>
                       <p className="text-[10px] font-mono text-primary font-bold tracking-widest hidden sm:block">{p.bookingNumber}</p>
                   </td>
                   <td className="p-4 md:p-6 text-center">
-                    <div className="inline-flex h-10 w-10 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-slate-900 items-center justify-center text-white font-black text-sm md:text-lg shadow-xl">
+                    <div className="inline-flex h-10 w-10 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-slate-950 border border-slate-800 items-center justify-center text-primary font-black text-sm md:text-lg shadow-inner">
                         {p.seatNumber}
                     </div>
                   </td>
                   <td className="p-4 md:p-6 hidden sm:table-cell">
-                    <Badge variant="outline" className={`text-[9px] font-black uppercase border-2 px-3 py-1 ${p.travelClass.includes('VIP') || p.travelClass.includes('1ERE') ? 'bg-amber-50 text-amber-600 border-amber-200' : 'text-slate-500 border-slate-200'}`}>
+                    <Badge variant="outline" className={`text-[9px] font-black uppercase border-2 px-3 py-1 ${p.travelClass.includes('VIP') || p.travelClass.includes('1ERE') ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'text-slate-400 border-slate-800 bg-slate-950'}`}>
                         {p.travelClass}
                     </Badge>
                   </td>
                   <td className="p-4 md:p-6">
-                    <div className="flex items-center gap-2 font-black text-slate-800 uppercase text-[10px] md:text-sm tracking-tighter">
+                    <div className="flex items-center gap-2 font-black text-slate-300 uppercase text-[10px] md:text-sm tracking-tighter">
                         <MapPin size={14} className="text-primary shrink-0" />
                         <span className="truncate max-w-[80px] md:max-w-none">{p.destination}</span>
                     </div>
                   </td>
                   <td className="p-4 md:p-6 text-center print:hidden">
                     {p.boarded ? (
-                      <div className="flex items-center justify-center gap-2 text-emerald-600 font-black text-[9px] uppercase tracking-widest">
+                      <div className="flex items-center justify-center gap-2 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
                           <CheckCircle2 className="h-5 w-5 md:h-6 md:w-6" strokeWidth={3} /> <span className="hidden sm:inline">À BORD</span>
                       </div>
                     ) : (
                       <Button 
                           size="sm"
-                          className="h-10 md:h-14 px-4 md:px-8 font-black uppercase rounded-xl md:rounded-2xl bg-slate-900 text-white shadow-lg text-[9px] md:text-xs"
+                          className="h-10 md:h-14 px-4 md:px-8 font-black uppercase rounded-xl md:rounded-2xl bg-slate-950 text-slate-300 border border-slate-800 hover:bg-emerald-600 hover:text-white hover:border-transparent shadow-lg text-[9px] md:text-xs transition-all"
                           onClick={() => handleBoardPassenger(p.id)}
                           disabled={boardingId === p.id}
                       >
@@ -278,24 +274,24 @@ export default function AgencyPassengers() {
         </div>
       </div>
 
-      {/* PAGINATION ADAPTATIVE */}
+      {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 md:gap-8 mt-10 print:hidden">
-          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl md:rounded-[1.5rem] h-12 w-12 md:h-16 md:w-16 border-2 md:border-4 bg-white shadow-xl"><ChevronLeft size={24} /></Button>
-          <div className="text-[10px] md:text-sm font-black uppercase text-slate-500 tracking-widest bg-white px-4 md:px-8 py-2 md:py-3 rounded-full border-2">PAGE {currentPage} / {totalPages}</div>
-          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl md:rounded-[1.5rem] h-12 w-12 md:h-16 md:w-16 border-2 md:border-4 bg-white shadow-xl"><ChevronRight size={24} /></Button>
+          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl md:rounded-[1.5rem] h-12 w-12 md:h-16 md:w-16 border-2 border-slate-800 bg-slate-900 text-slate-400 shadow-xl hover:bg-slate-800 hover:text-white"><ChevronLeft size={24} /></Button>
+          <div className="text-[10px] md:text-sm font-black uppercase text-slate-500 tracking-widest bg-slate-900 px-4 md:px-8 py-2 md:py-3 rounded-full border border-slate-800 shadow-xl">PAGE {currentPage} / {totalPages}</div>
+          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl md:rounded-[1.5rem] h-12 w-12 md:h-16 md:w-16 border-2 border-slate-800 bg-slate-900 text-slate-400 shadow-xl hover:bg-slate-800 hover:text-white"><ChevronRight size={24} /></Button>
         </div>
       )}
 
-      {/* FOOTER XXL */}
-      <div className="mt-10 md:mt-16 p-6 md:p-10 bg-slate-900 rounded-[2rem] md:rounded-[3rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 print:bg-white print:text-slate-100 print:border-t-4 print:border-slate-900 print:rounded-none">
+      {/* FOOTER MANIFESTE */}
+      <div className="mt-10 md:mt-16 p-6 md:p-10 bg-slate-950 border border-slate-800 rounded-[2rem] md:rounded-[3rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 print:bg-white print:text-black print:border-t-4 print:border-black print:rounded-none">
         <div className="text-left space-y-2">
           <p className="text-[10px] font-black uppercase text-primary tracking-[0.4em]">Certification TransGabon Connect</p>
-          <p className="text-[9px] md:text-sm font-medium opacity-60 italic max-w-md leading-relaxed">Liste officielle des passagers autorisés.</p>
+          <p className="text-[9px] md:text-sm font-medium text-slate-500 italic max-w-md leading-relaxed">Document officiel de transport de voyageurs.</p>
         </div>
-        <div className="text-xl md:text-4xl font-black uppercase tracking-tighter flex items-center gap-4 md:gap-6">
+        <div className="text-xl md:text-4xl font-black uppercase tracking-tighter flex items-center gap-4 md:gap-6 text-slate-200">
             <Users className="h-8 w-8 md:h-12 md:w-12 text-primary" />
-            <p>{data.passengers.length} Voyageurs</p>
+            <p>{data.passengers.length} Voyageurs Enregistrés</p>
         </div>
       </div>
     </div>

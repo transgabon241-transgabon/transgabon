@@ -61,12 +61,12 @@ type Tariff = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  'En attente': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  'Pris en charge': 'bg-blue-50 text-blue-700 border-blue-200',
-  'En transit': 'bg-orange-50 text-orange-700 border-orange-200',
-  'Arrivé': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'Livré': 'bg-green-50 text-green-700 border-green-200',
-  'Retourné': 'bg-red-50 text-red-700 border-red-200',
+  'En attente': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+  'Pris en charge': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  'En transit': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  'Arrivé': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  'Livré': 'bg-green-500/10 text-green-400 border-green-500/20',
+  'Retourné': 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
 export default function AgencyParcels() {
@@ -165,7 +165,6 @@ export default function AgencyParcels() {
     } catch (e) { toast.error('Erreur de mise à jour'); }
   };
 
-  // NOUVEAU : ENCAISSER LE PAIEMENT FRET
   const handleCollectPayment = async (id: string) => {
     try {
       const { error } = await supabase.from('parcels').update({ is_paid: true }).eq('id', id);
@@ -188,43 +187,48 @@ export default function AgencyParcels() {
   const paginatedParcels = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
-  if (loading && parcels.length === 0) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-48"/><Skeleton className="h-64 w-full rounded-[2rem]"/></div>;
+  if (loading && parcels.length === 0) return (
+    <div className="p-8 space-y-4 bg-background min-h-screen">
+      <Skeleton className="h-12 w-48 bg-card"/>
+      <Skeleton className="h-64 w-full rounded-[2rem] bg-card"/>
+    </div>
+  );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-card p-6 rounded-[2rem] border-2 border-border shadow-2xl">
         <div className="flex items-center gap-4 text-left">
-          <div className="p-3 bg-slate-900 rounded-2xl shadow-lg text-primary">
+          <div className="p-3 bg-slate-950 rounded-2xl shadow-lg text-primary border border-slate-800">
             <Package size={28} />
           </div>
-          <div>
-            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-slate-100 leading-none">Gestion du Fret</h1>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Logistique et Messagerie Nationale</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Gestion du Fret</h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Logistique et Messagerie Nationale</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={loadData} className="rounded-xl font-black border-2 h-11 px-6 text-[10px] uppercase tracking-widest">
+        <Button variant="outline" size="sm" onClick={loadData} className="rounded-xl font-black border-slate-700 bg-slate-950 h-11 px-6 text-[10px] uppercase tracking-widest hover:bg-slate-800 text-slate-300 transition-all">
           <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
         </Button>
       </div>
 
-      {/* Barre de Recherche */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-5 rounded-[2rem] border-2 border-slate-50 shadow-xl shadow-slate-200/50">
+      {/* Barre de Recherche SOMBRE */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-card p-5 rounded-[2rem] border border-border shadow-2xl">
         <div className="md:col-span-3 relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 group-focus-within:text-primary transition-colors" />
           <Input 
-            placeholder="Rechercher par N° de suivi, Nom ou Destination..." 
+            placeholder="Référence, Nom ou Destination..." 
             value={search} 
             onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} 
-            className="pl-12 h-14 rounded-2xl border-2 border-slate-100 font-bold text-base shadow-inner" 
+            className="pl-12 h-14 rounded-2xl border-none bg-slate-950 font-bold text-base shadow-inner text-white placeholder:text-slate-600" 
           />
         </div>
         <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setCurrentPage(1); }}>
-          <SelectTrigger className="h-14 rounded-2xl border-2 font-black uppercase text-[10px] bg-slate-50">
+          <SelectTrigger className="h-14 rounded-2xl border-none font-black uppercase text-[10px] bg-slate-950 text-slate-300">
             <SelectValue placeholder="Filtrer" />
           </SelectTrigger>
-          <SelectContent className="rounded-xl font-bold">
+          <SelectContent className="rounded-xl font-bold bg-slate-900 border-border text-slate-200">
             <SelectItem value="all">TOUS LES COLIS</SelectItem>
             <SelectItem value="En attente">EN ATTENTE</SelectItem>
             <SelectItem value="Pris en charge">PRIS EN CHARGE</SelectItem>
@@ -248,14 +252,20 @@ export default function AgencyParcels() {
             canCollectMoney={canCollectMoney}
           />
         ))}
+        {paginatedParcels.length === 0 && (
+          <div className="py-20 text-center border-2 border-dashed border-border rounded-[3rem] bg-card/40 text-slate-600">
+            <Package size={48} className="mx-auto mb-4 opacity-20" />
+            <p className="font-black uppercase text-xs tracking-widest italic">Aucun colis à afficher</p>
+          </div>
+        )}
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
-          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronLeft size={18} /></Button>
-          <span className="text-[10px] font-black uppercase text-slate-400 px-4">Page {currentPage} / {totalPages}</span>
-          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border hover:bg-slate-50"><ChevronRight size={18} /></Button>
+        <div className="flex items-center justify-center gap-4 mt-8 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
+          <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronLeft size={18} /></Button>
+          <span className="text-[10px] font-black uppercase text-slate-500 px-4">Page {currentPage} / {totalPages}</span>
+          <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronRight size={18} /></Button>
         </div>
       )}
     </div>
@@ -284,7 +294,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
         quantity: parseInt(quantity) || 1,
         status: 'COLIS_ENREGISTRE' 
       }).eq('id', p.id);
-      toast.success("Tarification enregistrée. Dirigez le client vers la caisse.");
+      toast.success("Tarification validée");
       onRefresh();
       setPricingMode(false);
     } catch (e) { toast.error("Erreur"); }
@@ -301,38 +311,36 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
   const nextStatus = getNextStatus(p.status);
   const isPaid = p.paymentStatus === 'Payé';
   const isPriced = p.price > 0;
-  
-  // LOGIQUE DE BLOCAGE : On bloque si le colis est en attente mais non payé
   const isBlocked = !isPaid && p.status === 'En attente';
 
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : Bus;
 
   return (
-    <div className={`bg-white border-2 border-slate-100 rounded-[2.5rem] p-6 hover:shadow-xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
+    <div className={`bg-card border-2 border-border rounded-[2.5rem] p-6 hover:shadow-2xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
       <div className="flex flex-col space-y-6">
         
-        {/* LIGNE 1 : INFOS DE BASE ET STATUT */}
+        {/* LIGNE 1 */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-4 text-left">
-            <div className={`h-14 w-14 rounded-[1.25rem] flex items-center justify-center text-white shadow-lg ${p.transportType === 'BOAT' ? 'bg-blue-600' : p.transportType === 'TRAIN' ? 'bg-slate-900' : 'bg-primary'}`}>
+          <div className="flex items-center gap-4 text-left min-w-0">
+            <div className={`h-14 w-14 rounded-2xl shrink-0 flex items-center justify-center text-white shadow-lg ${p.transportType === 'BOAT' ? 'bg-blue-600' : p.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'}`}>
                <TransportIcon size={24} />
             </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono font-black text-primary text-sm uppercase tracking-tighter">{p.trackingNumber}</span>
-                <Badge className={`${STATUS_COLORS[p.status]} border-2 font-black uppercase text-[8px] h-5 px-2`}>{p.status}</Badge>
-                <Badge variant="outline" className={`border-2 font-black uppercase text-[8px] h-5 px-2 ${isPaid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                <span className="font-mono font-black text-primary text-xs uppercase tracking-tighter bg-primary/5 px-2 py-0.5 rounded border border-primary/20">{p.trackingNumber}</span>
+                <Badge variant="outline" className={`${STATUS_COLORS[p.status]} border font-black uppercase text-[8px] h-5 px-2`}>{p.status}</Badge>
+                <Badge variant="outline" className={`border font-black uppercase text-[8px] h-5 px-2 ${isPaid ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                     {p.paymentStatus}
                 </Badge>
               </div>
-              <p className="text-base font-black text-slate-100 uppercase italic leading-none">{p.description}</p>
+              <p className="text-base font-black text-white uppercase italic leading-none truncate">{p.description}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
              {nextStatus && !pricingMode && (
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-end w-full">
                     {isBlocked && isPriced && (
-                        <span className="text-[8px] font-black text-red-500 uppercase flex items-center gap-1 mb-1 animate-pulse">
+                        <span className="text-[8px] font-black text-red-400 uppercase flex items-center gap-1 mb-1 animate-pulse">
                             <Lock size={10} /> Paiement Requis
                         </span>
                     )}
@@ -340,102 +348,101 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                         onClick={() => onUpdateStatus(p.id, nextStatus)} 
                         disabled={isBlocked}
                         size="sm" 
-                        className={`h-10 rounded-xl font-black text-[9px] uppercase tracking-widest px-5 ${isBlocked ? 'bg-slate-100 text-slate-400' : 'bg-slate-900 hover:bg-black text-white'}`}
+                        className={`w-full md:w-auto h-10 rounded-xl font-black text-[9px] uppercase tracking-widest px-5 border-none ${isBlocked ? 'bg-slate-800 text-slate-600' : 'bg-slate-100 text-slate-900 hover:bg-white'}`}
                     >
-                    Expédier : {nextStatus}
+                        Statut : {nextStatus}
                     </Button>
                 </div>
              )}
           </div>
         </div>
 
-        {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-100 text-left">
-           <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-100 opacity-60 flex items-center gap-2 tracking-widest"><User size={12} className="text-primary"/> Expéditeur</p>
-              <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{p.senderName}</div>
+        {/* LIGNE 2 : CONTACTS ET ITINÉRAIRE SOMBRE */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-800 text-left">
+           <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest"><User size={12} className="text-primary"/> Expéditeur</p>
+              <div className="text-sm font-black text-slate-200 uppercase truncate">{p.senderName}</div>
               <div className="flex items-center gap-2 text-xs font-bold text-primary"><Phone size={12} /> {p.senderPhone}</div>
            </div>
 
-           <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-100 opacity-60 flex items-center gap-2 tracking-widest"><User size={12} className="text-emerald-500"/> Destinataire</p>
-              <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{p.receiverName}</div>
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-600"><Phone size={12} /> {p.receiverPhone}</div>
+           <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest"><User size={12} className="text-emerald-500"/> Destinataire</p>
+              <div className="text-sm font-black text-slate-200 uppercase truncate">{p.receiverName}</div>
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-500"><Phone size={12} /> {p.receiverPhone}</div>
            </div>
 
-           <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase text-slate-100 opacity-60 flex items-center gap-2 tracking-widest"><MapPin size={12} className="text-blue-500"/> Destination</p>
-              <div className="flex items-center gap-3 font-black text-xs uppercase text-slate-700">
-                 <span>{p.departureCity}</span>
-                 <ArrowRight size={14} className="text-slate-300" />
-                 <span className="text-primary">{p.arrivalCity}</span>
+           <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest"><MapPin size={12} className="text-blue-400"/> Trajet</p>
+              <div className="flex items-center gap-3 font-black text-xs uppercase text-slate-300 min-w-0">
+                 <span className="truncate">{p.departureCity}</span>
+                 <ArrowRight size={14} className="text-slate-600 shrink-0" />
+                 <span className="text-primary truncate">{p.arrivalCity}</span>
               </div>
            </div>
         </div>
 
-        {/* LIGNE 3 : LOGISTIQUE ET ACTIONS CAISSE */}
+        {/* LIGNE 3 : LOGISTIQUE ET ACTIONS */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-left">
-           <div className="flex gap-8">
+           <div className="flex gap-8 w-full md:w-auto">
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-100 opacity-60 tracking-widest">Colisage</Label>
-                 <p className="font-black text-slate-100 text-sm">{p.quantity} PCS / {(p.weightKg || 0).toLocaleString()} KG</p>
+                 <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Colisage</Label>
+                 <p className="font-black text-white text-sm leading-none">{p.quantity} PCS • {(p.weightKg || 0).toLocaleString()} KG</p>
               </div>
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-100 opacity-70 tracking-widest">Montant à Encaisser</Label>
-                 <p className={`font-black text-xl tracking-tighter ${isPaid ? 'text-emerald-600' : 'text-red-500'}`}>
+                 <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Montant</Label>
+                 <p className={`font-black text-xl tracking-tighter leading-none ${isPaid ? 'text-emerald-400' : 'text-amber-500 animate-pulse'}`}>
                     {(p.price || 0).toLocaleString()} F
                  </p>
               </div>
            </div>
 
-           <div className="flex items-center gap-3 relative">
-              {/* BOUTON PESÉE (Agent Fret) */}
+           <div className="flex items-center gap-3 w-full md:w-auto justify-end relative">
               {p.status === 'En attente' && !isPaid && (
                 <>
-                  <Button onClick={() => setPricingMode(true)} className="h-11 px-8 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-lg gap-2 uppercase text-[10px] tracking-widest">
+                  <Button onClick={() => setPricingMode(true)} className="h-11 px-8 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg gap-2 uppercase text-[10px] tracking-widest border-none active:scale-95">
                     <Scale size={16} /> Tarifer
                   </Button>
 
                   {pricingMode && (
-                    <div className="absolute right-0 bottom-full mb-6 bg-white p-8 rounded-[2.5rem] border-2 border-primary/20 shadow-[0_25px_80px_rgba(0,0,0,0.3)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left">
+                    <div className="absolute right-0 bottom-full mb-6 bg-slate-900 p-6 md:p-8 rounded-[2rem] border-2 border-border shadow-[0_40px_100px_rgba(0,0,0,0.8)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left">
                        <div className="flex justify-between items-center mb-6">
-                          <h4 className="text-[11px] font-black uppercase text-slate-100 flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet Pesée</h4>
-                          <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full hover:bg-slate-50"><X size={18}/></Button>
+                          <h4 className="text-[11px] font-black uppercase text-white flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Guichet Pesée</h4>
+                          <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-800 hover:text-white"><X size={18}/></Button>
                        </div>
                        
-                       <div className="space-y-6">
-                          <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-2">Type de fret agence</Label>
+                       <div className="space-y-5">
+                          <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Type de Fret</Label>
                             <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
-                                <SelectTrigger className="h-12 rounded-xl border-none bg-slate-50 font-bold shadow-inner"><SelectValue placeholder="Choisir tarif..." /></SelectTrigger>
-                                <SelectContent className="rounded-2xl shadow-2xl">
-                                  {tariffs.map(t => <SelectItem key={t.id} value={t.id} className="font-bold">{t.label}</SelectItem>)}
+                                <SelectTrigger className="h-12 rounded-xl border-none bg-slate-950 font-bold text-white shadow-inner"><SelectValue placeholder="Choisir tarif..." /></SelectTrigger>
+                                <SelectContent className="rounded-xl shadow-2xl bg-slate-900 border-border text-white">
+                                  {tariffs.map(t => <SelectItem key={t.id} value={t.id} className="font-bold focus:bg-primary/20">{t.label}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-3">
-                             <div className="space-y-2 text-left">
-                                <Label className="text-[9px] font-black text-slate-100 opacity-70">Qté</Label>
-                                <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-black text-center shadow-inner" />
+                          <div className="grid grid-cols-3 gap-2">
+                             <div className="space-y-1.5 text-left">
+                                <Label className="text-[9px] font-black text-slate-500 uppercase ml-1">Qté</Label>
+                                <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-11 rounded-lg bg-slate-950 border-none font-black text-center text-white" />
                              </div>
-                             <div className="space-y-2 text-left">
-                                <Label className="text-[9px] font-black text-slate-100 opacity-70">Poids/KG</Label>
+                             <div className="space-y-1.5 text-left">
+                                <Label className="text-[9px] font-black text-slate-500 uppercase ml-1">KG</Label>
                                 <Input 
                                   type="number" 
                                   disabled={selectedTariff && !selectedTariff.is_weight_based}
                                   value={weight} onChange={e => setWeight(e.target.value)} 
-                                  className={`h-12 rounded-xl bg-slate-50 border-none font-black text-center shadow-inner ${selectedTariff && !selectedTariff.is_weight_based ? 'opacity-30' : ''}`} 
+                                  className={`h-11 rounded-lg bg-slate-950 border-none font-black text-center text-white ${selectedTariff && !selectedTariff.is_weight_based ? 'opacity-20' : ''}`} 
                                 />
                              </div>
-                             <div className="space-y-2 text-left">
-                                <Label className="text-[9px] font-black text-emerald-600 uppercase">Total</Label>
-                                <div className="h-12 flex items-center justify-center font-black text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 text-xs">
+                             <div className="space-y-1.5 text-left">
+                                <Label className="text-[9px] font-black text-primary uppercase ml-1">Prix</Label>
+                                <div className="h-11 flex items-center justify-center font-black text-primary bg-primary/10 rounded-lg border border-primary/20 text-xs">
                                   {(calculatedPrice || 0).toLocaleString()}
                                 </div>
                              </div>
                           </div>
-                          <Button onClick={handleFinalize} className="w-full h-14 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl bg-primary text-white transition-all active:scale-95">
+                          <Button onClick={handleFinalize} className="w-full h-14 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-xl bg-primary text-white border-none active:scale-95 transition-all">
                             Valider le prix
                           </Button>
                        </div>
@@ -444,11 +451,11 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                 </>
               )}
 
-              {/* BOUTON ENCAISSER (Caisse/Chef uniquement) */}
+              {/* BOUTON ENCAISSER SOMBRE */}
               {!isPaid && isPriced && canCollectMoney && (
                 <Button 
                     onClick={() => onCollectPayment(p.id)}
-                    className="h-11 px-8 rounded-2xl font-black bg-slate-900 hover:bg-black text-white shadow-lg gap-3 uppercase text-[10px] tracking-widest animate-in slide-in-from-right-4"
+                    className="h-11 px-8 rounded-2xl font-black bg-slate-100 text-slate-900 hover:bg-white shadow-lg gap-3 uppercase text-[10px] tracking-widest border-none transition-all active:scale-95"
                 >
                     <Wallet size={16} className="text-primary" /> Encaisser Cash
                 </Button>

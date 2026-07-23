@@ -27,7 +27,6 @@ import {
   Search, 
   MapPin, 
   Calendar,
-  Gem,
   ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -44,7 +43,7 @@ type Booking = {
   status: string;
   paymentStatus: string;
   amount: number;
-  classLabel: string; // NOUVEAU
+  classLabel: string;
 };
 
 export default function AgencyRefunds() {
@@ -101,7 +100,7 @@ export default function AgencyRefunds() {
           passengerName: lead ? `${lead.first_name} ${lead.last_name}` : 'Anonyme',
           passengerPhone: b.contact_phone || '—',
           departureCity: b.trip?.from?.name || '—',
-          arrivalCity: b.arrival_city_name || b.trip?.to?.name || '—', // GESTION ESCALE
+          arrivalCity: b.arrival_city_name || b.trip?.to?.name || '—',
           departureDate: b.trip?.departure_date || '',
           paymentMethod: methodLabel[b.payment_method] || b.payment_method,
           status: b.status,
@@ -154,65 +153,70 @@ export default function AgencyRefunds() {
   const totalPages = Math.ceil(filteredRefundable.length / itemsPerPage);
   const currentRefundable = filteredRefundable.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  if (loading) return <div className="max-w-4xl mx-auto p-8 space-y-4"><Skeleton className="h-12 w-48" /><Skeleton className="h-64 w-full" /></div>;
+  if (loading) return (
+    <div className="max-w-4xl mx-auto p-8 space-y-4 bg-background min-h-screen">
+      <Skeleton className="h-12 w-48 bg-slate-800" />
+      <Skeleton className="h-64 w-full bg-slate-800 rounded-[2.5rem]" />
+    </div>
+  );
 
   return (
-    <div className="max-w-4xl mx-auto p-4 pb-20 text-left space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto p-4 pb-20 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm">
+      {/* HEADER SOMBRE */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 p-6 rounded-[2.5rem] border-2 border-slate-800 shadow-2xl">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-red-500 rounded-2xl shadow-lg shadow-red-100 text-white">
+          <div className="p-3 bg-red-600 rounded-2xl shadow-lg shadow-red-900/20 text-white">
             <Wallet className="h-8 w-8" />
           </div>
-          <div>
-            <h1 className="text-2xl font-black italic tracking-tighter uppercase">Annulations</h1>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Remboursements & Dossiers Clos</p>
+          <div className="text-left">
+            <h1 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-none">Annulations</h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Remboursements & Dossiers Clos</p>
           </div>
         </div>
-        <Button variant="outline" size="icon" onClick={loadData} className="rounded-xl border-2 h-11 w-11 hover:bg-slate-50 transition-all">
+        <Button variant="outline" size="icon" onClick={loadData} className="rounded-xl border-slate-700 bg-slate-950 h-11 w-11 hover:bg-slate-800 transition-all">
           <RefreshCw className="h-5 w-5 text-slate-400" />
         </Button>
       </div>
 
-      {/* BARRE DE RECHERCHE */}
+      {/* BARRE DE RECHERCHE SOMBRE */}
       <div className="relative group">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600 group-focus-within:text-primary transition-colors" />
         <Input 
           placeholder="Référence, Passager ou Destination..." 
           value={searchTerm}
           onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-          className="h-14 pl-12 rounded-2xl border-2 border-slate-100 bg-white shadow-inner font-medium text-base"
+          className="h-14 pl-12 rounded-2xl border-2 border-slate-800 bg-slate-950 text-white shadow-inner font-medium text-base focus-visible:ring-primary/50"
         />
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between px-4">
-          <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Dossiers remboursables</h3>
-          <Badge className="bg-slate-100 text-slate-600 border-none font-bold uppercase text-[9px]">{filteredRefundable.length} billets</Badge>
+          <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-500">Dossiers remboursables</h3>
+          <Badge className="bg-slate-900 text-slate-400 border border-slate-800 font-bold uppercase text-[9px]">{filteredRefundable.length} billets</Badge>
         </div>
 
         {currentRefundable.length === 0 ? (
-          <div className="p-16 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
-            <p className="text-slate-400 italic font-medium uppercase text-xs tracking-widest">Aucun dossier à traiter</p>
+          <div className="p-16 text-center border-2 border-dashed border-slate-800 rounded-[3rem] bg-slate-900/40">
+            <p className="text-slate-600 italic font-medium uppercase text-xs tracking-widest">Aucun dossier à traiter</p>
           </div>
         ) : (
           <div className="grid gap-4">
             {currentRefundable.map(b => (
-              <div key={b.id} className="bg-white border-2 border-slate-50 rounded-[2rem] p-6 shadow-sm hover:shadow-xl transition-all group overflow-hidden">
+              <div key={b.id} className="bg-slate-900 border-2 border-slate-800 rounded-[2rem] p-6 shadow-xl hover:border-primary/20 transition-all group overflow-hidden">
                 <div className="flex flex-col md:flex-row justify-between gap-6">
                   
                   <div className="space-y-4 flex-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-xs uppercase">
+                        <div className="h-10 w-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-primary font-black text-xs uppercase shadow-inner">
                           {b.passengerName.charAt(0)}
                         </div>
-                        <div>
-                          <p className="font-black text-slate-100 uppercase leading-none">{b.passengerName}</p>
+                        <div className="text-left">
+                          <p className="font-black text-white uppercase leading-none">{b.passengerName}</p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-[10px] font-bold text-primary font-mono uppercase tracking-tighter">{b.bookingNumber}</span>
-                            <Badge variant="outline" className="text-[8px] font-black h-4 px-1.5 uppercase border-primary/20 text-primary bg-primary/5">
+                            <Badge variant="outline" className="text-[8px] font-black h-4 px-1.5 uppercase border-primary/20 text-primary bg-primary/10">
                                 {b.classLabel}
                             </Badge>
                           </div>
@@ -221,46 +225,46 @@ export default function AgencyRefunds() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-1">
-                          <p className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1"><MapPin size={10}/> Destination</p>
-                          <p className="text-xs font-bold text-slate-700 leading-none uppercase">{b.arrivalCity}</p>
+                       <div className="space-y-1 text-left">
+                          <p className="text-[9px] font-black uppercase text-slate-500 flex items-center gap-1"><MapPin size={10}/> Destination</p>
+                          <p className="text-xs font-bold text-slate-200 leading-none uppercase">{b.arrivalCity}</p>
                        </div>
-                       <div className="space-y-1">
-                          <p className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1"><Calendar size={10}/> Voyage le</p>
-                          <p className="text-xs font-bold text-slate-700 leading-none">{new Date(b.departureDate).toLocaleDateString('fr-FR')}</p>
+                       <div className="space-y-1 text-left">
+                          <p className="text-[9px] font-black uppercase text-slate-500 flex items-center gap-1"><Calendar size={10}/> Voyage le</p>
+                          <p className="text-xs font-bold text-slate-200 leading-none">{new Date(b.departureDate).toLocaleDateString('fr-FR')}</p>
                        </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end justify-between border-t md:border-t-0 md:border-l border-dashed border-slate-100 pt-4 md:pt-0 md:pl-8 min-w-[180px]">
+                  <div className="flex flex-col items-end justify-between border-t md:border-t-0 md:border-l border-dashed border-slate-800 pt-4 md:pt-0 md:pl-8 min-w-[180px]">
                     <div className="text-right w-full">
-                       <p className="text-2xl font-black text-slate-100 tracking-tighter leading-none">{b.amount.toLocaleString()} <span className="text-xs">F</span></p>
-                       <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 italic">Via {b.paymentMethod}</p>
+                       <p className="text-2xl font-black text-white tracking-tighter leading-none">{b.amount.toLocaleString()} <span className="text-xs text-slate-500">F</span></p>
+                       <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 italic">Via {b.paymentMethod}</p>
                     </div>
 
                     {b.paymentStatus === 'Payé' ? (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-[10px] h-10 px-6 uppercase shadow-lg shadow-red-100">
+                          <Button className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-[10px] h-10 px-6 uppercase shadow-lg border-none active:scale-95 transition-all">
                             REMBOURSER
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+                        <AlertDialogContent className="rounded-[2.5rem] border-slate-800 bg-slate-900 text-white shadow-2xl">
                           <AlertDialogHeader>
-                            <AlertDialogTitle className="text-xl font-black italic uppercase">Confirmer le remboursement</AlertDialogTitle>
-                            <AlertDialogDescription className="text-slate-600 font-medium leading-relaxed">
-                              Vous allez rembourser <strong>{b.amount.toLocaleString()} FCFA</strong>. <br/>
-                              Le passager <strong>{b.passengerName}</strong> ne pourra plus voyager avec le billet <strong>{b.bookingNumber}</strong>.
+                            <AlertDialogTitle className="text-xl font-black italic uppercase text-white leading-tight">Confirmer le remboursement</AlertDialogTitle>
+                            <AlertDialogDescription className="text-slate-400 font-medium leading-relaxed mt-2">
+                              Vous allez rembourser <strong className="text-white">{b.amount.toLocaleString()} FCFA</strong>. <br/>
+                              Le passager <strong className="text-white">{b.passengerName}</strong> ne pourra plus voyager avec ce billet.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleRefund(b.id)} className="bg-red-600 hover:bg-red-700 rounded-xl font-black uppercase text-[10px]">PROCÉDER AU REMBOURSEMENT</AlertDialogAction>
+                          <AlertDialogFooter className="mt-6 gap-2">
+                            <AlertDialogCancel className="rounded-xl font-bold bg-slate-800 border-none text-white hover:bg-slate-700">ANNULER</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRefund(b.id)} className="bg-red-600 hover:bg-red-700 rounded-xl font-black uppercase text-[10px] border-none text-white">PROCÉDER AU REMBOURSEMENT</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     ) : (
-                      <Badge variant="secondary" className="mt-4 text-[9px] font-black uppercase text-slate-400">Non Éligible</Badge>
+                      <Badge variant="outline" className="mt-4 text-[9px] font-black uppercase text-slate-600 border-slate-800">Non Éligible</Badge>
                     )}
                   </div>
                 </div>
@@ -269,29 +273,29 @@ export default function AgencyRefunds() {
           </div>
         )}
 
-        {/* PAGINATION */}
+        {/* PAGINATION SOMBRE */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-4 mt-12 bg-white p-2 rounded-2xl border-2 border-slate-50 w-fit mx-auto shadow-sm">
-            <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10"><ChevronLeft size={18} /></Button>
-            <span className="text-[10px] font-black uppercase text-slate-400 px-2">Page {currentPage} / {totalPages}</span>
-            <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10"><ChevronRight size={18} /></Button>
+          <div className="flex items-center justify-center gap-4 mt-12 bg-slate-900 p-2 rounded-2xl border-2 border-slate-800 w-fit mx-auto shadow-2xl">
+            <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronLeft size={18} /></Button>
+            <span className="text-[10px] font-black uppercase text-slate-500 px-2">Page {currentPage} / {totalPages}</span>
+            <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronRight size={18} /></Button>
           </div>
         )}
       </div>
 
-      {/* HISTORIQUE */}
+      {/* HISTORIQUE SOMBRE */}
       {refundedHistory.length > 0 && (
-        <div className="pt-8 border-t border-dashed">
-          <div className="flex items-center gap-2 mb-4 px-4 text-slate-400">
+        <div className="pt-8 border-t border-slate-800 border-dashed">
+          <div className="flex items-center gap-2 mb-4 px-4 text-slate-500">
             <History size={16} />
-            <h3 className="font-black text-[9px] uppercase tracking-widest italic">Derniers remboursements effectués</h3>
+            <h3 className="font-black text-[9px] uppercase tracking-widest italic leading-none">Derniers remboursements</h3>
           </div>
           <div className="grid gap-2">
             {refundedHistory.slice(0, 3).map(b => (
-              <div key={b.id} className="flex justify-between items-center bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+              <div key={b.id} className="flex justify-between items-center bg-slate-900/40 p-4 rounded-2xl border border-slate-800">
                 <div className="flex items-center gap-3">
-                   <div className="h-2 w-2 rounded-full bg-red-400" />
-                   <span className="text-[10px] font-bold text-slate-500 uppercase">{b.bookingNumber} • {b.passengerName}</span>
+                   <div className="h-2 w-2 rounded-full bg-red-500" />
+                   <span className="text-[10px] font-bold text-slate-400 uppercase">{b.bookingNumber} • {b.passengerName}</span>
                 </div>
                 <span className="text-[10px] font-black text-red-500 uppercase italic">Remboursé</span>
               </div>

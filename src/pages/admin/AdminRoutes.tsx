@@ -34,11 +34,9 @@ export default function AdminRoutes() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // --- ÉTATS POUR LA PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8; // 2 colonnes x 4 lignes
+  const itemsPerPage = 8; 
 
-  // Form states
   const [fromCity, setFromCity] = useState('');
   const [toCity, setToCity] = useState('');
 
@@ -104,13 +102,11 @@ export default function AdminRoutes() {
     }
   };
 
-  // --- LOGIQUE DE FILTRAGE ET PAGINATION ---
   const filtered = useMemo(() => routes.filter(r => 
     r.departureCity.toLowerCase().includes(search.toLowerCase()) || 
     r.arrivalCity.toLowerCase().includes(search.toLowerCase())
   ), [routes, search]);
 
-  // Réinitialiser la page à 1 lors d'une recherche
   useEffect(() => {
     setCurrentPage(1);
   }, [search]);
@@ -123,99 +119,99 @@ export default function AdminRoutes() {
   }, [filtered, currentPage]);
 
   if (loading && routes.length === 0) return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
-      <Skeleton className="h-12 w-64 rounded-xl" />
+    <div className="max-w-6xl mx-auto p-4 space-y-6 bg-background min-h-screen">
+      <Skeleton className="h-12 w-64 rounded-xl bg-card" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-32 rounded-[2rem]" />)}
+        {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-32 rounded-[2rem] bg-card" />)}
       </div>
     </div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground">
       
-      {/* HEADER PROFESSIONNEL */}
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black italic text-slate-100 uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3">
             <Route className="h-8 w-8 text-primary" /> Axes Commerciaux
           </h1>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Catalogue officiel des itinéraires TransGabon</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Catalogue officiel des itinéraires TransGabon</p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="rounded-2xl font-black gap-2 h-12 px-8 shadow-xl shadow-primary/20 transition-all active:scale-95 uppercase tracking-widest text-xs">
+        <Button onClick={() => setShowForm(true)} className="rounded-2xl font-black gap-2 h-12 px-8 shadow-xl bg-primary text-white border-none hover:bg-primary/90 active:scale-95 transition-all uppercase tracking-widest text-xs">
           <Plus size={20} /> Nouvelle liaison
         </Button>
       </div>
 
-      {/* BARRE DE RECHERCHE & AIDE */}
+      {/* ZONE PRINCIPALE */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         <div className="space-y-6">
+          {/* BARRE DE RECHERCHE SOMBRE */}
           <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600 group-focus-within:text-primary transition-colors" />
             <Input 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
               placeholder="Filtrer par gare (ex: Libreville, Moanda...)" 
-              className="pl-12 h-14 rounded-2xl border-2 border-slate-100 bg-white font-medium text-base shadow-sm focus:border-primary transition-all" 
+              className="pl-12 h-14 rounded-2xl border-none bg-slate-900 text-white font-medium text-base shadow-inner focus-visible:ring-1 focus-visible:ring-primary/50" 
             />
           </div>
 
-          {/* LISTE DES ITINÉRAIRES PAGINÉE */}
           <div className="space-y-4">
-            <div className="flex justify-between items-center px-4">
-               <h2 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Réseau Autorisé ({filtered.length})</h2>
-               <RefreshCw size={14} className="text-slate-200 cursor-pointer hover:text-primary" onClick={loadData} />
+            <div className="flex justify-between items-center px-4 text-left">
+               <h2 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Réseau Autorisé ({filtered.length})</h2>
+               <RefreshCw size={14} className="text-slate-700 cursor-pointer hover:text-primary transition-colors" onClick={loadData} />
             </div>
             
             {filtered.length === 0 ? (
-              <div className="text-center py-20 border-2 border-dashed rounded-[3rem] bg-slate-50/50">
-                <ArrowRightLeft className="mx-auto h-12 w-12 text-slate-200 mb-4" />
-                <p className="font-bold text-slate-400 uppercase text-xs tracking-widest">Aucune liaison trouvée</p>
+              <div className="text-center py-20 border-2 border-dashed border-border rounded-[2.5rem] bg-card/40">
+                <ArrowRightLeft className="mx-auto h-12 w-12 text-slate-800 mb-4 opacity-20" />
+                <p className="font-bold text-slate-600 uppercase text-xs tracking-widest italic">Aucune liaison trouvée</p>
               </div>
             ) : (
               <div className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2">
                   {paginatedRoutes.map((r) => (
-                    <div key={r.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 hover:shadow-xl hover:border-primary/20 transition-all group relative overflow-hidden">
+                    <div key={r.id} className="bg-card border border-border rounded-[2rem] p-6 hover:shadow-2xl hover:border-primary/30 transition-all group relative overflow-hidden">
                       <div className="space-y-4">
                          <div className="flex items-center gap-2">
-                            <span className="bg-primary/5 text-primary px-2 py-0.5 rounded text-[8px] font-black uppercase border border-primary/10">Liaison Active</span>
+                            <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[8px] font-black uppercase border border-primary/20">Liaison Active</span>
                          </div>
                          
                          <div className="flex items-center justify-between gap-4">
-                            <div className="space-y-1">
-                               <p className="text-[9px] font-black text-slate-300 uppercase leading-none">Départ</p>
-                               <p className="font-black text-slate-800 uppercase text-sm">{r.departureCity}</p>
+                            <div className="space-y-1 text-left">
+                               <p className="text-[9px] font-black text-slate-500 uppercase leading-none">Départ</p>
+                               <p className="font-black text-white uppercase text-sm">{r.departureCity}</p>
                             </div>
-                            <div className="flex-1 h-px bg-slate-100 relative">
-                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2">
+                            <div className="flex-1 h-px bg-slate-800 relative">
+                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2">
                                   <Navigation size={12} className="text-primary rotate-90" />
                                </div>
                             </div>
                             <div className="space-y-1 text-right">
-                               <p className="text-[9px] font-black text-slate-300 uppercase leading-none">Arrivée</p>
-                               <p className="font-black text-slate-800 uppercase text-sm">{r.arrivalCity}</p>
+                               <p className="text-[9px] font-black text-slate-500 uppercase leading-none">Arrivée</p>
+                               <p className="font-black text-white uppercase text-sm">{r.arrivalCity}</p>
                             </div>
                          </div>
                       </div>
 
-                      <div className="mt-6 pt-4 border-t border-dashed border-slate-50 flex justify-end">
+                      <div className="mt-6 pt-4 border-t border-dashed border-border flex justify-end">
                           <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
+                                  <button className="p-2 text-slate-700 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all">
                                       <Trash2 size={16} />
-                                  </Button>
+                                  </button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+                              <AlertDialogContent className="rounded-[2rem] bg-slate-900 border border-border text-white w-[90vw] max-w-md">
                                   <AlertDialogHeader>
-                                      <AlertDialogTitle className="font-black italic text-xl uppercase">Supprimer la liaison ?</AlertDialogTitle>
-                                      <AlertDialogDescription className="font-medium text-slate-600">
-                                          L'axe <strong>{r.departureCity} ➔ {r.arrivalCity}</strong> sera retiré du catalogue agence.
+                                      <AlertDialogTitle className="font-black italic text-xl uppercase text-white">Supprimer la liaison ?</AlertDialogTitle>
+                                      <AlertDialogDescription className="text-slate-400 font-medium">
+                                          L'axe <strong>{r.departureCity} ➔ {r.arrivalCity}</strong> sera retiré du catalogue officiel.
                                       </AlertDialogDescription>
                                   </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                      <AlertDialogCancel className="rounded-xl font-bold">ANNULER</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDelete(r.id)} className="bg-red-600 rounded-xl font-bold uppercase text-white">SUPPRIMER</AlertDialogAction>
+                                  <AlertDialogFooter className="mt-6 gap-2">
+                                      <AlertDialogCancel className="rounded-xl font-bold bg-slate-800 border-none text-white hover:bg-slate-700">ANNULER</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDelete(r.id)} className="bg-red-600 rounded-xl font-bold uppercase text-white hover:bg-red-700 border-none px-6">SUPPRIMER</AlertDialogAction>
                                   </AlertDialogFooter>
                               </AlertDialogContent>
                           </AlertDialog>
@@ -224,19 +220,19 @@ export default function AdminRoutes() {
                   ))}
                 </div>
 
-                {/* --- CONTRÔLES DE PAGINATION --- */}
+                {/* PAGINATION SOMBRE */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-4 bg-white p-2 rounded-2xl border-2 w-fit mx-auto shadow-sm">
+                  <div className="flex items-center justify-center gap-4 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       disabled={currentPage === 1} 
                       onClick={() => setCurrentPage(p => p - 1)} 
-                      className="rounded-xl h-10 w-10 border hover:bg-slate-50 transition-all"
+                      className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"
                     >
                       <ChevronLeft size={18}/>
                     </Button>
-                    <div className="flex items-center gap-1 font-black text-[10px] uppercase text-slate-400 px-4">
+                    <div className="flex items-center gap-1 font-black text-[10px] uppercase text-slate-500 px-4">
                        <span className="text-primary">Page {currentPage}</span>
                        <span>/</span>
                        <span>{totalPages}</span>
@@ -246,7 +242,7 @@ export default function AdminRoutes() {
                       size="icon" 
                       disabled={currentPage === totalPages} 
                       onClick={() => setCurrentPage(p => p + 1)} 
-                      className="rounded-xl h-10 w-10 border hover:bg-slate-50 transition-all"
+                      className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"
                     >
                       <ChevronRight size={18}/>
                     </Button>
@@ -257,67 +253,67 @@ export default function AdminRoutes() {
           </div>
         </div>
 
-        {/* SIDEBAR D'AIDE */}
+        {/* SIDEBAR D'AIDE SOMBRE */}
         <div className="space-y-6">
-          <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
+          <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden border border-slate-800">
             <Info className="absolute -top-4 -right-4 h-24 w-24 text-white/5" />
             <h3 className="font-black italic text-lg uppercase mb-4 flex items-center gap-2 text-primary">
                Note Admin
             </h3>
-            <div className="space-y-4 text-xs font-medium text-slate-400 leading-relaxed">
+            <div className="space-y-4 text-xs font-medium text-slate-400 leading-relaxed text-left">
               <p>La création d'un itinéraire définit les <strong>autorisations de vente</strong> pour vos gérants d'agences.</p>
               <p>Si un axe n'est pas créé ici, les agents ne pourront pas programmer de départs de bus ou de trains sur cette ligne.</p>
-              <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-slate-300 italic">
+              <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-slate-500 italic">
                 La suppression d'une ligne n'affecte pas les billets déjà vendus.
               </div>
             </div>
           </div>
           
-          <div className="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col items-center text-center gap-3">
+          <div className="p-6 bg-slate-900/50 rounded-3xl border border-border flex flex-col items-center text-center gap-3">
              <MapPin className="text-primary h-8 w-8" />
-             <p className="text-[10px] font-black uppercase text-slate-400">Total gares actives</p>
-             <p className="text-3xl font-black text-slate-100">{cities.length}</p>
+             <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Gares actives</p>
+             <p className="text-3xl font-black text-white leading-none">{cities.length}</p>
           </div>
         </div>
       </div>
 
-      {/* MODAL DE CRÉATION */}
+      {/* MODAL DE CRÉATION SOMBRE */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="rounded-[2.5rem] p-10 max-w-md border-none shadow-2xl">
+        <DialogContent className="rounded-[2.5rem] p-8 md:p-10 max-w-md border-border bg-slate-900 text-white shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-left">Nouvel Axe Commercial</DialogTitle>
+            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-left text-white leading-none">Nouveau Trajet</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6 mt-6">
             <div className="space-y-2 text-left">
-              <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Gare de départ</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Point de départ</Label>
               <Select value={fromCity} onValueChange={setFromCity}>
-                <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold px-5 focus:ring-primary shadow-inner">
+                <SelectTrigger className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-5 shadow-inner">
                     <SelectValue placeholder="Choisir origine" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-2xl">
+                <SelectContent className="bg-slate-900 border-border text-white rounded-xl">
                   {cities.filter(c => c.name !== toCity).map(c => (
-                    <SelectItem key={c.id} value={c.name} className="font-bold uppercase text-xs">{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.name} className="font-bold uppercase text-xs focus:bg-primary/20">{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="flex justify-center -my-2 relative z-10">
-               <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-4 border-white">
+               <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-4 border-slate-900">
                   <ArrowRightLeft size={16} />
                </div>
             </div>
 
             <div className="space-y-2 text-left">
-              <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Gare de destination</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Destination</Label>
               <Select value={toCity} onValueChange={setToCity}>
-                <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold px-5 focus:ring-primary shadow-inner">
+                <SelectTrigger className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-5 shadow-inner">
                     <SelectValue placeholder="Choisir arrivée" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-2xl">
+                <SelectContent className="bg-slate-900 border-border text-white rounded-xl">
                   {cities.filter(c => c.name !== fromCity).map(c => (
-                    <SelectItem key={c.id} value={c.name} className="font-bold uppercase text-xs">{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.name} className="font-bold uppercase text-xs focus:bg-primary/20">{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -326,10 +322,10 @@ export default function AdminRoutes() {
             <Button 
                 onClick={handleSave} 
                 disabled={saving || !fromCity || !toCity} 
-                className="w-full h-16 rounded-3xl font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest mt-4 transition-all active:scale-95"
+                className="w-full h-16 rounded-2xl font-black text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest mt-4 transition-all active:scale-95 border-none"
             >
-              {saving ? <RefreshCw className="animate-spin mr-2" /> : <Plus className="mr-2" />}
-              {saving ? 'ENREGISTREMENT...' : 'AJOUTER LA LIAISON'}
+              {saving ? <RefreshCw className="animate-spin mr-2 h-6 w-6" /> : <Plus className="mr-2 h-6 w-6" />}
+              {saving ? 'ENREGISTREMENT...' : 'ACTIVER L\'AXE'}
             </Button>
           </div>
         </DialogContent>

@@ -65,13 +65,13 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
             </div>
             <span className="font-black uppercase tracking-tighter italic text-lg text-white">Console</span>
         </div>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-3 bg-white/5 rounded-2xl active:scale-90 transition-transform">
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-3 bg-muted rounded-2xl active:scale-90 transition-transform">
             {isSidebarOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
       </div>
 
       {/* OVERLAY MOBILE */}
-      {isSidebarOpen && <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
+      {isSidebarOpen && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
       {/* --- SIDEBAR AGENCE --- */}
       <aside className={`
@@ -81,7 +81,7 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
       `}>
         <div className="p-10 text-left">
           <Link to="/" className="flex items-center gap-3 text-slate-500 hover:text-primary mb-10 transition-colors group">
-            <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1" /> 
+            <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" /> 
             <span className="text-[11px] font-black uppercase tracking-widest leading-none">Public</span>
           </Link>
           
@@ -89,7 +89,7 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
             <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20">
                 <ShieldCheck className="h-7 w-7 text-white" />
             </div>
-            <div>
+            <div className="text-left">
                 <h2 className="font-black text-2xl tracking-tighter uppercase italic leading-none text-white">Agence</h2>
                 <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1.5">Opérations</p>
             </div>
@@ -111,7 +111,7 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
             </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto scrollbar-hide">
           {allowedItems.map(item => {
             const active = location.pathname === item.path;
             return (

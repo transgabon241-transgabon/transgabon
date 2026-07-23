@@ -25,7 +25,6 @@ import {
   User,
   Printer,
   Phone,
-  FileText,
   Calendar,
   AlertCircle
 } from 'lucide-react';
@@ -59,8 +58,6 @@ type Tariff = {
 
 const PAYMENT_METHODS = [
   { id: 'AGENCE', label: 'Paiement en agence (Espèces)' },
-  // { id: 'AIRTEL_MONEY', label: 'Airtel Money' },
-  // { id: 'MOOV_MONEY', label: 'Moov Money' },
 ];
 
 export default function SendParcelPage() {
@@ -91,7 +88,6 @@ export default function SendParcelPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ trackingNumber: string; price: number; method: string } | null>(null);
 
-  // Charger les villes
   useEffect(() => {
     const fetchCities = async () => {
       const { data } = await supabase.from('cities').select('id, name').order('name');
@@ -100,7 +96,6 @@ export default function SendParcelPage() {
     fetchCities();
   }, []);
 
-  // Sync info expéditeur
   useEffect(() => {
     if (user) {
       setSenderName(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email);
@@ -108,12 +103,10 @@ export default function SendParcelPage() {
     }
   }, [user]);
 
-  // Redirection Auth
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
   }, [isLoading, user, loginWithRedirect]);
 
-  // Charger les tarifs
   useEffect(() => {
     if (selectedTrip?.companyId) {
       const fetchTariffs = async () => {
@@ -204,140 +197,132 @@ export default function SendParcelPage() {
 
   if (isLoading || !user) return null;
 
-  // --- RENDU ÉTAPE 3 : BORDEREAU DE FRET PROFESSIONNEL ---
+  // --- RENDU ÉTAPE 3 : BORDEREAU SOMBRE ---
   if (step === 3 && result && selectedTrip) {
     const isPaid = result.method !== 'AGENCE';
 
     return (
         <div className="container mx-auto px-4 py-10 max-w-2xl animate-in fade-in zoom-in-95 text-left print:p-0">
           <div className="text-center mb-10 print:hidden">
-            <div className="h-20 w-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
+            <div className="h-20 w-20 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-2xl">
               <CheckCircle2 size={40} />
             </div>
-            <h1 className="text-3xl font-black italic uppercase text-slate-100 tracking-tighter leading-none">Expédition Enregistrée</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Bordereau de suivi généré avec succès</p>
+            <h1 className="text-3xl font-black italic uppercase text-white tracking-tighter leading-none">Expédition Validée</h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Bordereau de suivi généré</p>
           </div>
   
-          {/* --- BORDEREAU OFFICIEL --- */}
-          <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-2xl overflow-hidden relative print:shadow-none print:border-slate-900">
+          <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] overflow-hidden relative print:shadow-none print:border-slate-700">
             
-            {/* Header du bordereau */}
-            <div className="bg-slate-900 p-8 text-white flex justify-between items-center print:[print-color-adjust:exact]">
+            <div className="bg-slate-950 p-8 text-white flex justify-between items-center border-b border-slate-800 print:[print-color-adjust:exact]">
               <div className="flex items-center gap-4">
                  <div className="p-3 bg-primary rounded-2xl">
                     <Package size={24} className="text-white" />
                  </div>
-                 <div className="flex flex-col">
-                    <span className="font-black italic text-xl uppercase tracking-tighter">Bordereau de Fret</span>
+                 <div className="flex flex-col text-left">
+                    <span className="font-black italic text-xl uppercase tracking-tighter text-white">Bordereau de Fret</span>
                     <span className="text-[8px] font-bold text-primary uppercase tracking-[0.3em]">Gabon Mobilité Connect</span>
                  </div>
               </div>
               <div className="text-right">
-                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Date d'émission</p>
-                <p className="text-xs font-black">{new Date().toLocaleDateString('fr-FR')}</p>
+                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Date</p>
+                <p className="text-xs font-black text-slate-200">{new Date().toLocaleDateString('fr-FR')}</p>
               </div>
             </div>
   
             <div className="p-8 space-y-10">
-              {/* Tracking & QR */}
               <div className="flex justify-between items-start gap-4">
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Numéro de suivi unique</Label>
-                  <p className="text-5xl font-mono font-black text-primary tracking-tighter">{result.trackingNumber}</p>
+                  <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Référence suivi</Label>
+                  <p className="text-4xl md:text-5xl font-mono font-black text-primary tracking-tighter">{result.trackingNumber}</p>
                   <div className="pt-2">
-                    <Badge className={`border-none font-black text-[9px] uppercase px-3 py-1 ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                    <Badge variant="outline" className={`font-black text-[9px] uppercase px-3 py-1 border-primary/20 ${isPaid ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
                         {isPaid ? 'Règlement Confirmé' : 'À régler au dépôt (Cash)'}
                     </Badge>
                   </div>
                 </div>
-                {/* QR Code de simulation */}
-                <div className="h-28 w-28 bg-slate-50 border-2 border-slate-100 rounded-3xl flex flex-col items-center justify-center p-3 shadow-inner">
+                <div className="h-28 w-28 bg-slate-950 border-2 border-slate-800 rounded-3xl flex flex-col items-center justify-center p-3 shadow-inner">
                    <div className="grid grid-cols-4 gap-1 opacity-20">
-                      {[...Array(16)].map((_, i) => <div key={i} className="h-2 w-2 bg-black rounded-sm" />)}
+                      {[...Array(16)].map((_, i) => <div key={i} className="h-2 w-2 bg-primary rounded-sm" />)}
                    </div>
-                   <span className="text-[7px] font-black text-slate-400 uppercase mt-2">Scan Agence</span>
+                   <span className="text-[7px] font-black text-slate-500 uppercase mt-2">Scan Agence</span>
                 </div>
               </div>
   
-              {/* Itinéraire visuel */}
-              <div className="bg-slate-50 rounded-[2rem] p-6 flex items-center justify-between border border-slate-100">
-                 <div className="text-left flex-1">
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Point de Départ</p>
-                    <p className="font-black text-base text-slate-100 uppercase">{selectedTrip.departureCity}</p>
+              <div className="bg-slate-950/50 rounded-[2rem] p-6 flex items-center justify-between border border-slate-800">
+                 <div className="text-left flex-1 min-w-0">
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Départ</p>
+                    <p className="font-black text-sm md:text-base text-white uppercase truncate">{selectedTrip.departureCity}</p>
                  </div>
-                 <div className="flex flex-col items-center gap-1 px-6">
-                    <div className="flex items-center gap-2 w-full">
+                 <div className="flex flex-col items-center gap-1 px-4">
+                    <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-primary" />
-                        <div className="h-px w-20 border-t-2 border-dashed border-slate-200" />
+                        <div className="h-px w-12 md:w-20 border-t-2 border-dashed border-slate-800" />
                         <ArrowRight size={18} className="text-primary" />
                     </div>
                     <span className="text-[9px] font-black text-primary uppercase tracking-tighter">{selectedTrip.registration}</span>
                  </div>
-                 <div className="text-right flex-1">
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Destination</p>
-                    <p className="font-black text-base text-slate-100 uppercase">{selectedTrip.arrivalCity}</p>
+                 <div className="text-right flex-1 min-w-0">
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Arrivée</p>
+                    <p className="font-black text-sm md:text-base text-white uppercase truncate">{selectedTrip.arrivalCity}</p>
                  </div>
               </div>
 
-              {/* Détails Contacts */}
-              <div className="grid grid-cols-2 gap-10 py-6 border-y border-dashed border-slate-200">
+              <div className="grid grid-cols-2 gap-10 py-6 border-y border-dashed border-slate-800">
                  <div className="space-y-4">
-                    <div>
-                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Expéditeur</Label>
-                        <p className="font-black text-sm text-slate-100 uppercase">{senderName}</p>
+                    <div className="text-left">
+                        <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Expéditeur</Label>
+                        <p className="font-black text-sm text-slate-100 uppercase truncate">{senderName}</p>
                         <p className="flex items-center gap-1.5 text-xs font-bold text-primary mt-1"><Phone size={12}/> {senderPhone}</p>
                     </div>
-                    <div>
-                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Transporteur</Label>
-                        <p className="font-black text-sm text-slate-100 uppercase">{selectedTrip.companyName}</p>
+                    <div className="text-left">
+                        <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Transporteur</Label>
+                        <p className="font-black text-sm text-slate-200 uppercase truncate">{selectedTrip.companyName}</p>
                     </div>
                  </div>
-                 <div className="space-y-4 text-right md:text-left">
+                 <div className="space-y-4 text-right">
                     <div>
-                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Destinataire</Label>
-                        <p className="font-black text-sm text-slate-100 uppercase">{receiverName}</p>
-                        <p className="flex items-center justify-end md:justify-start gap-1.5 text-xs font-bold text-primary mt-1"><Phone size={12}/> {receiverPhone}</p>
+                        <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Destinataire</Label>
+                        <p className="font-black text-sm text-slate-100 uppercase truncate">{receiverName}</p>
+                        <p className="flex items-center justify-end gap-1.5 text-xs font-bold text-primary mt-1"><Phone size={12}/> {receiverPhone}</p>
                     </div>
                     <div>
-                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Type de Fret</Label>
-                        <p className="font-black text-sm text-slate-100 uppercase">{selectedTariff?.label}</p>
+                        <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Type de Fret</Label>
+                        <p className="font-black text-sm text-slate-200 uppercase truncate">{selectedTariff?.label}</p>
                     </div>
                  </div>
               </div>
   
-              {/* Montant Final */}
-              <div className="flex justify-between items-center bg-primary/5 p-8 rounded-[2rem] border-2 border-primary/10">
-                 <div>
-                    <Label className="text-[9px] font-black uppercase text-primary tracking-[0.2em] leading-none">Estimation Totale</Label>
-                    <p className="text-4xl font-black text-primary tracking-tighter mt-1">{result.price.toLocaleString()} <span className="text-base">FCFA</span></p>
-                    <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase italic flex items-center gap-1.5">
-                       <AlertCircle size={10} /> Sous réserve de vérification du poids en agence
+              <div className="flex justify-between items-center bg-primary/5 p-6 md:p-8 rounded-[2rem] border-2 border-primary/10">
+                 <div className="text-left">
+                    <Label className="text-[9px] font-black uppercase text-primary tracking-[0.2em] leading-none">Estimation règlement</Label>
+                    <p className="text-3xl md:text-4xl font-black text-primary tracking-tighter mt-1">{result.price.toLocaleString()} <span className="text-base">FCFA</span></p>
+                    <p className="text-[8px] font-bold text-slate-500 mt-2 uppercase italic flex items-center gap-1.5">
+                       <AlertCircle size={10} /> Vérification balance en agence requise
                     </p>
                  </div>
                  <div className="text-right">
-                    <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
+                    <div className="inline-flex items-center gap-2 bg-slate-950 px-4 py-2 rounded-xl shadow-sm border border-slate-800">
                         <div className={`h-2.5 w-2.5 rounded-full ${isPaid ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-                        <span className="text-[10px] font-black text-slate-700 uppercase">{isPaid ? 'RÈGLÉ' : 'EN ATTENTE'}</span>
+                        <span className="text-[10px] font-black text-slate-300 uppercase">{isPaid ? 'RÈGLÉ' : 'EN ATTENTE'}</span>
                     </div>
                  </div>
               </div>
             </div>
 
-            {/* Pied de bordereau */}
-            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-center print:hidden">
-                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center">
-                    Veuillez présenter ce bordereau à l'agence pour le dépôt de la marchandise.
+            <div className="p-6 bg-slate-950/50 border-t border-slate-800 flex justify-center print:hidden">
+                 <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest text-center">
+                    Présentez ce bordereau lors du dépôt de marchandise.
                  </p>
             </div>
           </div>
   
           <div className="flex flex-col gap-3 mt-10 print:hidden">
-            <div className="grid grid-cols-2 gap-4">
-                <Button onClick={() => window.print()} variant="outline" className="h-16 font-black rounded-[1.5rem] border-2 gap-3 hover:bg-slate-900 hover:text-white transition-all">
-                    <Printer size={20} /> IMPRIMER / PDF
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Button onClick={() => window.print()} variant="outline" className="h-14 font-black rounded-2xl border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800 gap-3">
+                    <Printer size={18} /> IMPRIMER / PDF
                 </Button>
-                <Button onClick={() => navigate('/dashboard')} className="h-16 font-black rounded-[1.5rem] shadow-xl shadow-primary/20 uppercase tracking-widest">
-                    RETOUR ESPACE CLIENT
+                <Button onClick={() => navigate('/dashboard')} className="h-14 font-black rounded-2xl shadow-xl bg-primary text-white hover:bg-primary/90 uppercase text-xs tracking-widest">
+                    MON ESPACE CLIENT
                 </Button>
             </div>
           </div>
@@ -345,63 +330,63 @@ export default function SendParcelPage() {
       );
   }
 
-  // --- RENDU ÉTAPE 1 & 2 (Identiques mais labels corrigés) ---
+  // --- RENDU ÉTAPE 1 & 2 ---
   return (
-    <div className="container mx-auto px-4 py-12 max-w-2xl text-left space-y-10">
+    <div className="container mx-auto px-4 py-12 max-w-2xl text-left space-y-10 animate-in fade-in duration-500">
       
-      <header className="flex items-center gap-4 bg-white p-5 rounded-3xl border-2 border-slate-50 shadow-sm w-full">
-        <div className="p-3 bg-primary rounded-2xl text-white shadow-lg"><Package size={24} /></div>
-        <div>
-          <h1 className="text-2xl font-black italic text-slate-100 uppercase tracking-tighter leading-none">Service de Fret</h1>
-          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Gabon Mobilité • Étape {step}/2</p>
+      <header className="flex items-center gap-4 bg-slate-900 p-5 rounded-3xl border-2 border-slate-800 shadow-2xl w-full">
+        <div className="p-3 bg-primary rounded-2xl text-white shadow-lg shadow-primary/20"><Package size={24} /></div>
+        <div className="text-left">
+          <h1 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Service de Fret</h1>
+          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Gabon Mobilité • Étape {step}/2</p>
         </div>
       </header>
 
       {step === 1 && (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-          <div className="bg-white border-2 border-primary/5 rounded-[2.5rem] p-8 shadow-xl shadow-slate-100/50">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
             <h2 className="font-black text-xs uppercase mb-6 flex items-center gap-2 text-primary tracking-widest"><MapPin size={16}/> Itinéraire de l'envoi</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <div className="space-y-1.5 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Départ</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Départ</Label>
                 <Select value={fromId} onValueChange={setFromId}>
-                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Ville" /></SelectTrigger>
-                  <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200"><SelectValue placeholder="Ville" /></SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Arrivée</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Arrivée</Label>
                 <Select value={toId} onValueChange={setToId}>
-                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-none font-bold"><SelectValue placeholder="Ville" /></SelectTrigger>
-                  <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200"><SelectValue placeholder="Ville" /></SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">{cities.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Date</Label>
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-sm" min={new Date().toISOString().split('T')[0]} />
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Date</Label>
+                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-sm text-slate-200" min={new Date().toISOString().split('T')[0]} />
               </div>
             </div>
-            <Button onClick={handleSearchTrips} disabled={searchingTrips} className="w-full h-14 font-black rounded-2xl shadow-xl uppercase tracking-widest text-xs">
+            <Button onClick={handleSearchTrips} disabled={searchingTrips} className="w-full h-14 font-black rounded-2xl shadow-xl uppercase tracking-widest text-xs bg-primary text-white hover:bg-primary/90 transition-all">
               {searchingTrips ? <RefreshCw className="animate-spin h-5 w-5" /> : "Rechercher départs"}
             </Button>
           </div>
 
           <div className="space-y-4">
             {trips.map(t => (
-              <button key={`${t.departureId}-${t.isEscale}`} onClick={() => { setSelectedTrip(t); setStep(2); }} className="w-full text-left bg-white border-2 border-slate-100 hover:border-primary p-6 rounded-[2rem] transition-all flex justify-between items-center shadow-sm hover:shadow-xl group">
-                <div className="flex items-center gap-5">
-                   <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-white shadow-md ${t.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 'bg-primary'}`}>
+              <button key={`${t.departureId}-${t.isEscale}`} onClick={() => { setSelectedTrip(t); setStep(2); }} className="w-full text-left bg-slate-900 border-2 border-slate-800 hover:border-primary/50 p-6 rounded-[2rem] transition-all flex justify-between items-center shadow-lg group">
+                <div className="flex items-center gap-5 min-w-0">
+                   <div className={`h-12 w-12 rounded-2xl shrink-0 flex items-center justify-center text-white shadow-md ${t.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 'bg-primary'}`}>
                       {t.transportTypeCode === 'BOAT' ? <Ship size={24}/> : t.transportTypeCode === 'TRAIN' ? <Train size={24}/> : <Bus size={24}/>}
                    </div>
-                   <div>
-                      <div className="font-black text-slate-800 uppercase text-sm flex items-center gap-2">
-                        {t.departureCity} <ArrowRight size={14} className="text-primary opacity-30" /> {t.arrivalCity}
-                        {t.isEscale && <Badge className="bg-amber-50 text-amber-700 border-none text-[7px] uppercase h-4 px-1.5">Escale</Badge>}
+                   <div className="min-w-0 text-left">
+                      <div className="font-black text-slate-200 uppercase text-sm flex flex-wrap items-center gap-2">
+                        {t.departureCity} <ArrowRight size={14} className="text-primary opacity-50" /> {t.arrivalCity}
+                        {t.isEscale && <Badge className="bg-amber-500/10 text-amber-500 border-none text-[7px] uppercase h-4 px-1.5">Escale</Badge>}
                       </div>
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase mt-0.5">{t.companyName} • {t.departureTime} ➔ {t.arrivalTime}</div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase mt-1.5 truncate">{t.companyName} • {t.departureTime} ➔ {t.arrivalTime}</div>
                    </div>
                 </div>
-                <ArrowRight size={20} className="text-slate-200 group-hover:text-primary transition-colors" />
+                <ArrowRight size={20} className="text-slate-700 group-hover:text-primary transition-colors shrink-0" />
               </button>
             ))}
           </div>
@@ -410,54 +395,54 @@ export default function SendParcelPage() {
 
       {step === 2 && selectedTrip && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-slate-900 border-none rounded-2xl p-5 flex justify-between items-center text-white shadow-xl">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 flex justify-between items-center text-white shadow-xl">
              <div className="flex items-center gap-3 text-left">
-                <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center text-primary">
+                <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary border border-primary/20">
                     {selectedTrip.transportTypeCode === 'BOAT' ? <Ship size={20}/> : <Bus size={20}/>}
                 </div>
                 <div>
-                    <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">Voyage choisi</p>
-                    <p className="font-bold text-sm mt-1 uppercase">{selectedTrip.departureCity} ➔ {selectedTrip.arrivalCity}</p>
+                    <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">Trajet sélectionné</p>
+                    <p className="font-bold text-sm mt-1 uppercase text-slate-200">{selectedTrip.departureCity} ➔ {selectedTrip.arrivalCity}</p>
                 </div>
              </div>
-             <Button variant="ghost" size="sm" onClick={() => { setStep(1); setSelectedTariffId(""); }} className="text-[9px] font-black uppercase underline text-primary">Modifier</Button>
+             <Button variant="ghost" size="sm" onClick={() => { setStep(1); setSelectedTariffId(""); }} className="text-[9px] font-black uppercase underline text-primary hover:bg-primary/5">Modifier</Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-            <div className="bg-card border-2 rounded-[2rem] p-6 space-y-4">
-              <h2 className="font-black text-[10px] uppercase text-slate-100 opacity-60 tracking-widest flex items-center gap-2"><User size={12}/> Expéditeur</h2>
+            <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-6 space-y-4">
+              <h2 className="font-black text-[10px] uppercase text-slate-500 tracking-widest flex items-center gap-2"><User size={12}/> Expéditeur</h2>
               <div className="space-y-3">
-                <Input value={senderName} onChange={e => setSenderName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
-                <Input value={senderPhone} onChange={e => setSenderPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
+                <Input value={senderName} onChange={e => setSenderName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner" />
+                <Input value={senderPhone} onChange={e => setSenderPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner" />
               </div>
             </div>
-            <div className="bg-card border-2 rounded-[2rem] p-6 space-y-4 text-left">
-              <h2 className="font-black text-[10px] uppercase text-slate-100 opacity-60 tracking-widest flex items-center gap-2"><User size={12}/> Destinataire</h2>
+            <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-6 space-y-4 text-left">
+              <h2 className="font-black text-[10px] uppercase text-slate-500 tracking-widest flex items-center gap-2"><User size={12}/> Destinataire</h2>
               <div className="space-y-3">
-                <Input value={receiverName} onChange={e => setReceiverName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
-                <Input value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-50 border-none font-bold shadow-inner" />
+                <Input value={receiverName} onChange={e => setReceiverName(e.target.value)} placeholder="Nom" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner" />
+                <Input value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} placeholder="Téléphone" className="h-11 rounded-xl bg-slate-950 border-none font-bold text-slate-200 shadow-inner" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 space-y-6 shadow-xl text-left">
+          <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 md:p-8 space-y-6 shadow-2xl text-left">
             <div className="space-y-5">
-              <div className="space-y-1.5 text-left">
-                <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Nature du colis</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Nature du colis</Label>
                 <div className="relative">
                   <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
-                  <Input value={parcelTitle} onChange={e => setParcelTitle(e.target.value)} placeholder="Ex: 2 cartons de poisson..." className="h-14 rounded-2xl font-black pl-12 border-2 border-slate-100 shadow-inner" />
+                  <Input value={parcelTitle} onChange={e => setParcelTitle(e.target.value)} placeholder="Désignation de la marchandise" className="h-14 rounded-2xl font-black pl-12 border-slate-800 bg-slate-950 text-white shadow-inner" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Type de fret agence</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Type de fret agence</Label>
                   <Select value={selectedTariffId} onValueChange={setSelectedTariffId}>
-                    <SelectTrigger className="h-12 rounded-xl font-bold border-2 border-slate-100">
+                    <SelectTrigger className="h-12 rounded-xl font-bold border-slate-800 bg-slate-950 text-slate-200">
                         <SelectValue placeholder="Choisir tarif" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl shadow-2xl">
+                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                       {tariffs.map(t => (
                         <SelectItem key={t.id} value={t.id.toString()} className="font-bold">
                           {t.label} ({t.price.toLocaleString()} F{t.is_weight_based ? '/kg' : ''})
@@ -466,38 +451,42 @@ export default function SendParcelPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-slate-100 opacity-70 ml-1">Poids Estimé (kg)</Label>
-                  <Input type="number" step="0.5" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="h-12 rounded-xl font-black border-2 border-slate-100 shadow-inner" disabled={selectedTariffId !== "" && !selectedTariff?.is_weight_based} />
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Poids Estimé (kg)</Label>
+                  <Input type="number" step="0.5" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="h-12 rounded-xl font-black border-slate-800 bg-slate-950 text-white shadow-inner" disabled={selectedTariffId !== "" && !selectedTariff?.is_weight_based} />
                 </div>
               </div>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Précisions supplémentaires..." className="rounded-xl font-medium border-2 min-h-[100px]" />
+              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Précisions supplémentaires..." className="rounded-xl font-medium border-slate-800 bg-slate-950 text-white min-h-[100px]" />
             </div>
 
-            <div className="bg-emerald-600 rounded-3xl p-6 flex items-center justify-between text-white shadow-xl shadow-emerald-100">
+            <div className="bg-emerald-600 rounded-2xl p-6 flex items-center justify-between text-white shadow-xl shadow-emerald-950/20">
                <Calculator size={32} className="opacity-30" />
                <div className="text-right">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none mb-1">Total estimé à régler</p>
-                  <div className="text-4xl font-black tracking-tighter">
-                    {estimatedPrice.toLocaleString()} <span className="text-xs uppercase">FCFA</span>
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none mb-1 text-white">Total estimé à régler</p>
+                  <div className="text-3xl md:text-4xl font-black tracking-tighter text-white">
+                    {estimatedPrice.toLocaleString()} <span className="text-xs uppercase opacity-70">FCFA</span>
                   </div>
                </div>
             </div>
           </div>
 
-          <div className="bg-card border-2 rounded-[2rem] p-6 shadow-sm text-left">
-            <h2 className="font-black text-[10px] uppercase text-slate-100 opacity-60 mb-4 tracking-widest">Règlement</h2>
+          <div className="bg-slate-950/50 border-2 border-slate-800 rounded-[2rem] p-6 text-left">
+            <h2 className="font-black text-[10px] uppercase text-slate-500 mb-4 tracking-widest">Mode de règlement</h2>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger className="h-12 rounded-xl font-black bg-slate-50 border-none px-5"><SelectValue placeholder="Mode de paiement souhaité" /></SelectTrigger>
-              <SelectContent className="rounded-xl shadow-xl z-[200]">{PAYMENT_METHODS.map(m => <SelectItem key={m.id} value={m.id} className="font-bold">{m.label}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="h-12 rounded-xl font-black bg-slate-900 border-none text-slate-200 px-5 shadow-inner"><SelectValue placeholder="Choisir une méthode" /></SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">{PAYMENT_METHODS.map(m => <SelectItem key={m.id} value={m.id} className="font-bold">{m.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
 
-          <Button onClick={handleSubmit} disabled={submitting} className="w-full h-16 rounded-[2rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest active:scale-95 transition-all">
+          <Button onClick={handleSubmit} disabled={submitting} className="w-full h-16 rounded-[2rem] font-black text-lg md:text-xl shadow-2xl bg-primary text-white hover:bg-primary/90 uppercase tracking-widest transition-all">
             {submitting ? <RefreshCw className="animate-spin h-6 w-6" /> : "VALIDER L'EXPÉDITION"}
           </Button>
         </div>
       )}
+      
+      <div className="text-center opacity-10 pb-10">
+         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white">TransGabon Connect • Système Logistique National</p>
+      </div>
     </div>
   );
 }

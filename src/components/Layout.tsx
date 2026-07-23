@@ -33,7 +33,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const isStaff = user && ["Agent", "Administrateur", "Agent Embarquement", "Service Colis", "Caissier"].includes(user.role);
 
   return (
-    // Utilisation de bg-background (Bleu Marine du globals.css)
+    // bg-background = Bleu Marine du globals.css
     <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 selection:text-white">
       
       {/* --- HEADER : Utilise bg-card (Bleu un peu plus clair) --- */}
@@ -46,7 +46,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <img src={logo} alt="Logo" className="h-12 md:h-16 w-auto object-contain group-hover:scale-105 transition-transform duration-500 filter drop-shadow-lg" />
                 <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-primary rounded-full border-2 border-background shadow-sm" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col text-left">
                 <h1 className="font-black text-2xl md:text-3xl tracking-tighter leading-none uppercase italic">
                     <span className="text-white">Trans</span>
                     <span className="text-primary">Gabon</span>
@@ -82,7 +82,6 @@ export default function Layout({ children }: { children: ReactNode }) {
                       </button>
                     </DropdownMenuTrigger>
                     
-                    {/* DROPDOWN MENU SOMBRE */}
                     <DropdownMenuContent align="end" className="w-72 p-4 rounded-[2rem] shadow-2xl border-border bg-card text-foreground animate-in zoom-in-95">
                       <div className="px-3 py-4 mb-2 bg-background rounded-2xl border border-border">
                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Identifiant</p>
@@ -132,7 +131,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                     <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg">
                         <User size={24} strokeWidth={2.5} />
                     </div>
-                    <div className="overflow-hidden">
+                    <div className="overflow-hidden text-left">
                         <p className="font-black text-sm uppercase leading-none truncate">{user.firstName} {user.lastName}</p>
                         <Badge className="mt-2 bg-primary/20 text-primary border-none uppercase font-black text-[8px] px-2 py-0.5">
                             {user.role}
@@ -149,7 +148,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 {user && (
                     <>
                         <div className="h-px bg-border my-2" />
-                        <p className="text-[10px] font-black uppercase text-muted-foreground ml-4 mb-1 tracking-widest italic">Mon Compte</p>
+                        <p className="text-[10px] font-black uppercase text-muted-foreground ml-4 mb-1 tracking-widest italic text-left">Mon Compte</p>
                         <MobileLink to="/dashboard" label="Mes réservations" icon={LayoutDashboard} onClick={() => setMobileOpen(false)} />
                         {isStaff && (
                             <MobileLink to="/agency" label="Espace Professionnel" icon={Building2} onClick={() => setMobileOpen(false)} isPrimary />
@@ -174,7 +173,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      {/* --- MAIN CONTENT (bg-background pour la couleur marine) --- */}
+      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 relative bg-background">
         {children}
       </main>
@@ -196,6 +195,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * COMPOSANTS INTERNES UTILITAIRES SOMBRES
+ */
 function NavLink({ to, label, active }: { to: string, label: string, active: boolean }) {
     return (
         <Link 

@@ -185,26 +185,26 @@ export default function AgencyValidate() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-2 sm:p-4 pb-20 space-y-4 animate-in fade-in duration-500">
+    <div className="max-w-2xl mx-auto p-2 sm:p-4 pb-20 space-y-4 animate-in fade-in duration-500 bg-background">
       
-      {/* HEADER */}
-      <header className="flex items-center gap-3 bg-white p-4 rounded-[1.5rem] border-2 border-slate-100 shadow-sm w-full text-left text-slate-100">
+      {/* HEADER SOMBRE */}
+      <header className="flex items-center gap-3 bg-slate-900 p-4 rounded-[1.5rem] border-2 border-slate-800 shadow-xl w-full text-left">
         <div className="p-2 bg-emerald-600 rounded-xl text-white shrink-0"><UserCheck size={20} /></div>
-        <div className="min-w-0">
-          <h1 className="text-lg font-black italic tracking-tighter uppercase leading-none">Gestion Embarquement</h1>
-          <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-1 italic">Vérification & Manifeste</p>
+        <div className="min-w-0 text-left">
+          <h1 className="text-lg font-black italic tracking-tighter uppercase leading-none text-white">Gestion Embarquement</h1>
+          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Vérification & Manifeste</p>
         </div>
       </header>
 
-      {/* RECHERCHE */}
-      <div className="bg-white border-2 border-slate-100 rounded-[1.2rem] p-2 shadow-lg flex gap-2">
+      {/* RECHERCHE SOMBRE */}
+      <div className="bg-slate-900 border-2 border-slate-800 rounded-[1.2rem] p-2 shadow-lg flex gap-2">
         <Input 
           value={qrInput} onChange={e => setQrInput(e.target.value)} 
           placeholder="SCAN OU RÉFÉRENCE..." 
-          className="h-12 rounded-xl border-none bg-slate-50 font-black uppercase text-xs px-4"
+          className="h-12 rounded-xl border-none bg-slate-950 text-white font-black uppercase text-xs px-4 shadow-inner"
           onKeyDown={e => e.key === 'Enter' && handleValidate()} 
         />
-        <Button onClick={() => handleValidate()} disabled={loading} className="h-12 w-12 shrink-0 rounded-xl bg-primary">
+        <Button onClick={() => handleValidate()} disabled={loading} className="h-12 w-12 shrink-0 rounded-xl bg-primary text-white hover:bg-primary/90">
           {loading ? <RefreshCw className="animate-spin" size={18} /> : <Search size={18} />}
         </Button>
       </div>
@@ -212,80 +212,78 @@ export default function AgencyValidate() {
       {result && result.booking && (
         <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500 text-left">
           
-          <div className={`border-2 rounded-[1.5rem] p-4 bg-white shadow-xl ${result.valid ? 'border-emerald-500' : 'border-amber-500 shadow-amber-50'}`}>
+          <div className={`border-2 rounded-[1.5rem] p-4 bg-slate-900 shadow-2xl ${result.valid ? 'border-emerald-500/50' : 'border-amber-500/50 shadow-amber-500/10'}`}>
             
             {/* STATUT / PASSAGER */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-dashed">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-dashed border-slate-800">
               <div className="flex items-center gap-3 min-w-0">
-                {result.valid ? <CheckCircle className="text-emerald-600 h-10 w-10 shrink-0" /> : <AlertCircle className="text-amber-600 h-10 w-10 shrink-0" />}
-                <div className="min-w-0">
-                  <h2 className="text-sm font-black uppercase tracking-tighter leading-none text-slate-100 truncate">{result.message}</h2>
+                {result.valid ? <CheckCircle className="text-emerald-500 h-10 w-10 shrink-0" /> : <AlertCircle className="text-amber-500 h-10 w-10 shrink-0" />}
+                <div className="min-w-0 text-left">
+                  <h2 className="text-sm font-black uppercase tracking-tighter leading-none text-white truncate">{result.message}</h2>
                   <p className="text-[10px] font-black text-slate-500 mt-1 uppercase truncate">{result.booking.passengerName}</p>
                 </div>
               </div>
-              <Badge className="bg-slate-900 text-white text-[8px] font-black px-2 py-1 rounded-lg uppercase shrink-0">{result.booking.classLabel}</Badge>
+              <Badge className="bg-slate-800 text-white text-[8px] font-black px-2 py-1 rounded-lg uppercase shrink-0 border border-slate-700">{result.booking.classLabel}</Badge>
             </div>
 
-            {/* --- NOUVEAU : RÉCAPITULATIF VOYAGE DÉTAILLÉ --- */}
+            {/* RÉCAPITULATIF VOYAGE DÉTAILLÉ SOMBRE */}
             <div className="space-y-3 mb-6">
-                {/* Bloc Trajet (Villes) */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
                     <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1">
-                            <Label className="text-[8px] font-black uppercase text-slate-400 mb-1 block">Départ</Label>
-                            <p className="text-sm font-black text-slate-100 uppercase truncate">{result.booking.departureCity}</p>
+                        <div className="flex-1 text-left">
+                            <Label className="text-[8px] font-black uppercase text-slate-500 mb-1 block">Départ</Label>
+                            <p className="text-sm font-black text-white uppercase truncate">{result.booking.departureCity}</p>
                         </div>
                         <ArrowRight size={16} className="text-primary shrink-0" />
                         <div className="flex-1 text-right">
-                            <Label className="text-[8px] font-black uppercase text-slate-400 mb-1 block">Destination</Label>
-                            <p className="text-sm font-black text-slate-100 uppercase truncate">{result.booking.arrivalCity}</p>
+                            <Label className="text-[8px] font-black uppercase text-slate-500 mb-1 block">Destination</Label>
+                            <p className="text-sm font-black text-white uppercase truncate">{result.booking.arrivalCity}</p>
                         </div>
                     </div>
                     {result.booking.isEscale && (
-                        <div className="mt-2 pt-2 border-t border-slate-200 flex items-center gap-2">
+                        <div className="mt-2 pt-2 border-t border-slate-800 flex items-center gap-2">
                              <Info size={12} className="text-amber-500" />
                              <p className="text-[8px] font-bold text-slate-500 uppercase italic">Escale (Terminus : {result.booking.terminusName})</p>
                         </div>
                     )}
                 </div>
 
-                {/* Bloc Infos Techniques (Siège, Heure, Véhicule) */}
                 <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center gap-3">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3">
                         <Hash size={18} className="text-primary shrink-0" />
-                        <div>
-                            <Label className="text-[8px] font-black text-primary/60 uppercase">Siège</Label>
+                        <div className="text-left">
+                            <Label className="text-[8px] font-black text-slate-500 uppercase">Siège</Label>
                             <p className="text-base font-black text-white leading-none">{result.booking.seatNumber}</p>
                         </div>
                     </div>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3 text-left">
                         <Clock size={18} className="text-primary shrink-0" />
                         <div>
-                            <Label className="text-[8px] font-black text-slate-400 uppercase">Départ</Label>
-                            <p className="text-[11px] font-black text-slate-700 uppercase">{result.booking.departureTime}</p>
+                            <Label className="text-[8px] font-black text-slate-500 uppercase">Départ</Label>
+                            <p className="text-[11px] font-black text-slate-200 uppercase">{result.booking.departureTime}</p>
                         </div>
                     </div>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3 text-left">
                         <Car size={18} className="text-primary shrink-0" />
                         <div className="min-w-0">
-                            <Label className="text-[8px] font-black text-slate-400 uppercase">Appareil</Label>
-                            <p className="text-[10px] font-black text-slate-700 uppercase truncate">{result.booking.vehicleName}</p>
+                            <Label className="text-[8px] font-black text-slate-500 uppercase">Appareil</Label>
+                            <p className="text-[10px] font-black text-slate-200 uppercase truncate">{result.booking.vehicleName}</p>
                         </div>
                     </div>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3 text-left">
                         <Calendar size={18} className="text-primary shrink-0" />
                         <div>
-                            <Label className="text-[8px] font-black text-slate-400 uppercase">Date</Label>
-                            <p className="text-[10px] font-black text-slate-700 uppercase">{new Date(result.booking.departureDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'})}</p>
+                            <Label className="text-[8px] font-black text-slate-500 uppercase">Date</Label>
+                            <p className="text-[10px] font-black text-slate-200 uppercase">{new Date(result.booking.departureDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'})}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* --- CONSOLE DE PESÉE --- */}
-            <div className="bg-slate-900 p-4 rounded-2xl border-2 border-slate-800 mb-6">
+            {/* CONSOLE DE PESÉE SOMBRE */}
+            <div className="bg-slate-950 p-4 rounded-2xl border-2 border-slate-800 mb-6 shadow-inner">
                 <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-[9px] font-black uppercase text-white/50 flex items-center gap-2">
+                    <h4 className="text-[9px] font-black uppercase text-slate-500 flex items-center gap-2">
                         <Scale size={14} className="text-primary" /> Pesée Officielle (Balance)
                     </h4>
                     {result.booking.tripType === 'TRAIN' && (
@@ -302,9 +300,9 @@ export default function AgencyValidate() {
                                     placeholder="0.0" 
                                     value={weightInput} 
                                     onChange={e => setWeightInput(e.target.value)} 
-                                    className="h-14 rounded-xl border-none bg-white/5 text-white font-black text-3xl text-center shadow-inner" 
+                                    className="h-14 rounded-xl border-none bg-slate-900 text-white font-black text-3xl text-center shadow-inner" 
                                 />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-white/10 text-xs tracking-widest">KG</span>
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-700 text-xs tracking-widest">KG</span>
                             </div>
                         </div>
                     ) : (
@@ -312,15 +310,15 @@ export default function AgencyValidate() {
                              <select 
                                 value={selectedRateId} 
                                 onChange={e => setSelectedRateId(e.target.value)}
-                                className="w-full h-11 rounded-xl bg-white/5 border-none px-4 text-[10px] font-black uppercase text-white outline-none"
+                                className="w-full h-11 rounded-xl bg-slate-900 border-none px-4 text-[10px] font-black uppercase text-white outline-none shadow-inner"
                             >
-                                <option value="" className="text-white">Ajouter Bagage...</option>
-                                {agencyRates.map(r => <option key={r.id} value={r.id} className="text-white">{r.label} ({r.price} F)</option>)}
+                                <option value="" className="text-slate-500">Ajouter Bagage...</option>
+                                {agencyRates.map(r => <option key={r.id} value={r.id} className="text-black">{r.label} ({r.price} F)</option>)}
                             </select>
                             <div className="flex gap-2">
-                                <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-11 rounded-xl border-none bg-white/5 text-white font-black text-center shadow-inner" />
-                                <div className="flex-1 flex items-center justify-end px-4 bg-primary rounded-xl">
-                                    <p className="font-black text-white text-xs">{currentCalculation.toLocaleString()} F</p>
+                                <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-11 rounded-xl border-none bg-slate-900 text-white font-black text-center shadow-inner" />
+                                <div className="flex-1 flex items-center justify-end px-4 bg-primary/10 rounded-xl">
+                                    <p className="font-black text-primary text-xs">{currentCalculation.toLocaleString()} F</p>
                                 </div>
                             </div>
                         </div>
@@ -328,76 +326,76 @@ export default function AgencyValidate() {
 
                     <Button 
                         onClick={handleConfirmWeighing} 
-                        className="w-full min-h-[3rem] h-auto py-2 px-2 rounded-xl font-black bg-primary text-white hover:bg-primary/90 uppercase text-[10px] sm:text-xs gap-2 shadow-lg active:scale-95 transition-all flex items-center justify-center text-center leading-tight whitespace-normal break-words"
+                        className="w-full min-h-[3rem] h-auto py-2 px-2 rounded-xl font-black bg-emerald-600 text-white hover:bg-emerald-500 uppercase text-[10px] sm:text-xs gap-2 shadow-lg active:scale-95 transition-all flex items-center justify-center text-center leading-tight whitespace-normal break-words"
                     >
                         <CheckCircle size={18} className="shrink-0" /> 
-                        <span>Confirmer & Valider la pesée</span>
+                        <span>Confirmer & Valider Pesée</span>
                     </Button>
                 </div>
             </div>
 
-            {/* --- SECTION CAISSE (FINANCIER) --- */}
+            {/* SECTION CAISSE SOMBRE */}
             {!result.valid && (
-                <div className="bg-emerald-600 p-4 rounded-2xl shadow-xl text-white mb-6">
+                <div className="bg-slate-800 p-4 rounded-2xl shadow-xl text-white mb-6 border border-slate-700">
                     <div className="flex items-center gap-2 mb-3">
-                        <Wallet size={16} className="opacity-70" />
-                        <h3 className="text-[10px] font-black uppercase italic">Paiement au Guichet</h3>
+                        <Wallet size={16} className="text-emerald-500" />
+                        <h3 className="text-[10px] font-black uppercase italic text-slate-400">Paiement au Guichet</h3>
                     </div>
                     
-                    <div className="bg-white/10 p-3 rounded-xl space-y-2 border border-white/20 text-[10px]">
-                        <div className="flex justify-between font-bold uppercase">
+                    <div className="bg-slate-950 p-3 rounded-xl space-y-2 border border-slate-800 text-[10px]">
+                        <div className="flex justify-between font-bold uppercase text-slate-500">
                             <span>Prix Billet :</span>
                             <span>{result.booking.ticketAmount.toLocaleString()} F</span>
                         </div>
                         {result.booking.luggageAmount > 0 && (
-                            <div className="flex justify-between font-bold uppercase">
+                            <div className="flex justify-between font-bold uppercase text-slate-500">
                                 <span>Excédents (Pesés) :</span>
-                                <span className="text-amber-300">+{result.booking.luggageAmount.toLocaleString()} F</span>
+                                <span className="text-amber-500">+{result.booking.luggageAmount.toLocaleString()} F</span>
                             </div>
                         )}
-                        <div className="h-px bg-white/20 my-1" />
-                        <div className="flex justify-between text-base font-black tracking-tighter">
+                        <div className="h-px bg-slate-800 my-1" />
+                        <div className="flex justify-between text-base font-black tracking-tighter text-white">
                             <span>TOTAL À PAYER :</span>
-                            <span>{result.booking.totalToPay.toLocaleString()} F</span>
+                            <span className="text-xl text-emerald-500">{result.booking.totalToPay.toLocaleString()} F</span>
                         </div>
                     </div>
 
                     {canCollectMoney ? (
                         <Button 
                             onClick={handleProcessPayment} 
-                            className="w-full min-h-[3rem] h-auto py-2 px-4 bg-white text-emerald-700 hover:bg-slate-50 rounded-xl font-black text-[11px] sm:text-xs uppercase mt-4 shadow-lg flex items-center justify-center text-center leading-tight whitespace-normal break-words"
+                            className="w-full min-h-[3rem] h-auto py-2 px-4 bg-emerald-600 text-white hover:bg-emerald-500 rounded-xl font-black text-[11px] sm:text-xs uppercase mt-4 shadow-lg flex items-center justify-center text-center leading-tight whitespace-normal break-words border-none"
                         >
                             Encaisser le montant dû
                         </Button>
                     ) : (
-                        <div className="mt-3 flex items-center gap-2 justify-center text-[8px] font-black uppercase bg-black/20 p-2 rounded-lg italic">
+                        <div className="mt-3 flex items-center gap-2 justify-center text-[8px] font-black uppercase bg-amber-500/10 text-amber-500 p-2 rounded-lg italic border border-amber-500/20">
                             <Info size={12}/> Envoyer le passager à la caisse
                         </div>
                     )}
                 </div>
             )}
 
-            {/* --- EMBARQUEMENT (MANIFESTE TERRAIN) --- */}
+            {/* EMBARQUEMENT (MANIFESTE TERRAIN) SOMBRE */}
             {result.valid && (
                 <div className="space-y-3 animate-in fade-in duration-500">
                     <div className="flex items-center justify-between ml-2">
-                        <h3 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Manifeste d'embarquement</h3>
-                        <Badge className="bg-emerald-500 text-white border-none font-black text-[7px]">SOLDE RÉGLÉ</Badge>
+                        <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Manifeste d'embarquement</h3>
+                        <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[7px]">SOLDE RÉGLÉ ✅</Badge>
                     </div>
                     <div className="space-y-2">
                         {result.booking.passengers.map((p: any) => (
-                            <div key={p.id} className="flex items-center justify-between p-3 bg-white border-2 border-slate-100 rounded-xl transition-all">
-                                <div className="min-w-0 pr-2">
-                                    <p className="font-black text-xs text-slate-100 uppercase truncate leading-none">{p.first_name} {p.last_name}</p>
-                                    <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 italic">Vérifier l'identité</p>
+                            <div key={p.id} className="flex items-center justify-between p-3 bg-slate-950 border-2 border-slate-800 rounded-xl transition-all">
+                                <div className="min-w-0 pr-2 text-left">
+                                    <p className="font-black text-xs text-white uppercase truncate leading-none">{p.first_name} {p.last_name}</p>
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 italic">Vérifier l'identité</p>
                                 </div>
                                 {p.boarded ? (
-                                    <Badge className="bg-emerald-50 text-emerald-600 border-none px-3 py-1 rounded-lg font-black text-[8px]">EMBARQUÉ</Badge>
+                                    <Badge className="bg-emerald-500/10 text-emerald-500 border-none px-3 py-1 rounded-lg font-black text-[8px]">EMBARQUÉ</Badge>
                                 ) : (
                                     <Button 
                                         disabled={!canBoard}
                                         onClick={() => handleBoardPassenger(p.id)} 
-                                        className="h-10 px-6 rounded-lg font-black text-[9px] uppercase bg-slate-900 text-white shadow-lg active:scale-95 transition-all"
+                                        className="h-10 px-6 rounded-lg font-black text-[9px] uppercase bg-emerald-600 text-white shadow-lg active:scale-95 transition-all border-none"
                                     >
                                         Embarquer
                                     </Button>
@@ -411,11 +409,11 @@ export default function AgencyValidate() {
         </div>
       )}
 
-      {/* FOOTER VIDE */}
+      {/* FOOTER VIDE SOMBRE */}
       {!result && (
-        <div className="pt-20 text-center opacity-20">
-            <Ticket size={60} className="mx-auto mb-4 text-slate-100" />
-            <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-100">Scan Requis pour Embarquer</p>
+        <div className="pt-20 text-center opacity-10">
+            <Ticket size={60} className="mx-auto mb-4 text-white" />
+            <p className="text-xs font-black uppercase tracking-[0.4em] text-white">Scan Requis pour Embarquer</p>
         </div>
       )}
     </div>
