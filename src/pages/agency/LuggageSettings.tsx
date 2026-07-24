@@ -124,7 +124,7 @@ export default function LuggageSettings() {
                 <Bus className="h-4 w-4 mr-1 md:mr-2 shrink-0" /> <span className="truncate">Forfaits (Bus)</span>
             </TabsTrigger>
             <TabsTrigger value="train" className="flex-1 rounded-xl font-black uppercase text-[9px] md:text-[10px] tracking-widest py-3 px-2 data-[state=active]:bg-slate-800 data-[state=active]:text-blue-400 data-[state=active]:shadow-lg">
-                <Train className="h-4 w-4 mr-1 md:mr-2 shrink-0" /> <span className="truncate">Pesée (Train)</span>
+                <Train className="h-4 w-4 mr-1 md:mr-2 shrink-0" /> <span className="truncate">Pesée (Train, Bateau, Avion)</span>
             </TabsTrigger>
             </TabsList>
         </div>
