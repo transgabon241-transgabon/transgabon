@@ -44,6 +44,7 @@ export default function SeatSelectionPage() {
 
     const loadConfiguration = async () => {
       try {
+        // 1. Récupérer les infos du trajet et du véhicule
         const { data: trip, error: tripError } = await supabase
           .from('trips')
           .select('*, company:companies(name), vehicle:vehicles(*)')
@@ -55,24 +56,17 @@ export default function SeatSelectionPage() {
           return;
         }
 
-        const { data: activeBookings } = await supabase
-          .from('bookings')
-          .select('id')
-          .eq('trip_id', departureId)
-          .not('status', 'in', '("ANNULE", "REMBOURSE")');
+        // 2. Récupérer les sièges déjà occupés (Requête jointe plus robuste)
+        // On récupère les passagers dont la réservation n'est ni ANNULEE ni REMBOURSEE
+        const { data: passengers, error: passError } = await supabase
+          .from('passengers')
+          .select('seat_number, bookings!inner(status, trip_id)')
+          .eq('bookings.trip_id', departureId)
+          .not('bookings.status', 'in', '(ANNULE,REMBOURSE)');
 
-        const activeBookingIds = activeBookings?.map(b => b.id) || [];
-        let takenSeats: string[] = [];
-        
-        if (activeBookingIds.length > 0) {
-          const { data: passengers } = await supabase
-            .from('passengers')
-            .select('seat_number')
-            .in('booking_id', activeBookingIds);
-          
-          takenSeats = passengers?.map(p => p.seat_number).filter((s): s is string => !!s) || [];
-        }
+        const takenSeats = passengers?.map(p => p.seat_number).filter(Boolean) || [];
 
+        // 3. Calcul des prix par classe
         const basePrice = urlPrice ? Number(urlPrice) : trip.price;
         const businessPrice = isStop 
           ? Math.round(basePrice * 1.5) 
@@ -82,11 +76,14 @@ export default function SeatSelectionPage() {
           ? Math.round(basePrice * 2) 
           : (trip.class_vip_price || Math.round(basePrice * 2));
 
-        // CORRECTION DU CALCUL DES PLACES
-        // Pour un avion, on utilise souvent 6 places par rangée (3-3), sinon 4 par défaut.
-        const seatsPerRow = trip.vehicle?.seats_per_row || (trip.type === 'PLANE' ? 6 : 4);
+        // 4. CORRECTION DU CALCUL DU NOMBRE DE PLACES
+        // On respecte seats_total (70). Si seats_per_row n'est pas défini, on met 6 pour l'avion.
         const totalSeats = trip.seats_total || 0;
-        const rows = trip.vehicle?.rows || Math.ceil(totalSeats / seatsPerRow);
+        const seatsPerRow = trip.vehicle?.seats_per_row || (trip.type === 'PLANE' ? 6 : 4);
+        
+        // On calcule le nombre de rangées nécessaires pour afficher TOUTES les places (70 / 6 = 12 rangées)
+        // au lieu de prendre la valeur fixe du véhicule qui peut être erronée (4).
+        const rows = Math.ceil(totalSeats / seatsPerRow);
 
         setData({
           totalSeats: totalSeats,
@@ -100,7 +97,7 @@ export default function SeatSelectionPage() {
           vipPrice,
           isStop,
           destinationName,
-          takenSeats: takenSeats
+          takenSeats: takenSeats as string[]
         });
 
         if (trip.type !== 'BOAT' && trip.type !== 'TRAIN' && trip.type !== 'PLANE') {
@@ -169,12 +166,13 @@ export default function SeatSelectionPage() {
 
   // GÉNÉRATION DES SIÈGES SANS LIMITE ARBITRAIRE
   const seatLabels: string[][] = [];
+  let seatCounter = 0;
   for (let r = 0; r < data.rows; r++) {
     const row: string[] = [];
     for (let s = 0; s < data.seatsPerRow; s++) {
-      // Sécurité : on arrête de générer si on dépasse le nombre total de places
-      if ((r * data.seatsPerRow) + s < data.totalSeats) {
+      if (seatCounter < data.totalSeats) {
         row.push(`${r + 1}${String.fromCharCode(65 + s)}`);
+        seatCounter++;
       }
     }
     if (row.length > 0) seatLabels.push(row);
@@ -211,24 +209,22 @@ export default function SeatSelectionPage() {
       <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 sm:p-10 shadow-2xl mb-10 relative overflow-hidden">
         <div className="text-center text-[9px] font-black text-slate-700 mb-8 tracking-[1em] uppercase leading-none">Cabine Avant</div>
         
-        {/* AJOUT D'UNE HAUTEUR MAX AVEC SCROLL SI LE NOMBRE DE PLACES EST ÉLEVÉ (AVION) */}
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-800">
           {seatLabels.map((row, ri) => (
             <div key={ri} className="flex justify-center gap-2 sm:gap-4">
               {row.map((seat, si) => {
-                const taken = (data?.takenSeats || []).includes(seat);
+                const isTaken = data.takenSeats.includes(seat);
                 const isSelected = selectedSeat === seat;
                 
-                // Calcul de l'allée centrale dynamique
                 const showGap = si === Math.floor(data.seatsPerRow / 2) - 1 && data.seatsPerRow > 2;
 
                 return (
                   <div key={seat} className="flex items-center">
                     <button
-                      disabled={taken}
+                      disabled={isTaken}
                       onClick={() => setSelectedSeat(isSelected ? null : seat)}
                       className={`h-9 w-9 sm:h-11 sm:w-11 rounded-xl text-[9px] sm:text-[10px] font-black transition-all duration-200 flex items-center justify-center ${
-                        taken ? 'bg-slate-800 text-slate-600 cursor-not-allowed border-none shadow-inner opacity-50' :
+                        isTaken ? 'bg-slate-800 text-slate-600 cursor-not-allowed border-none opacity-40' :
                         isSelected ? 'bg-primary text-white shadow-xl shadow-primary/40 scale-110 rotate-3 z-10' :
                         'border-2 border-slate-800 bg-slate-950 text-slate-400 hover:border-primary hover:text-primary'
                       }`}
@@ -246,11 +242,10 @@ export default function SeatSelectionPage() {
         <div className="text-center text-[9px] font-black text-slate-700 mt-10 tracking-[1em] uppercase leading-none">Cabine Arrière</div>
       </div>
 
-      {/* LÉGENDE */}
       <div className="flex justify-center gap-6 mb-10 text-[9px] font-black uppercase tracking-widest text-slate-500">
          <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-950 border border-slate-800" /> Libre</div>
          <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-primary" /> Choisi</div>
-         <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-800 opacity-50" /> Occupé</div>
+         <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-800 opacity-40" /> Occupé</div>
       </div>
 
       <Button

@@ -117,12 +117,20 @@ export default function SendParcelPage() {
       const fetchTariffs = async () => {
         setTariffsLoading(true);
         setSelectedTariffId(""); 
-        const { data } = await supabase
-          .from('company_parcel_tariffs')
-          .select('*')
-          .eq('company_id', selectedTrip.companyId);
-        if (data) setTariffs(data);
-        setTariffsLoading(false);
+        try {
+          const { data, error } = await supabase
+            .from('company_parcel_tariffs')
+            .select('*')
+            .eq('company_id', selectedTrip.companyId);
+          
+          if (error) throw error;
+          setTariffs(data || []);
+        } catch (err) {
+          toast.error("Erreur de chargement des tarifs");
+          setTariffs([]);
+        } finally {
+          setTariffsLoading(false);
+        }
       };
       fetchTariffs();
     }
@@ -202,7 +210,7 @@ export default function SendParcelPage() {
 
   if (isLoading || !user) return null;
 
-  // --- RENDU ÉTAPE 3 : BORDEREAU SOMBRE ---
+  // --- RENDU ÉTAPE 3 ---
   if (step === 3 && result && selectedTrip) {
     const isPaid = result.method !== 'AGENCE';
 
@@ -457,17 +465,19 @@ export default function SendParcelPage() {
                   <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Type de fret agence</Label>
                   <Select value={selectedTariffId} onValueChange={setSelectedTariffId}>
                     <SelectTrigger className="h-12 rounded-xl font-bold border-slate-800 bg-slate-950 text-slate-200 outline-none">
-                        <SelectValue placeholder="Choisir tarif" />
+                        <SelectValue placeholder={tariffsLoading ? "Chargement..." : "Choisir tarif"} />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 z-[200]">
-                      {tariffs.length > 0 ? (
+                      {tariffsLoading ? (
+                        <SelectItem value="loading" disabled className="text-slate-500 italic">Chargement des tarifs...</SelectItem>
+                      ) : tariffs.length > 0 ? (
                         tariffs.map(t => (
                           <SelectItem key={t.id} value={t.id.toString()} className="font-bold focus:bg-primary/20">
                             {t.label} ({t.price.toLocaleString()} F{t.is_weight_based ? '/kg' : ''})
                           </SelectItem>
                         ))
                       ) : (
-                        <div className="p-4 text-center text-[10px] font-black uppercase text-slate-500 italic">Chargement des tarifs...</div>
+                        <SelectItem value="none" disabled className="text-slate-500 italic">Aucun tarif configuré</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
