@@ -21,11 +21,13 @@ export default function AgencyValidate() {
   const [result, setResult] = useState<any>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
+  // États pour l'ajout
   const [agencyRates, setAgencyRates] = useState<any[]>([]);
   const [selectedRateId, setSelectedRateId] = useState("");
   const [weightInput, setWeightInput] = useState("");
   const [qtyInput, setQtyInput] = useState("1");
 
+  // États pour la modification
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editWeight, setEditWeight] = useState("");
   const [editQty, setEditQty] = useState("");
@@ -36,6 +38,10 @@ export default function AgencyValidate() {
   const canCollectMoney = ['Administrateur', 'Agent', 'Caissier', 'Chef d\'agence'].includes(userRole || '');
   const canBoard = ['Administrateur', 'Agent', 'Agent Embarquement', 'Chef d\'agence'].includes(userRole || '');
 
+  // Restriction demandée : Seuls ces 3 rôles voient le bouton embarquer
+  const canSeeBoardingButton = ['Administrateur', 'Chef d\'agence', 'Agent Embarquement'].includes(userRole || '');
+
+  // Calcul pour l'AJOUT
   const currentCalculation = useMemo(() => {
     if (!result?.booking) return 0;
     if (result.booking.tripType === 'TRAIN' || result.booking.tripType === 'PLANE') {
@@ -75,6 +81,8 @@ export default function AgencyValidate() {
           id: b.id,
           bookingNumber: b.reference,
           passengerName: `${b.passengers[0]?.first_name || ''} ${b.passengers[0]?.last_name || ''}`,
+          // CORRECTION ICI : Chercher le téléphone dans le booking OU dans le premier passager
+          passengerPhone: b.contact_phone || b.passengers[0]?.phone || '—',
           departureCity: b.trip.from_city?.name,
           arrivalCity: b.arrival_city_name || b.trip.to_city?.name,
           departureDate: b.trip.departure_date,
@@ -290,7 +298,7 @@ export default function AgencyValidate() {
                 </div>
             </div>
 
-            {/* --- SECTION BAGAGES (EXISTANTE & AMÉLIORÉE) --- */}
+            {/* --- SECTION BAGAGES --- */}
             <div className="space-y-2 mb-6">
                 <Label className="text-[9px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em]">Détail Bagagerie</Label>
                 {result.booking.luggages.length > 0 ? (
@@ -383,7 +391,7 @@ export default function AgencyValidate() {
                 </div>
             )}
 
-            {/* --- MANIFESTE --- */}
+            {/* --- MANIFESTE D'EMBARQUEMENT --- */}
             {result.valid && (
                 <div className="space-y-3">
                     <h3 className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-[0.3em]">Manifeste d'embarquement</h3>
@@ -401,13 +409,15 @@ export default function AgencyValidate() {
                                     <span className="font-black text-[9px] uppercase">Embarqué</span>
                                 </div>
                             ) : (
-                                <Button 
-                                    disabled={!canBoard} 
-                                    onClick={() => handleBoardPassenger(p.id)} 
-                                    className="h-11 px-8 rounded-xl font-black bg-emerald-600 text-white shadow-lg active:scale-95 transition-all text-[10px] uppercase tracking-widest border-none"
-                                >
-                                    Valider
-                                </Button>
+                                // BOUTON CACHÉ POUR LES CAISSIERS / AGENTS SIMPLES
+                                canSeeBoardingButton && (
+                                    <Button 
+                                        onClick={() => handleBoardPassenger(p.id)} 
+                                        className="h-11 px-8 rounded-xl font-black bg-emerald-600 text-white shadow-lg active:scale-95 transition-all text-[10px] uppercase tracking-widest border-none"
+                                    >
+                                        Valider
+                                    </Button>
+                                )
                             )}
                         </div>
                     ))}
