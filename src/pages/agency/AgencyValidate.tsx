@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { 
   CheckCircle, Search, RefreshCw, AlertCircle, Package, Ticket, 
   Hash, Ship, Bus, Train, Plane, ArrowRight, Phone, Wallet, Plus, Scale, Gem, Calculator, Info, Lock,
-  Calendar, Clock, MapPin, Car, UserCheck
+  Calendar, Clock, MapPin, Car, UserCheck, Trash2
 } from 'lucide-react';
 
 export default function AgencyValidate() {
@@ -21,7 +21,6 @@ export default function AgencyValidate() {
   const [result, setResult] = useState<any>(null);
   const [boardingId, setBoardingId] = useState<string | null>(null);
 
-  // États pour la console de pesée
   const [agencyRates, setAgencyRates] = useState<any[]>([]);
   const [selectedRateId, setSelectedRateId] = useState("");
   const [weightInput, setWeightInput] = useState("");
@@ -31,13 +30,12 @@ export default function AgencyValidate() {
   const canCollectMoney = ['Administrateur', 'Agent', 'Caissier'].includes(userRole || '');
   const canBoard = ['Administrateur', 'Agent', 'Agent Embarquement'].includes(userRole || '');
 
-  // CALCULATEUR DYNAMIQUE
   const currentCalculation = useMemo(() => {
     if (!result?.booking) return 0;
     
-    // Pour l'avion et le train, on utilise le calcul au poids (KG)
     if (result.booking.tripType === 'TRAIN' || result.booking.tripType === 'PLANE') {
       const w = parseFloat(weightInput) || 0;
+      // On calcule uniquement l'excédent par rapport à la franchise gratuite
       const excess = Math.max(0, w - result.booking.freeWeight);
       return excess * result.booking.excessPrice;
     } else {
@@ -86,10 +84,7 @@ export default function AgencyValidate() {
       if (rates) setAgencyRates(rates);
 
       const luggageTotal = (b.luggages || []).reduce((sum: number, l: any) => sum + (Number(l.total_price) || 0), 0);
-      
-      const terminusName = b.trip.to_city?.name;
-      const ticketDest = b.arrival_city_name || terminusName;
-      const isEscale = ticketDest.toLowerCase() !== terminusName.toLowerCase();
+      const ticketDest = b.arrival_city_name || b.trip.to_city?.name;
 
       const classMapping: Record<string, string> = {
         'VIP': 'SALON VIP', 'BUSINESS': 'BUSINESS', '1ERE_CLASSE': '1ÈRE CL.',
@@ -106,9 +101,6 @@ export default function AgencyValidate() {
           passengerPhone: b.contact_phone || '—',
           departureCity: b.trip.from_city?.name,
           arrivalCity: ticketDest,
-          terminusName: terminusName,
-          isEscale: isEscale,
-          departureDate: b.trip.departure_date,
           departureTime: b.trip.departure_time,
           classLabel: classMapping[b.class_type] || b.class_type,
           vehicleName: b.trip.vehicle?.name || 'Bus',
@@ -131,12 +123,25 @@ export default function AgencyValidate() {
     }
   };
 
+  // NOUVELLE FONCTION : Supprimer un bagage (pour corriger les erreurs ou bagages déclarés en ligne)
+  const handleDeleteLuggage = async (lugId: string) => {
+    if (!confirm("Supprimer ce bagage pour refaire la pesée ?")) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('luggages').delete().eq('id', lugId);
+      if (error) throw error;
+      toast.success("Bagage retiré");
+      handleValidate(result.booking.bookingNumber);
+    } catch (e) {
+      toast.error("Erreur de suppression");
+    } finally { setLoading(false); }
+  };
+
   const handleConfirmWeighing = async () => {
     if (!result?.booking) return;
     setLoading(true);
     try {
       const isWeightBased = result.booking.tripType === 'TRAIN' || result.booking.tripType === 'PLANE';
-      
       const label = isWeightBased 
         ? `Pesée Officielle (${weightInput}kg)` 
         : agencyRates.find(r => r.id === selectedRateId)?.label || "Article Agence";
@@ -151,11 +156,12 @@ export default function AgencyValidate() {
 
       if (lugError) throw lugError;
 
+      // Si un nouveau montant est dû, on repasse le billet en attente
       if (currentCalculation > 0) {
         await supabase.from('bookings').update({ status: 'ATTENTE' }).eq('id', result.booking.id);
-        toast.warning("Excédent enregistré : Paiement requis en caisse");
+        toast.warning("Excédent enregistré : Nouveau paiement requis");
       } else {
-        toast.success("Bagage conforme");
+        toast.success("Bagage validé");
       }
 
       setWeightInput("");
@@ -171,7 +177,7 @@ export default function AgencyValidate() {
     try {
       const { error } = await supabase.from('bookings').update({ status: 'PAYE' }).eq('id', result.booking.id);
       if (error) throw error;
-      toast.success("Paiement encaissé ! Autorisez maintenant l'embarquement.");
+      toast.success("Paiement encaissé !");
       handleValidate(result.booking.bookingNumber);
     } catch (e) { toast.error("Erreur caisse"); }
     finally { setLoading(false); }
@@ -182,42 +188,38 @@ export default function AgencyValidate() {
     try {
       const { error } = await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
       if (error) throw error;
-      toast.success("Embarquement validé : Passager ajouté au manifeste");
+      toast.success("Embarquement validé");
       handleValidate(result.booking.bookingNumber);
     } finally { setBoardingId(null); }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-2 sm:p-4 pb-20 space-y-4 animate-in fade-in duration-500 bg-background min-h-screen text-foreground">
+    <div className="max-w-2xl mx-auto p-2 sm:p-4 pb-20 space-y-4 bg-background min-h-screen text-foreground">
       
-      {/* HEADER */}
-      <header className="flex items-center gap-3 bg-slate-900 p-4 rounded-[1.5rem] border-2 border-slate-800 shadow-xl w-full text-left">
+      <header className="flex items-center gap-3 bg-slate-900 p-4 rounded-[1.5rem] border-2 border-slate-800 shadow-xl text-left">
         <div className="p-2 bg-emerald-600 rounded-xl text-white shrink-0"><UserCheck size={20} /></div>
         <div className="min-w-0">
-          <h1 className="text-lg font-black italic tracking-tighter uppercase leading-none text-white">Gestion Embarquement</h1>
-          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Vérification & Manifeste</p>
+          <h1 className="text-lg font-black italic tracking-tighter uppercase leading-none text-white">Poste d'Embarquement</h1>
+          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Vérification Billets & Bagages</p>
         </div>
       </header>
 
-      {/* RECHERCHE */}
       <div className="bg-slate-900 border-2 border-slate-800 rounded-[1.2rem] p-2 shadow-lg flex gap-2">
         <Input 
           value={qrInput} onChange={e => setQrInput(e.target.value)} 
-          placeholder="SCAN OU RÉFÉRENCE..." 
-          className="h-12 rounded-xl border-none bg-slate-950 text-white font-black uppercase text-xs px-4 shadow-inner"
-          onKeyDown={e => e.key === 'Enter' && handleValidate()} 
+          placeholder="SCANNEZ LE BILLET..." 
+          className="h-12 rounded-xl border-none bg-slate-950 text-white font-black uppercase text-xs px-4"
         />
-        <Button onClick={() => handleValidate()} disabled={loading} className="h-12 w-12 shrink-0 rounded-xl bg-primary text-white">
+        <Button onClick={() => handleValidate()} disabled={loading} className="h-12 w-12 rounded-xl bg-primary">
           {loading ? <RefreshCw className="animate-spin" size={18} /> : <Search size={18} />}
         </Button>
       </div>
 
       {result && result.booking && (
-        <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500 text-left">
+        <div className="space-y-4 text-left">
           
-          <div className={`border-2 rounded-[1.5rem] p-4 bg-slate-900 shadow-2xl ${result.valid ? 'border-emerald-500' : 'border-amber-500 shadow-amber-50'}`}>
+          <div className={`border-2 rounded-[1.5rem] p-4 bg-slate-900 shadow-2xl ${result.valid ? 'border-emerald-500' : 'border-amber-500'}`}>
             
-            {/* STATUT / PASSAGER */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-dashed border-slate-800">
               <div className="flex items-center gap-3 min-w-0">
                 {result.valid ? <CheckCircle className="text-emerald-600 h-10 w-10 shrink-0" /> : <AlertCircle className="text-amber-600 h-10 w-10 shrink-0" />}
@@ -226,197 +228,124 @@ export default function AgencyValidate() {
                   <p className="text-[10px] font-black text-slate-500 mt-1 uppercase truncate">{result.booking.passengerName}</p>
                 </div>
               </div>
-              <Badge className="bg-slate-800 text-white text-[8px] font-black px-2 py-1 rounded-lg uppercase shrink-0 border border-slate-700">{result.booking.classLabel}</Badge>
+              <Badge className="bg-slate-800 text-white text-[8px] font-black px-2 py-1 rounded-lg uppercase">{result.booking.classLabel}</Badge>
             </div>
 
-            {/* RÉCAPITULATIF VOYAGE DÉTAILLÉ SOMBRE */}
-            <div className="space-y-3 mb-6">
-                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 text-left min-w-0">
-                            <Label className="text-[8px] font-black uppercase text-slate-500 mb-1 block leading-none">Départ</Label>
-                            <p className="text-sm font-black text-white uppercase truncate">{result.booking.departureCity}</p>
-                        </div>
-                        <ArrowRight size={16} className="text-primary shrink-0" />
-                        <div className="flex-1 text-right min-w-0">
-                            <Label className="text-[8px] font-black uppercase text-slate-500 mb-1 block leading-none">Destination</Label>
-                            <p className="text-sm font-black text-white uppercase truncate">{result.booking.arrivalCity}</p>
-                        </div>
+            {/* LISTE DES BAGAGES ENREGISTRÉS (DÉCLARÉS EN LIGNE OU PESÉS) */}
+            <div className="mb-6 space-y-2">
+                <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest px-1">Bagages Enregistrés</h3>
+                {result.booking.luggages.length > 0 ? (
+                    <div className="space-y-2">
+                        {result.booking.luggages.map((lug: any) => (
+                            <div key={lug.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center group">
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-white uppercase">{lug.label}</p>
+                                    <p className="text-[9px] font-bold text-primary italic">{Number(lug.total_price).toLocaleString()} F</p>
+                                </div>
+                                <Button 
+                                    variant="ghost" size="icon" 
+                                    onClick={() => handleDeleteLuggage(lug.id)}
+                                    className="h-8 w-8 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                >
+                                    <Trash2 size={14} />
+                                </Button>
+                            </div>
+                        ))}
                     </div>
-                    {result.booking.isEscale && (
-                        <div className="mt-2 pt-2 border-t border-slate-800 flex items-center gap-2">
-                             <Info size={12} className="text-amber-500" />
-                             <p className="text-[8px] font-bold text-slate-500 uppercase italic leading-none">Escale (Terminus : {result.booking.terminusName})</p>
-                        </div>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3">
-                        <Hash size={18} className="text-primary shrink-0" />
-                        <div className="text-left">
-                            <Label className="text-[8px] font-black text-slate-500 uppercase leading-none">Siège</Label>
-                            <p className="text-base font-black text-white leading-none">{result.booking.seatNumber}</p>
-                        </div>
+                ) : (
+                    <div className="bg-slate-950/50 p-4 rounded-xl border border-dashed border-slate-800 text-center">
+                        <p className="text-[9px] font-bold text-slate-600 uppercase italic">Aucun bagage enregistré</p>
                     </div>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3 text-left">
-                        <Clock size={18} className="text-primary shrink-0" />
-                        <div>
-                            <Label className="text-[8px] font-black text-slate-500 uppercase leading-none">Départ</Label>
-                            <p className="text-[11px] font-black text-slate-200 uppercase">{result.booking.departureTime}</p>
-                        </div>
-                    </div>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3 text-left">
-                        <Car size={18} className="text-primary shrink-0" />
-                        <div className="min-w-0">
-                            <Label className="text-[8px] font-black text-slate-500 uppercase leading-none">Appareil</Label>
-                            <p className="text-[10px] font-black text-slate-200 uppercase truncate">{result.booking.vehicleName}</p>
-                        </div>
-                    </div>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3 text-left">
-                        <Calendar size={18} className="text-primary shrink-0" />
-                        <div>
-                            <Label className="text-[8px] font-black text-slate-500 uppercase leading-none">Date</Label>
-                            <p className="text-[10px] font-black text-slate-200 uppercase">{new Date(result.booking.departureDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'})}</p>
-                        </div>
-                    </div>
-                </div>
+                )}
             </div>
 
-            {/* --- CONSOLE DE PESÉE SOMBRE --- */}
+            {/* CONSOLE DE PESÉE OFFICELLE */}
             <div className="bg-slate-950 p-4 rounded-2xl border-2 border-slate-800 mb-6 shadow-inner">
                 <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-[9px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest">
+                    <h4 className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-2">
                         <Scale size={14} className="text-primary" /> Poste de Pesage
                     </h4>
                     {(result.booking.tripType === 'TRAIN' || result.booking.tripType === 'PLANE') && (
-                        <Badge className="bg-primary/20 text-primary border-none text-[8px] font-black uppercase">Franchise {result.booking.freeWeight}kg</Badge>
+                        <Badge className="bg-primary/10 text-primary border-none text-[8px] font-black">Franchise {result.booking.freeWeight}kg</Badge>
                     )}
                 </div>
 
                 <div className="space-y-4">
                     {(result.booking.tripType === 'TRAIN' || result.booking.tripType === 'PLANE') ? (
-                        <div className="space-y-3">
-                            <div className="relative">
-                                <Input 
-                                    type="number" 
-                                    placeholder="0.0" 
-                                    value={weightInput} 
-                                    onChange={e => setWeightInput(e.target.value)} 
-                                    className="h-14 rounded-xl border-none bg-slate-900 text-white font-black text-3xl text-center shadow-inner" 
-                                />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-700 text-xs tracking-widest">KG</span>
-                            </div>
+                        <div className="relative">
+                            <Input 
+                                type="number" placeholder="0.0" 
+                                value={weightInput} onChange={e => setWeightInput(e.target.value)} 
+                                className="h-14 rounded-xl border-none bg-slate-900 text-white font-black text-3xl text-center shadow-inner" 
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-700 text-xs">KG</span>
                         </div>
                     ) : (
-                        <div className="space-y-2 text-left">
+                        <div className="flex gap-2">
                              <select 
-                                value={selectedRateId} 
-                                onChange={e => setSelectedRateId(e.target.value)}
-                                className="w-full h-11 rounded-xl bg-slate-900 border-none px-4 text-[10px] font-black uppercase text-white outline-none shadow-inner"
+                                value={selectedRateId} onChange={e => setSelectedRateId(e.target.value)}
+                                className="flex-1 h-11 rounded-xl bg-slate-900 border-none px-4 text-[10px] font-black uppercase text-white outline-none"
                             >
-                                <option value="" className="text-slate-500">Ajouter Bagage...</option>
-                                {agencyRates.map(r => <option key={r.id} value={r.id} className="text-white">{r.label} ({r.price} F)</option>)}
+                                <option value="">Choisir Tarif...</option>
+                                {agencyRates.map(r => <option key={r.id} value={r.id}>{r.label} ({r.price} F)</option>)}
                             </select>
-                            <div className="flex gap-2">
-                                <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-11 rounded-xl border-none bg-slate-900 text-white font-black text-center shadow-inner" />
-                                <div className="flex-1 flex items-center justify-end px-4 bg-primary/10 rounded-xl">
-                                    <p className="font-black text-primary text-xs">{currentCalculation.toLocaleString()} F</p>
-                                </div>
-                            </div>
+                            <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-16 h-11 rounded-xl border-none bg-slate-900 text-white font-black text-center" />
                         </div>
                     )}
 
                     <Button 
                         onClick={handleConfirmWeighing} 
-                        className="w-full min-h-[3rem] h-auto py-2 px-2 rounded-xl font-black bg-emerald-600 text-white hover:bg-emerald-500 uppercase text-[10px] sm:text-xs gap-2 shadow-lg active:scale-95 transition-all flex items-center justify-center text-center leading-tight whitespace-normal break-words"
+                        className="w-full h-12 rounded-xl font-black bg-emerald-600 text-white uppercase text-xs gap-2 active:scale-95"
                     >
-                        <CheckCircle size={18} className="shrink-0" /> 
-                        <span>Confirmer & Valider la pesée</span>
+                        <Plus size={18} /> {currentCalculation > 0 ? `Ajouter (+${currentCalculation} F)` : 'Confirmer le poids'}
                     </Button>
                 </div>
             </div>
 
-            {/* --- SECTION CAISSE SOMBRE --- */}
+            {/* PAIEMENT SI NÉCESSAIRE */}
             {!result.valid && (
-                <div className="bg-slate-800 p-4 rounded-2xl shadow-xl text-white mb-6 border border-slate-700">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Wallet size={16} className="text-emerald-500" />
-                        <h3 className="text-[10px] font-black uppercase italic text-slate-400 leading-none">Paiement au Guichet</h3>
+                <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700 mb-6 text-left">
+                    <div className="flex justify-between items-center mb-3">
+                        <Label className="text-[10px] font-black uppercase text-slate-400">Total à percevoir</Label>
+                        <span className="text-2xl font-black text-emerald-500">{result.booking.totalToPay.toLocaleString()} F</span>
                     </div>
-                    
-                    <div className="bg-slate-950 p-3 rounded-xl space-y-2 border border-slate-800 text-[10px]">
-                        <div className="flex justify-between font-bold uppercase text-slate-500">
-                            <span>Prix Billet :</span>
-                            <span>{result.booking.ticketAmount.toLocaleString()} F</span>
-                        </div>
-                        {result.booking.luggageAmount > 0 && (
-                            <div className="flex justify-between font-bold uppercase text-slate-500">
-                                <span>Excédents (Pesés) :</span>
-                                <span className="text-amber-300">+{result.booking.luggageAmount.toLocaleString()} F</span>
-                            </div>
-                        )}
-                        <div className="h-px bg-white/5 my-1" />
-                        <div className="flex justify-between text-base font-black tracking-tighter text-white">
-                            <span>TOTAL À PAYER :</span>
-                            <span className="text-xl text-emerald-500">{result.booking.totalToPay.toLocaleString()} F</span>
-                        </div>
-                    </div>
-
-                    {canCollectMoney ? (
-                        <Button 
-                            onClick={handleProcessPayment} 
-                            className="w-full min-h-[3rem] h-auto py-2 px-4 bg-emerald-600 text-white hover:bg-emerald-500 rounded-xl font-black text-[11px] sm:text-xs uppercase mt-4 shadow-lg flex items-center justify-center text-center leading-tight whitespace-normal break-words border-none active:scale-95"
-                        >
-                            Encaisser le montant dû
+                    {canCollectMoney && (
+                        <Button onClick={handleProcessPayment} className="w-full h-12 bg-emerald-600 text-white font-black uppercase text-xs rounded-xl">
+                            Encaisser & Valider le Billet
                         </Button>
-                    ) : (
-                        <div className="mt-3 flex items-center gap-2 justify-center text-[8px] font-black uppercase bg-amber-500/10 text-amber-500 p-2 rounded-lg italic border border-amber-500/20">
-                            <Info size={12}/> Envoyer le passager à la caisse
-                        </div>
                     )}
                 </div>
             )}
 
-            {/* --- EMBARQUEMENT (MANIFESTE TERRAIN) SOMBRE --- */}
+            {/* EMBARQUEMENT */}
             {result.valid && (
-                <div className="space-y-3 animate-in fade-in duration-500">
-                    <div className="flex items-center justify-between ml-2">
-                        <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Manifeste d'embarquement</h3>
-                        <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[7px]">SOLDE RÉGLÉ ✅</Badge>
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between ml-1">
+                        <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Passager à embarquer</h3>
+                        <Badge className="bg-emerald-500/10 text-emerald-500 border-none text-[7px] font-black uppercase">Prêt pour départ</Badge>
                     </div>
-                    <div className="space-y-2">
-                        {result.booking.passengers.map((p: any) => (
-                            <div key={p.id} className="flex items-center justify-between p-3 bg-slate-950 border-2 border-slate-800 rounded-xl transition-all">
-                                <div className="min-w-0 pr-2 text-left">
-                                    <p className="font-black text-xs text-white uppercase truncate leading-none">{p.first_name} {p.last_name}</p>
-                                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 italic">Siège {result.booking.seatNumber}</p>
-                                </div>
-                                {p.boarded ? (
-                                    <Badge className="bg-emerald-500/10 text-emerald-500 border-none px-3 py-1 rounded-lg font-black text-[8px]">EMBARQUÉ</Badge>
-                                ) : (
-                                    <Button 
-                                        disabled={!canBoard}
-                                        onClick={() => handleBoardPassenger(p.id)} 
-                                        className="h-10 px-6 rounded-lg font-black text-[9px] uppercase bg-emerald-600 text-white shadow-lg active:scale-95 transition-all border-none"
-                                    >
-                                        Embarquer
-                                    </Button>
-                                )}
+                    {result.booking.passengers.map((p: any) => (
+                        <div key={p.id} className="flex items-center justify-between p-3 bg-slate-950 border-2 border-slate-800 rounded-xl">
+                            <div className="text-left">
+                                <p className="font-black text-xs text-white uppercase">{p.first_name} {p.last_name}</p>
+                                <p className="text-[8px] font-bold text-slate-500 uppercase italic">Siège {result.booking.seatNumber}</p>
                             </div>
-                        ))}
-                    </div>
+                            {p.boarded ? (
+                                <Badge className="bg-emerald-500/10 text-emerald-400 border-none px-3 h-8 rounded-lg font-black text-[8px]">EMBARQUÉ</Badge>
+                            ) : (
+                                <Button 
+                                    disabled={!canBoard}
+                                    onClick={() => handleBoardPassenger(p.id)} 
+                                    className="h-10 px-6 rounded-lg font-black text-[9px] uppercase bg-emerald-600 text-white"
+                                >
+                                    Valider
+                                </Button>
+                            )}
+                        </div>
+                    ))}
                 </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* FOOTER VIDE SOMBRE */}
-      {!result && (
-        <div className="pt-20 text-center opacity-10">
-            <Ticket size={60} className="mx-auto mb-4 text-white" />
-            <p className="text-xs font-black uppercase tracking-[0.4em] text-white">Scan Requis pour Embarquer</p>
         </div>
       )}
     </div>
