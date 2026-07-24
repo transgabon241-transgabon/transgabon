@@ -274,6 +274,12 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
   const [weight, setWeight] = useState(p.weightKg.toString());
   const [quantity, setQuantity] = useState(p.quantity.toString());
 
+  // Correction : Synchroniser les champs quand le colis change (après un refresh)
+  useEffect(() => {
+    setWeight(p.weightKg.toString());
+    setQuantity(p.quantity.toString());
+  }, [p.weightKg, p.quantity]);
+
   const calculatedPrice = useMemo(() => {
     if (!selectedTariff) return 0;
     const qty = parseInt(quantity) || 1;
@@ -406,7 +412,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                   </Button>
 
                   {pricingMode && (
-                    <div className="absolute right-0 bottom-full mb-6 bg-slate-900 p-6 md:p-8 rounded-[2rem] border-2 border-border shadow-[0_40px_100px_rgba(0,0,0,0.8)] w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left">
+                    <div className="absolute right-0 bottom-full mb-6 bg-slate-900 p-6 md:p-8 rounded-[2rem] border-2 border-border shadow-[0_40px_100px_rgba(0,0,0,0.8)] w-[calc(100vw-2rem)] max-w-[320px] md:w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left z-50">
                        <div className="flex justify-between items-center mb-6">
                           <h4 className="text-[11px] font-black uppercase text-white flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Poste Pesage</h4>
                           <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-800 hover:text-white transition-colors"><X size={18}/></Button>
