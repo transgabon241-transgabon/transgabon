@@ -96,10 +96,10 @@ export default function HomePage() {
                 Plateforme Officielle • Gabon
             </Badge>
             <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight tracking-tighter italic uppercase text-white">
-              Le voyage et le fret <span className="text-primary">en un clic.</span>
+              Voyagez et expédiez vos colis <span className="text-primary">en un clic </span>
             </h1>
             <p className="text-lg md:text-xl leading-relaxed font-medium mb-8 text-slate-300">
-              Réservez vos vols, trains et bus à travers tout le Gabon. Simple, sécurisé et rapide.
+              Réservez vos vols, trains, bateaux et bus à travers tout le Gabon. Simple, sécurisé et rapide.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
                 <Button onClick={() => navigate('/track')} variant="outline" className="rounded-2xl font-black bg-white/5 border-white/10 text-white h-12 px-8 hover:bg-white/10 uppercase text-[10px] tracking-widest transition-all">
