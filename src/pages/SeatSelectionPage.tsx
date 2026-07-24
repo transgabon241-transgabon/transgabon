@@ -82,10 +82,16 @@ export default function SeatSelectionPage() {
           ? Math.round(basePrice * 2) 
           : (trip.class_vip_price || Math.round(basePrice * 2));
 
+        // CORRECTION DU CALCUL DES PLACES
+        // Pour un avion, on utilise souvent 6 places par rangée (3-3), sinon 4 par défaut.
+        const seatsPerRow = trip.vehicle?.seats_per_row || (trip.type === 'PLANE' ? 6 : 4);
+        const totalSeats = trip.seats_total || 0;
+        const rows = trip.vehicle?.rows || Math.ceil(totalSeats / seatsPerRow);
+
         setData({
-          totalSeats: trip.seats_total,
-          rows: trip.vehicle?.rows || Math.ceil(trip.seats_total / 4),
-          seatsPerRow: trip.vehicle?.seats_per_row || 4,
+          totalSeats: totalSeats,
+          rows: rows,
+          seatsPerRow: seatsPerRow,
           vehicleName: trip.vehicle?.name || trip.company?.name,
           registration: trip.vehicle?.registration || '—',
           type: trip.type,
@@ -97,7 +103,6 @@ export default function SeatSelectionPage() {
           takenSeats: takenSeats
         });
 
-        // Seul le Bus n'a pas de choix de classe par défaut
         if (trip.type !== 'BOAT' && trip.type !== 'TRAIN' && trip.type !== 'PLANE') {
           setSelectedClass('STANDARD');
         }
@@ -116,7 +121,6 @@ export default function SeatSelectionPage() {
   if (loading) return <div className="max-w-lg mx-auto p-10"><Skeleton className="h-80 w-full rounded-[3rem] bg-slate-900" /></div>;
   if (!data) return <div className="p-20 text-center font-black uppercase text-red-500">Erreur système.</div>;
 
-  // MISE À JOUR : Inclure PLANE dans la sélection de classe
   const needsClassSelection = (data.type === 'BOAT' || data.type === 'TRAIN' || data.type === 'PLANE') && !selectedClass;
 
   if (needsClassSelection) {
@@ -138,7 +142,7 @@ export default function SeatSelectionPage() {
           <ClassCard 
             title={isTrain ? "2ème Classe" : "Économique"} 
             price={data.basePrice} 
-            desc={isPlane ? "Classe standard" : isTrain ? "Voyage classique" : "Salon climatisé"} 
+            desc={isPlane ? "Classe voyageur" : isTrain ? "Voyage classique" : "Salon climatisé"} 
             icon={isPlane ? <Plane className="h-6 w-6" /> : isTrain ? <Train className="h-6 w-6" /> : <Ship className="h-6 w-6" />}
             onClick={() => setSelectedClass(isTrain ? '2EME_CLASSE' : 'ECO')}
           />
@@ -163,16 +167,19 @@ export default function SeatSelectionPage() {
     );
   }
 
+  // GÉNÉRATION DES SIÈGES SANS LIMITE ARBITRAIRE
   const seatLabels: string[][] = [];
   for (let r = 0; r < data.rows; r++) {
     const row: string[] = [];
     for (let s = 0; s < data.seatsPerRow; s++) {
-      row.push(`${r + 1}${String.fromCharCode(65 + s)}`);
+      // Sécurité : on arrête de générer si on dépasse le nombre total de places
+      if ((r * data.seatsPerRow) + s < data.totalSeats) {
+        row.push(`${r + 1}${String.fromCharCode(65 + s)}`);
+      }
     }
-    seatLabels.push(row);
+    if (row.length > 0) seatLabels.push(row);
   }
 
-  // MISE À JOUR : Mapping icône avec support PLANE
   const TransportIcon = data.type === 'BOAT' ? Ship : data.type === 'TRAIN' ? Train : data.type === 'PLANE' ? Plane : Bus;
 
   return (
@@ -204,20 +211,23 @@ export default function SeatSelectionPage() {
       <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-6 sm:p-10 shadow-2xl mb-10 relative overflow-hidden">
         <div className="text-center text-[9px] font-black text-slate-700 mb-8 tracking-[1em] uppercase leading-none">Cabine Avant</div>
         
-        <div className="space-y-4">
+        {/* AJOUT D'UNE HAUTEUR MAX AVEC SCROLL SI LE NOMBRE DE PLACES EST ÉLEVÉ (AVION) */}
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-800">
           {seatLabels.map((row, ri) => (
-            <div key={ri} className="flex justify-center gap-3 sm:gap-4">
+            <div key={ri} className="flex justify-center gap-2 sm:gap-4">
               {row.map((seat, si) => {
                 const taken = (data?.takenSeats || []).includes(seat);
                 const isSelected = selectedSeat === seat;
-                const showGap = data.seatsPerRow >= 4 && si === Math.floor(data.seatsPerRow / 2) - 1;
+                
+                // Calcul de l'allée centrale dynamique
+                const showGap = si === Math.floor(data.seatsPerRow / 2) - 1 && data.seatsPerRow > 2;
 
                 return (
                   <div key={seat} className="flex items-center">
                     <button
                       disabled={taken}
                       onClick={() => setSelectedSeat(isSelected ? null : seat)}
-                      className={`h-10 w-10 sm:h-11 sm:w-11 rounded-xl text-[10px] font-black transition-all duration-200 flex items-center justify-center ${
+                      className={`h-9 w-9 sm:h-11 sm:w-11 rounded-xl text-[9px] sm:text-[10px] font-black transition-all duration-200 flex items-center justify-center ${
                         taken ? 'bg-slate-800 text-slate-600 cursor-not-allowed border-none shadow-inner opacity-50' :
                         isSelected ? 'bg-primary text-white shadow-xl shadow-primary/40 scale-110 rotate-3 z-10' :
                         'border-2 border-slate-800 bg-slate-950 text-slate-400 hover:border-primary hover:text-primary'
@@ -225,7 +235,7 @@ export default function SeatSelectionPage() {
                     >
                       {seat}
                     </button>
-                    {showGap && <div className="w-6 sm:w-8 h-8 flex items-center justify-center opacity-20"><div className="w-0.5 h-full bg-slate-500 border-dashed border-l"></div></div>}
+                    {showGap && <div className="w-4 sm:w-8 h-8 flex items-center justify-center opacity-20"><div className="w-0.5 h-full bg-slate-500 border-dashed border-l"></div></div>}
                   </div>
                 );
               })}
@@ -236,7 +246,7 @@ export default function SeatSelectionPage() {
         <div className="text-center text-[9px] font-black text-slate-700 mt-10 tracking-[1em] uppercase leading-none">Cabine Arrière</div>
       </div>
 
-      {/* LÉGENDE SOMBRE */}
+      {/* LÉGENDE */}
       <div className="flex justify-center gap-6 mb-10 text-[9px] font-black uppercase tracking-widest text-slate-500">
          <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-950 border border-slate-800" /> Libre</div>
          <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-primary" /> Choisi</div>
