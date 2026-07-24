@@ -402,16 +402,19 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
               </div>
            </div>
 
-           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+           {/* ACTIONS : Correction du débordement sur mobile */}
+           <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full md:w-auto justify-end">
               {p.status === 'En attente' && !isPaid && (
                 <>
-                  <Button onClick={() => setPricingMode(true)} className="h-11 px-8 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg gap-2 uppercase text-[10px] tracking-widest border-none active:scale-95">
-                    <Scale size={16} /> Tarifer
+                  <Button 
+                    onClick={() => setPricingMode(true)} 
+                    className="h-11 px-4 sm:px-8 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg gap-2 uppercase text-[9px] sm:text-[10px] tracking-widest border-none active:scale-95 w-full sm:w-auto"
+                  >
+                    <Scale size={16} className="shrink-0" /> <span className="truncate">Tarifer</span>
                   </Button>
 
                   {pricingMode && (
                     <>
-                      {/* Fond sombre pour bloquer l'interaction et assurer la visibilité sur mobile */}
                       <div className="fixed inset-0 bg-black/60 z-[60] md:hidden" onClick={() => setPricingMode(false)} />
                       
                       <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:absolute md:inset-auto md:right-0 md:bottom-full md:mb-6 bg-slate-900 p-6 md:p-8 rounded-[2rem] border-2 border-border shadow-[0_40px_100px_rgba(0,0,0,0.8)] w-[calc(100vw-2rem)] max-w-[320px] md:w-80 animate-in fade-in zoom-in-95 duration-300 text-left z-[70]">
@@ -453,7 +456,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                                </div>
                                <div className="space-y-1.5 text-left">
                                   <Label className="text-[9px] font-black text-primary uppercase ml-1">Prix</Label>
-                                  <div className="h-11 flex items-center justify-center font-black text-primary bg-primary/10 rounded-lg border border-primary/20 text-[10px]">
+                                  <div className="h-11 flex items-center justify-center font-black text-primary bg-primary/10 rounded-lg border border-primary/20 text-[9px] truncate px-0.5">
                                     {Math.round(calculatedPrice || 0).toLocaleString()}
                                   </div>
                                </div>
@@ -471,9 +474,9 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
               {!isPaid && isPriced && canCollectMoney && (
                 <Button 
                     onClick={() => onCollectPayment(p.id)}
-                    className="h-11 px-8 rounded-2xl font-black bg-slate-100 text-slate-900 hover:bg-white shadow-lg gap-3 uppercase text-[10px] tracking-widest border-none transition-all active:scale-95"
+                    className="h-11 px-4 sm:px-8 rounded-2xl font-black bg-slate-100 text-slate-900 hover:bg-white shadow-lg gap-2 uppercase text-[9px] sm:text-[10px] tracking-widest border-none transition-all active:scale-95 w-full sm:w-auto"
                 >
-                    <Wallet size={16} className="text-primary" /> Encaisser Cash
+                    <Wallet size={16} className="text-primary shrink-0" /> <span className="truncate">Encaisser</span>
                 </Button>
               )}
            </div>
