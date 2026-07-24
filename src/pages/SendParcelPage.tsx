@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge'; 
+import { QRCodeSVG } from 'qrcode.react'; // IMPORT DU COMPOSANT QR CODE
 import { 
   Package, 
   ArrowRight, 
@@ -27,7 +28,7 @@ import {
   Phone,
   Calendar,
   AlertCircle,
-  Plane // AJOUT DE L'ICÔNE AVION
+  Plane 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -89,7 +90,6 @@ export default function SendParcelPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ trackingNumber: string; price: number; method: string } | null>(null);
 
-  // Charger les villes
   useEffect(() => {
     const fetchCities = async () => {
       const { data } = await supabase.from('cities').select('id, name').order('name');
@@ -98,7 +98,6 @@ export default function SendParcelPage() {
     fetchCities();
   }, []);
 
-  // Sync info expéditeur
   useEffect(() => {
     if (user) {
       setSenderName(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email);
@@ -106,12 +105,10 @@ export default function SendParcelPage() {
     }
   }, [user]);
 
-  // Redirection Auth
   useEffect(() => {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
   }, [isLoading, user, loginWithRedirect]);
 
-  // Charger les tarifs
   useEffect(() => {
     if (selectedTrip?.companyId) {
       const fetchTariffs = async () => {
@@ -253,11 +250,15 @@ export default function SendParcelPage() {
                     </Badge>
                   </div>
                 </div>
-                <div className="h-28 w-28 bg-slate-950 border-2 border-border rounded-3xl flex flex-col items-center justify-center p-3 shadow-inner">
-                   <div className="grid grid-cols-4 gap-1 opacity-20">
-                      {[...Array(16)].map((_, i) => <div key={i} className="h-2 w-2 bg-primary rounded-sm" />)}
-                   </div>
-                   <span className="text-[7px] font-black text-slate-500 uppercase mt-2 text-center">Scan Agence</span>
+
+                {/* VRAI QR CODE ICI */}
+                <div className="h-28 w-28 bg-white border-4 border-slate-950 rounded-3xl flex items-center justify-center p-2 shadow-2xl overflow-hidden print:border-slate-200">
+                   <QRCodeSVG 
+                      value={result.trackingNumber} 
+                      size={90} 
+                      level="H" 
+                      includeMargin={false}
+                   />
                 </div>
               </div>
   
@@ -343,7 +344,7 @@ export default function SendParcelPage() {
       );
   }
 
-  // --- RENDU ÉTAPE 1 & 2 ---
+  // --- RENDU ÉTAPE 1 & 2 (Identique) ---
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl text-left space-y-10 animate-in fade-in duration-500">
       

@@ -23,7 +23,7 @@ import {
   Ship,
   Bus,
   Train,
-  Plane, // AJOUT DE L'ICÔNE AVION
+  Plane, 
   X,
   MapPin,
   Phone,
@@ -91,7 +91,7 @@ export default function AgencyParcels() {
         .select('*')
         .eq('company_id', user.companyId);
       
-      setTariffs(tariffData || []); // Correction : Toujours définir au moins un tableau vide
+      setTariffs(tariffData || []); 
 
       let query = supabase
         .from('parcels')
@@ -274,7 +274,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
   const [weight, setWeight] = useState(p.weightKg.toString());
   const [quantity, setQuantity] = useState(p.quantity.toString());
 
-  // Correction : Synchroniser les champs quand le colis change
   useEffect(() => {
     setWeight(p.weightKg.toString());
     setQuantity(p.quantity.toString());
@@ -322,27 +321,27 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : p.transportType === 'PLANE' ? Plane : Bus;
 
   return (
-    <div className={`bg-card border-2 border-border rounded-[2.5rem] p-6 hover:shadow-2xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
+    <div className={`bg-card border-2 border-border rounded-[2.5rem] p-4 md:p-6 hover:shadow-2xl transition-all group relative ${pricingMode ? 'z-50 ring-4 ring-primary/10 border-primary/20' : 'z-0'}`}>
       <div className="flex flex-col space-y-6">
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-4 text-left min-w-0">
-            <div className={`h-14 w-14 rounded-2xl shrink-0 flex items-center justify-center text-white shadow-lg ${
+          <div className="flex items-center gap-4 text-left min-w-0 w-full">
+            <div className={`h-12 w-12 md:h-14 md:w-14 rounded-2xl shrink-0 flex items-center justify-center text-white shadow-lg ${
                 p.transportType === 'BOAT' ? 'bg-blue-600' : 
                 p.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 
                 p.transportType === 'PLANE' ? 'bg-indigo-600' : 
                 'bg-primary'}`}>
-               <TransportIcon size={24} />
+               <TransportIcon size={22} />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                <span className="font-mono font-black text-primary text-xs uppercase tracking-tighter bg-primary/5 px-2 py-0.5 rounded border border-primary/20">{p.trackingNumber}</span>
+                <span className="font-mono font-black text-primary text-[10px] uppercase tracking-tighter bg-primary/5 px-2 py-0.5 rounded border border-primary/20">{p.trackingNumber}</span>
                 <Badge variant="outline" className={`${STATUS_COLORS[p.status]} border font-black uppercase text-[8px] h-5 px-2`}>{p.status}</Badge>
                 <Badge variant="outline" className={`border font-black uppercase text-[8px] h-5 px-2 ${isPaid ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                     {p.paymentStatus}
                 </Badge>
               </div>
-              <p className="text-base font-black text-white uppercase italic leading-none truncate">{p.description}</p>
+              <p className="text-sm md:text-base font-black text-white uppercase italic leading-none truncate">{p.description}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
@@ -368,42 +367,42 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-5 border-y border-dashed border-slate-800 text-left text-slate-200">
            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest"><User size={12} className="text-primary"/> Expéditeur</p>
-              <div className="text-sm font-black uppercase truncate">{p.senderName}</div>
-              <div className="flex items-center gap-2 text-xs font-bold text-primary"><Phone size={12} /> {p.senderPhone}</div>
+              <p className="text-[9px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest leading-none"><User size={12} className="text-primary"/> Expéditeur</p>
+              <div className="text-xs md:text-sm font-black uppercase truncate">{p.senderName}</div>
+              <div className="flex items-center gap-2 text-[11px] font-bold text-primary leading-none mt-1"><Phone size={10} /> {p.senderPhone}</div>
            </div>
 
            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest"><User size={12} className="text-emerald-500"/> Destinataire</p>
-              <div className="text-sm font-black uppercase truncate">{p.receiverName}</div>
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-500"><Phone size={12} /> {p.receiverPhone}</div>
+              <p className="text-[9px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest leading-none"><User size={12} className="text-emerald-500"/> Destinataire</p>
+              <div className="text-xs md:text-sm font-black uppercase truncate">{p.receiverName}</div>
+              <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-500 leading-none mt-1"><Phone size={10} /> {p.receiverPhone}</div>
            </div>
 
            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest"><MapPin size={12} className="text-blue-400"/> Trajet</p>
-              <div className="flex items-center gap-3 font-black text-xs uppercase text-slate-300 min-w-0">
+              <p className="text-[9px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-widest leading-none"><MapPin size={12} className="text-blue-400"/> Trajet</p>
+              <div className="flex flex-wrap items-center gap-2 font-black text-[10px] md:text-xs uppercase text-slate-300 min-w-0">
                  <span className="truncate">{p.departureCity}</span>
-                 <ArrowRight size={14} className="text-slate-600 shrink-0" />
+                 <ArrowRight size={12} className="text-slate-600 shrink-0" />
                  <span className="text-primary truncate">{p.arrivalCity}</span>
               </div>
            </div>
         </div>
 
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-left">
-           <div className="flex gap-8 w-full md:w-auto">
+           <div className="flex justify-between md:justify-start gap-8 w-full md:w-auto">
               <div className="space-y-1">
                  <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Détails Fret</Label>
-                 <p className="font-black text-white text-sm leading-none">{p.quantity} PCS • {(p.weightKg || 0).toLocaleString()} KG</p>
+                 <p className="font-black text-white text-xs md:text-sm leading-none mt-1">{p.quantity} PCS • {(p.weightKg || 0).toLocaleString()} KG</p>
               </div>
               <div className="space-y-1">
                  <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Total à Encaisser</Label>
-                 <p className={`font-black text-xl tracking-tighter leading-none ${isPaid ? 'text-emerald-400' : 'text-amber-500'}`}>
+                 <p className={`font-black text-lg md:text-xl tracking-tighter leading-none mt-1 ${isPaid ? 'text-emerald-400' : 'text-amber-500'}`}>
                     {(p.price || 0).toLocaleString()} F
                  </p>
               </div>
            </div>
 
-           <div className="flex items-center gap-3 w-full md:w-auto justify-end relative">
+           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
               {p.status === 'En attente' && !isPaid && (
                 <>
                   <Button onClick={() => setPricingMode(true)} className="h-11 px-8 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg gap-2 uppercase text-[10px] tracking-widest border-none active:scale-95">
@@ -411,55 +410,60 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                   </Button>
 
                   {pricingMode && (
-                    <div className="absolute right-0 bottom-full mb-6 bg-slate-900 p-6 md:p-8 rounded-[2rem] border-2 border-border shadow-[0_40px_100px_rgba(0,0,0,0.8)] w-[calc(100vw-2rem)] max-w-[320px] md:w-80 animate-in fade-in slide-in-from-bottom-6 duration-300 text-left z-50">
-                       <div className="flex justify-between items-center mb-6">
-                          <h4 className="text-[11px] font-black uppercase text-white flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Poste Pesage</h4>
-                          <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-800 hover:text-white transition-colors"><X size={18}/></Button>
-                       </div>
-                       
-                       <div className="space-y-5">
-                          <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Type de Fret</Label>
-                            <Select onValueChange={(v) => setSelectedTariff(tariffs.find((t:any) => t.id === v) || null)}>
-                                <SelectTrigger className="h-12 rounded-xl border-none bg-slate-950 font-bold text-white shadow-inner">
-                                  <SelectValue placeholder={tariffs.length > 0 ? "Choisir tarif..." : "Chargement des tarifs..."} />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl shadow-2xl bg-slate-900 border-border text-white">
-                                  {tariffs.length > 0 ? (
-                                    tariffs.map((t:any) => <SelectItem key={t.id} value={t.id} className="font-bold focus:bg-primary/20">{t.label}</SelectItem>)
-                                  ) : (
-                                    <SelectItem value="loading" disabled className="text-slate-500 italic">Aucun tarif trouvé...</SelectItem>
-                                  )}
-                                </SelectContent>
-                            </Select>
-                          </div>
+                    <>
+                      {/* Fond sombre pour bloquer l'interaction et assurer la visibilité sur mobile */}
+                      <div className="fixed inset-0 bg-black/60 z-[60] md:hidden" onClick={() => setPricingMode(false)} />
+                      
+                      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:absolute md:inset-auto md:right-0 md:bottom-full md:mb-6 bg-slate-900 p-6 md:p-8 rounded-[2rem] border-2 border-border shadow-[0_40px_100px_rgba(0,0,0,0.8)] w-[calc(100vw-2rem)] max-w-[320px] md:w-80 animate-in fade-in zoom-in-95 duration-300 text-left z-[70]">
+                         <div className="flex justify-between items-center mb-6">
+                            <h4 className="text-[11px] font-black uppercase text-white flex items-center gap-2 italic"><Calculator size={16} className="text-primary"/> Poste Pesage</h4>
+                            <Button variant="ghost" size="icon" onClick={() => setPricingMode(false)} className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-800 hover:text-white transition-colors"><X size={18}/></Button>
+                         </div>
+                         
+                         <div className="space-y-5">
+                            <div className="space-y-2 text-left">
+                              <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Type de Fret</Label>
+                              <Select onValueChange={(v) => setSelectedTariff(tariffs.find((t:any) => t.id === v) || null)}>
+                                  <SelectTrigger className="h-12 rounded-xl border-none bg-slate-950 font-bold text-white shadow-inner">
+                                    <SelectValue placeholder={tariffs.length > 0 ? "Choisir tarif..." : "Chargement..."} />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl shadow-2xl bg-slate-900 border-border text-white">
+                                    {tariffs.length > 0 ? (
+                                      tariffs.map((t:any) => <SelectItem key={t.id} value={t.id} className="font-bold focus:bg-primary/20">{t.label}</SelectItem>)
+                                    ) : (
+                                      <SelectItem value="loading" disabled className="text-slate-500 italic">Aucun tarif trouvé...</SelectItem>
+                                    )}
+                                  </SelectContent>
+                              </Select>
+                            </div>
 
-                          <div className="grid grid-cols-3 gap-2">
-                             <div className="space-y-1.5 text-left">
-                                <Label className="text-[9px] font-black text-slate-500 uppercase ml-1">Qté</Label>
-                                <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-11 rounded-lg bg-slate-950 border-none font-black text-center text-white" />
-                             </div>
-                             <div className="space-y-1.5 text-left">
-                                <Label className="text-[9px] font-black text-slate-500 uppercase ml-1">KG</Label>
-                                <Input 
-                                  type="number" 
-                                  disabled={selectedTariff && !selectedTariff.is_weight_based}
-                                  value={weight} onChange={e => setWeight(e.target.value)} 
-                                  className={`h-11 rounded-lg bg-slate-950 border-none font-black text-center text-white ${selectedTariff && !selectedTariff.is_weight_based ? 'opacity-20' : ''}`} 
-                                />
-                             </div>
-                             <div className="space-y-1.5 text-left">
-                                <Label className="text-[9px] font-black text-primary uppercase ml-1">Prix</Label>
-                                <div className="h-11 flex items-center justify-center font-black text-primary bg-primary/10 rounded-lg border border-primary/20 text-xs">
-                                  {(calculatedPrice || 0).toLocaleString()}
-                                </div>
-                             </div>
-                          </div>
-                          <Button onClick={handleFinalize} className="w-full h-14 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-xl bg-primary text-white border-none active:scale-95 transition-all">
-                            Valider le prix
-                          </Button>
-                       </div>
-                    </div>
+                            <div className="grid grid-cols-3 gap-2">
+                               <div className="space-y-1.5 text-left">
+                                  <Label className="text-[9px] font-black text-slate-500 uppercase ml-1">Qté</Label>
+                                  <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className="h-11 rounded-lg bg-slate-950 border-none font-black text-center text-white p-1" />
+                               </div>
+                               <div className="space-y-1.5 text-left">
+                                  <Label className="text-[9px] font-black text-slate-500 uppercase ml-1">KG</Label>
+                                  <Input 
+                                    type="number" 
+                                    disabled={selectedTariff && !selectedTariff.is_weight_based}
+                                    value={weight} onChange={e => setWeight(e.target.value)} 
+                                    className={`h-11 rounded-lg bg-slate-950 border-none font-black text-center text-white p-1 ${selectedTariff && !selectedTariff.is_weight_based ? 'opacity-20' : ''}`} 
+                                  />
+                               </div>
+                               <div className="space-y-1.5 text-left">
+                                  <Label className="text-[9px] font-black text-primary uppercase ml-1">Prix</Label>
+                                  <div className="h-11 flex items-center justify-center font-black text-primary bg-primary/10 rounded-lg border border-primary/20 text-[10px]">
+                                    {Math.round(calculatedPrice || 0).toLocaleString()}
+                                  </div>
+                               </div>
+                            </div>
+                            <Button onClick={handleFinalize} className="w-full h-14 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-xl bg-primary text-white border-none active:scale-95 transition-all">
+                              Valider le prix
+                            </Button>
+                         </div>
+                      </div>
+                    </>
                   )}
                 </>
               )}
