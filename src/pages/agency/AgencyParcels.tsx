@@ -91,7 +91,7 @@ export default function AgencyParcels() {
         .select('*')
         .eq('company_id', user.companyId);
       
-      if (tariffData) setTariffs(tariffData);
+      setTariffs(tariffData || []); // Correction : Toujours définir au moins un tableau vide
 
       let query = supabase
         .from('parcels')
@@ -274,7 +274,7 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
   const [weight, setWeight] = useState(p.weightKg.toString());
   const [quantity, setQuantity] = useState(p.quantity.toString());
 
-  // Correction : Synchroniser les champs quand le colis change (après un refresh)
+  // Correction : Synchroniser les champs quand le colis change
   useEffect(() => {
     setWeight(p.weightKg.toString());
     setQuantity(p.quantity.toString());
@@ -319,7 +319,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
   const isPriced = (p.price || 0) > 0;
   const isBlocked = !isPaid && p.status === 'En attente';
 
-  // MISE À JOUR : Support PLANE
   const TransportIcon = p.transportType === 'BOAT' ? Ship : p.transportType === 'TRAIN' ? Train : p.transportType === 'PLANE' ? Plane : Bus;
 
   return (
@@ -421,10 +420,16 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
                        <div className="space-y-5">
                           <div className="space-y-2 text-left">
                             <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Type de Fret</Label>
-                            <Select onValueChange={(v) => setSelectedTariff(tariffs.find(t => t.id === v) || null)}>
-                                <SelectTrigger className="h-12 rounded-xl border-none bg-slate-950 font-bold text-white shadow-inner"><SelectValue placeholder="Choisir tarif..." /></SelectTrigger>
+                            <Select onValueChange={(v) => setSelectedTariff(tariffs.find((t:any) => t.id === v) || null)}>
+                                <SelectTrigger className="h-12 rounded-xl border-none bg-slate-950 font-bold text-white shadow-inner">
+                                  <SelectValue placeholder={tariffs.length > 0 ? "Choisir tarif..." : "Chargement des tarifs..."} />
+                                </SelectTrigger>
                                 <SelectContent className="rounded-xl shadow-2xl bg-slate-900 border-border text-white">
-                                  {tariffs.map(t => <SelectItem key={t.id} value={t.id} className="font-bold focus:bg-primary/20">{t.label}</SelectItem>)}
+                                  {tariffs.length > 0 ? (
+                                    tariffs.map((t:any) => <SelectItem key={t.id} value={t.id} className="font-bold focus:bg-primary/20">{t.label}</SelectItem>)
+                                  ) : (
+                                    <SelectItem value="loading" disabled className="text-slate-500 italic">Aucun tarif trouvé...</SelectItem>
+                                  )}
                                 </SelectContent>
                             </Select>
                           </div>
