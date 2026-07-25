@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [formLoading, setFormSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  // Stabilisation de la récupération du profil
+  // Stabilisation de la récupération du profil pour éviter les boucles de rendu
   const fetchProfile = useCallback(async (supabaseUser: any) => {
     if (!supabaseUser) { 
       setUser(null); 
@@ -90,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [fetchProfile])
 
-  // STABILISATION DES FONCTIONS POUR ÉVITER LA BOUCLE
   const loginWithRedirect = useCallback((p?: any) => {
     if (p?.initialView) setModalView(p.initialView);
     setIsModalOpen(true);
@@ -98,7 +97,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => supabase.auth.signOut(), []);
 
-  // Handlers
+  // --- HANDLERS D'AUTH ---
+
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormSubmitting(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: window.location.origin }
+      });
+      if (error) throw error;
+      setMessage({ type: "success", text: "Lien envoyé ! Vérifiez vos emails." });
+    } catch (error: any) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
   const handlePasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault(); 
     setFormSubmitting(true); 
@@ -111,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
     } catch (error: any) {
       setMessage({ type: "error", text: "Identifiants incorrects." }); 
+    } finally {
       setFormSubmitting(false);
     }
   };
@@ -137,7 +156,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Mémorisation de la valeur du contexte pour stopper les re-rendus inutiles
+  const handleForgotPassword = async () => {
+    if (!email) return setMessage({ type: "error", text: "Saisissez votre e-mail d'abord." });
+    setFormSubmitting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { 
+        redirectTo: `${window.location.origin}/reset-password` 
+      });
+      if (error) throw error;
+      setMessage({ type: "success", text: "Lien de récupération envoyé par email !" });
+    } catch (error: any) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
   const contextValue = useMemo(() => ({
     user, isLoading, isModalOpen, loginWithRedirect, logout
   }), [user, isLoading, isModalOpen, loginWithRedirect, logout]);
@@ -147,7 +181,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
       {isModalOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/80 px-4 backdrop-blur-md">
-          {/* Container du modal avec scroll interne pour mobile */}
           <div className="w-full max-w-sm rounded-[2.5rem] border border-border bg-slate-900 p-8 shadow-[0_40px_100px_rgba(0,0,0,0.6)] relative animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
             
             <button 
@@ -183,21 +216,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     <div className="h-px flex-1 bg-slate-800" />
                 </div>
 
-                <form onSubmit={handlePasswordSignIn} className="space-y-4">
+                <form onSubmit={useMagicLink ? handleMagicLink : handlePasswordSignIn} className="space-y-4">
                   <div className="space-y-1 text-left">
                     <Label htmlFor="login-email" className="text-[10px] font-black uppercase text-slate-500 ml-2">Email</Label>
                     <Input id="login-email" type="email" required placeholder="nom@exemple.ga" value={email} onChange={e => setEmail(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-white shadow-inner" disabled={formLoading} />
                   </div>
                   
-                  <div className="space-y-1 text-left">
-                    <Label htmlFor="login-password" className="text-[10px] font-black uppercase text-slate-500 ml-2">Mot de passe</Label>
-                    <Input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-white shadow-inner" disabled={formLoading} />
-                  </div>
+                  {!useMagicLink && (
+                    <div className="space-y-1 text-left">
+                      <div className="flex justify-between items-center px-2">
+                        <Label htmlFor="login-password" className="text-[10px] font-black uppercase text-slate-500">Mot de passe</Label>
+                        <button type="button" onClick={handleForgotPassword} className="text-[10px] text-primary font-black uppercase hover:underline">Oublié ?</button>
+                      </div>
+                      <Input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-white shadow-inner" disabled={formLoading} />
+                    </div>
+                  )}
 
                   <Button type="submit" className="w-full font-black h-14 rounded-2xl shadow-xl bg-primary text-white text-lg uppercase tracking-widest active:scale-95 transition-all border-none" disabled={formLoading}>
-                    {formLoading ? <RefreshCw className="h-6 w-6 animate-spin" /> : "Se connecter"}
+                    {formLoading ? <RefreshCw className="h-6 w-6 animate-spin" /> : (useMagicLink ? <><Mail className="mr-2 h-5 w-5"/> Recevoir le lien</> : "Se connecter")}
                   </Button>
                 </form>
+
+                <button 
+                  type="button" 
+                  onClick={() => { setUseMagicLink(!useMagicLink); setMessage(null); }} 
+                  className="text-[10px] text-slate-500 font-black uppercase hover:text-primary w-full text-center transition-colors"
+                >
+                  {useMagicLink ? "Utiliser mon mot de passe" : "Connexion sans mot de passe (Magic Link)"}
+                </button>
               </div>
             ) : (
               <form onSubmit={handleSignUp} className="space-y-3 animate-in fade-in slide-in-from-right-4">
