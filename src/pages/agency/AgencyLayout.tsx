@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { path: '/agency/luggage-settings', label: 'Prix Bagages', icon: Settings2 },
   { path: '/agency/parcel-settings', label: 'Grilles Fret', icon: Truck },
   { path: '/agency/payments', label: 'État de Caisse', icon: DollarSign },
+  { path: '/agency/bookings', label: 'Rapport des Ventes', icon: DollarSign },
 ];
 
 export default function AgencyLayout({ children }: { children: ReactNode }) {
