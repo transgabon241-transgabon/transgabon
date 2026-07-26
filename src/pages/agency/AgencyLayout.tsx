@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode, useEffect, useState, useCallback } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context"; 
 import { 
@@ -20,8 +20,8 @@ import {
   ShieldCheck, 
   Menu, 
   X,
-  Plane,
-  Scale
+  Scale,
+  Plane 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,7 +64,7 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
 
-  // Filtrage des éléments du menu selon le rôle
+  // Filtrage des éléments du menu selon le rôle (UNIFIÉ ET FERMÉ CORRECTEMENT)
   const allowedItems = NAV_ITEMS.filter(item => {
     if (!user) return false;
     const role = user.role;
@@ -79,7 +79,7 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
       return ['/agency', '/agency/validate', '/agency/refunds', '/agency/payments', '/agency/parcels', '/agency/bookings'].includes(item.path);
     }
     
-    // Administrateur et Agent (Chef d'agence) voient tout
+    // Chef d'agence (Administrateur/Agent) voit tout
     return true;
   });
 
@@ -105,6 +105,7 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
         </button>
       </div>
 
+      {/* OVERLAY MOBILE */}
       {isSidebarOpen && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
       {/* --- SIDEBAR AGENCE --- */}

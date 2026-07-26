@@ -34,12 +34,11 @@ import ResetPasswordPage from "./pages/ResetPasswordPage"
 import AgencyBookings from './pages/agency/AgencyBookings';
 import AgencyLuggage from './pages/agency/AgencyLuggage';
 
-
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Traveler routes */}
+        {/* --- ROUTES VOYAGEURS (Public & Dashboard Client) --- */}
         <Route path="/" element={<Layout><HomePage /></Layout>} />
         <Route path="/search" element={<Layout><SearchResultsPage /></Layout>} />
         <Route path="/seats/:departureId" element={<Layout><SeatSelectionPage /></Layout>} />
@@ -48,9 +47,8 @@ export default function App() {
         <Route path="/ticket/:bookingId" element={<Layout><TicketPage /></Layout>} />
         <Route path="/send-parcel" element={<Layout><SendParcelPage /></Layout>} />
         <Route path="/track" element={<Layout><TrackParcelPage /></Layout>} />
-        <Route path="/agency/users" element={<AgencyLayout><AgencyUsers /></AgencyLayout>} />
 
-        {/* Agency routes */}
+        {/* --- ROUTES AGENCES (Chef d'agence, Caisse, Embarquement) --- */}
         <Route path="/agency" element={<AgencyLayout><AgencyDashboard /></AgencyLayout>} />
         <Route path="/agency/departures" element={<AgencyLayout><AgencyDepartures /></AgencyLayout>} />
         <Route path="/agency/vehicles" element={<AgencyLayout><AgencyVehicles /></AgencyLayout>} />
@@ -58,15 +56,14 @@ export default function App() {
         <Route path="/agency/passengers/:departureId" element={<AgencyLayout><AgencyPassengers /></AgencyLayout>} />
         <Route path="/agency/parcels" element={<AgencyLayout><AgencyParcels /></AgencyLayout>} />
         <Route path="/agency/refunds" element={<AgencyLayout><AgencyRefunds /></AgencyLayout>} />
-        {/* NOUVELLE ROUTE CONFIG BAGAGES */}
+        <Route path="/agency/users" element={<AgencyLayout><AgencyUsers /></AgencyLayout>} />
         <Route path="/agency/luggage-settings" element={<AgencyLayout><LuggageSettings /></AgencyLayout>} />
         <Route path="/agency/parcel-settings" element={<AgencyLayout><ParcelSettings /></AgencyLayout>} />
         <Route path="/agency/payments" element={<AgencyLayout><AgencyPayments /></AgencyLayout>} />
         <Route path="/agency/bookings" element={<AgencyLayout><AgencyBookings /></AgencyLayout>} />
         <Route path="/agency/luggage" element={<AgencyLayout><AgencyLuggage /></AgencyLayout>} />
 
-
-        {/* Admin routes */}
+        {/* --- ROUTES ADMIN (Super Admin Plateforme) --- */}
         <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
         <Route path="/admin/companies" element={<AdminLayout><AdminCompanies /></AdminLayout>} />
         <Route path="/admin/routes" element={<AdminLayout><AdminRoutes /></AdminLayout>} />
@@ -74,7 +71,7 @@ export default function App() {
         <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
         <Route path="/admin/payments" element={<AdminLayout><AdminPayments /></AdminLayout>} />
 
-        {/* Conditions d'utilisation */}
+        {/* --- PAGES LÉGALES & AUTH --- */}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
