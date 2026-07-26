@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context"; 
 import { 
@@ -20,7 +20,8 @@ import {
   ShieldCheck, 
   Menu, 
   X,
-  Plane 
+  Plane,
+  Scale
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,40 +54,40 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
 
   // --- RESTRICTION STRICTE DES RÔLES ---
   useEffect(() => {
-    // Liste limitée au Chef d'agence (Admin/Agent) et à la Caisse (Caissier)
-    const allowedRoles = ['Administrateur', 'Agent', 'Chef d\'agence', 'Caissier'];
+    const allowedRoles = ['Administrateur', 'Agent', 'Chef d\'agence', 'Caissier', 'Agent Embarquement', 'Service Colis'];
     
     if (user && !allowedRoles.includes(user.role)) {
-      toast.error("Accès restreint au Chef d'agence et à la Caisse.");
+      toast.error("Accès restreint.");
       navigate('/');
     }
   }, [user, navigate]);
 
   useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
 
+  // Filtrage des éléments du menu selon le rôle
+  const allowedItems = NAV_ITEMS.filter(item => {
+    if (!user) return false;
+    const role = user.role;
+
+    if (role === 'Agent Embarquement') {
+      return ['/agency/departures', '/agency/validate', '/agency/luggage'].includes(item.path);
+    }
+    if (role === 'Service Colis') {
+      return ['/agency/parcels', '/agency/luggage'].includes(item.path);
+    }
+    if (role === 'Caissier') {
+      return ['/agency', '/agency/validate', '/agency/refunds', '/agency/payments', '/agency/parcels', '/agency/bookings'].includes(item.path);
+    }
+    
+    // Administrateur et Agent (Chef d'agence) voient tout
+    return true;
+  });
+
   if (isLoading || !user) return (
     <div className="min-h-screen bg-background flex items-center justify-center text-primary">
         <RefreshCw className="h-10 w-10 animate-spin" />
     </div>
   );
-
-  const allowedItems = NAV_ITEMS.filter(item => {
-    const role = user.role;
-    // Si c'est l'agent d'embarquement ou l'agent fret
-    if (role === 'Agent Embarquement' || role === 'Service Colis') {
-      return ['/agency/departures', '/agency/validate', '/agency/luggage'].includes(item.path);
-    }
-
-  // Filtrage des éléments du menu selon le rôle spécifique au sein du groupe autorisé
-  const allowedItems = NAV_ITEMS.filter(item => {
-    const role = user.role;
-    // La Caisse n'a pas accès à la gestion de l'équipe ou aux réglages de prix
-    if (role === 'Caissier') {
-      return ['/agency', '/agency/validate', '/agency/refunds', '/agency/payments', '/agency/parcels'].includes(item.path);
-    }
-    // Le Chef d'agence (Admin/Agent) voit tout
-    return true;
-  });
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background font-sans relative overflow-x-hidden text-foreground">
