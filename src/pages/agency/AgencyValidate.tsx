@@ -32,7 +32,7 @@ export default function AgencyValidate() {
   const canBoard = ['Administrateur', 'Agent', 'Agent Embarquement', 'Chef d\'agence'].includes(userRole || '');
   const canSeeBoardingButton = ['Administrateur', 'Chef d\'agence', 'Agent Embarquement'].includes(userRole || '');
 
-  // CALCUL DE L'EXCÉDENT EN TEMPS RÉEL (POUR LE NOUVEL AJOUT)
+  // CALCUL DE L'EXCÉDENT EN TEMPS RÉEL
   const currentCalculation = useMemo(() => {
     if (!result?.booking) return 0;
     if (result.booking.tripType === 'TRAIN' || result.booking.tripType === 'PLANE') {
@@ -48,6 +48,8 @@ export default function AgencyValidate() {
     const targetRef = forcedRef || qrInput.trim();
     if (!targetRef) return;
     setLoading(true);
+    setResult(null); // Reset précédent résultat
+
     try {
       let ref = targetRef.toUpperCase();
       const { data: b, error } = await supabase
@@ -56,12 +58,23 @@ export default function AgencyValidate() {
         .eq('reference', ref).maybeSingle();
 
       if (error) throw error;
-      if (!b) { setResult({ valid: false, message: 'BILLET INTROUVABLE' }); return; }
+      if (!b) { 
+        setResult({ valid: false, message: 'BILLET INTROUVABLE' }); 
+        return; 
+      }
+
+      // --- BARRIÈRE DE SÉCURITÉ : VÉRIFICATION DE L'APPARTENANCE ---
+      // On vérifie si la compagnie du trajet est la même que celle de l'agent
+      if (b.trip.company_id !== user?.companyId) {
+        toast.error("ACCÈS REFUSÉ : Ce billet appartient à une autre compagnie.");
+        setResult({ valid: false, message: 'ACCÈS INTERDIT (HORS RÉSEAU)' });
+        setLoading(false);
+        return;
+      }
 
       const { data: rates } = await supabase.from('company_luggage_settings').select('*').eq('company_id', b.trip.company_id);
       if (rates) setAgencyRates(rates);
 
-      // SOMME DES BAGAGES ET EXCÉDENTS
       const luggageTotal = (b.luggages || []).reduce((sum: number, l: any) => sum + (Number(l.total_price) || 0), 0);
       const classMapping: any = { 'VIP': 'SALON VIP', 'BUSINESS': 'BUSINESS', 'ECO': 'ÉCONOMIQUE', '1ERE_CLASSE': '1ÈRE CLASSE', '2EME_CLASSE': '2ÈME CLASSE' };
 
@@ -83,7 +96,6 @@ export default function AgencyValidate() {
           classLabel: classMapping[b.class_type] || b.class_type,
           ticketAmount: Number(b.total_amount) || 0,
           luggageAmount: luggageTotal,
-          // TOTAL À PAYER = PRIX BILLET + SOMME DES BAGAGES
           totalToPay: Number(b.total_amount) + luggageTotal,
           tripType: b.trip.type,
           seatNumber: b.passengers[0]?.seat_number || '—',
@@ -91,7 +103,11 @@ export default function AgencyValidate() {
           excessPrice: b.trip.company.default_excess_weight_price || 500
         }
       });
-    } catch (e) { toast.error('Erreur de lecture'); } finally { setLoading(false); }
+    } catch (e) { 
+        toast.error('Erreur de lecture'); 
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   const handleAddLuggage = async () => {
@@ -109,12 +125,11 @@ export default function AgencyValidate() {
       }]);
       if (error) throw error;
       
-      // Si un montant est ajouté, le billet repasse en attente de paiement
       if (currentCalculation > 0) {
         await supabase.from('bookings').update({ status: 'ATTENTE' }).eq('id', result.booking.id);
-        toast.warning("Excédent ajouté : Le passager doit retourner en caisse");
+        toast.warning("Excédent ajouté : Règlement requis");
       } else {
-        toast.success("Bagage conforme enregistré");
+        toast.success("Bagage validé");
       }
 
       setWeightInput(""); setSelectedRateId("");
@@ -134,7 +149,7 @@ export default function AgencyValidate() {
     setBoardingId(passengerId);
     try {
       await supabase.from('passengers').update({ boarded: true }).eq('id', passengerId);
-      toast.success("Passager embarqué");
+      toast.success("Embarquement validé");
       handleValidate(result.booking.bookingNumber);
     } finally { setBoardingId(null); }
   };
@@ -239,7 +254,7 @@ export default function AgencyValidate() {
                 </div>
             </div>
 
-            {/* SECTION BAGAGES (LECTURE SEULE - PAS D'ÉDITION) */}
+            {/* SECTION BAGAGES */}
             <div className="space-y-2 mb-6">
                 <Label className="text-[9px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em]">Bagages Enregistrés</Label>
                 {result.booking.luggages.length > 0 ? (
@@ -263,7 +278,7 @@ export default function AgencyValidate() {
                 )}
             </div>
 
-            {/* POSTE DE PESAGE (POUR AJOUTER DES FRAIS SI BESOIN) */}
+            {/* POSTE DE PESAGE */}
             <div className="bg-slate-950 p-4 rounded-[2rem] border-2 border-slate-800 mb-6 shadow-inner">
                 <h4 className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-2 mb-4 tracking-widest"><Scale size={14} className="text-primary"/> Nouveau Bagage / Pesée</h4>
                 <div className="space-y-4">
@@ -287,7 +302,7 @@ export default function AgencyValidate() {
                 </div>
             </div>
 
-            {/* SECTION CAISSE (RÉSUMÉ COMPLET) */}
+            {/* SECTION CAISSE */}
             {!result.valid && (
                 <div className="bg-slate-800 p-5 rounded-[2rem] border border-slate-700 mb-6 shadow-2xl">
                     <div className="space-y-2 mb-4">
@@ -318,12 +333,12 @@ export default function AgencyValidate() {
                 </div>
             )}
 
-            {/* MANIFESTE EMBARQUEMENT */}
+            {/* MANIFESTE D'EMBARQUEMENT */}
             {result.valid && (
                 <div className="space-y-3">
                     <h3 className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-[0.3em]">Manifeste d'embarquement</h3>
                     {result.booking.passengers.map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-2xl group">
+                        <div key={p.id} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-2xl group hover:border-primary transition-colors">
                             <div className="text-left">
                                 <p className="font-black text-sm text-white uppercase leading-none">{p.first_name} {p.last_name}</p>
                                 <p className="text-[10px] font-bold text-primary mt-1 flex items-center gap-1">
@@ -341,7 +356,7 @@ export default function AgencyValidate() {
                                         onClick={() => handleBoardPassenger(p.id)} 
                                         className="h-11 px-8 rounded-xl font-black bg-emerald-600 text-white shadow-lg active:scale-95 transition-all text-[10px] uppercase tracking-widest border-none"
                                     >
-                                        Embarquer
+                                        Valider
                                     </Button>
                                 )
                             )}

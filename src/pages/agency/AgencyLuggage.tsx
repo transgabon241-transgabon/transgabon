@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export default function AgencyLuggage() {
-  const { user } = useAuth();
+  const { user } = useAuth(); // Récupération de l'agent connecté
   const [qrInput, setQrInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -35,6 +35,8 @@ export default function AgencyLuggage() {
   const handleSearch = async () => {
     if (!qrInput.trim()) return;
     setLoading(true);
+    setResult(null); // On reset le résultat précédent pour éviter les flashs d'anciennes données
+
     try {
       const { data: b, error } = await supabase
         .from('bookings')
@@ -53,10 +55,20 @@ export default function AgencyLuggage() {
         .maybeSingle();
 
       if (error) throw error;
+
       if (!b) {
         toast.error("Billet introuvable");
         return;
       }
+
+      // --- BARRIÈRE DE SÉCURITÉ : VÉRIFICATION DE L'AGENCE ---
+      // Si l'id de la compagnie du voyage ne correspond pas à l'id de l'agence de l'agent
+      if (b.trip.company_id !== user?.companyId) {
+        toast.error("ACCÈS REFUSÉ : Ce billet appartient à une autre agence.");
+        setLoading(false);
+        return; 
+      }
+
       setResult(b);
       await loadRates(b.trip.company_id);
     } catch (e) {
@@ -70,9 +82,9 @@ export default function AgencyLuggage() {
     return agencyRates.find(r => r.id === selectedRateId);
   }, [selectedRateId, agencyRates]);
 
+  // Logique de calcul
   const calculationDetails = useMemo(() => {
     if (!result) return { total: 0, excessWeight: 0, pricePerUnit: 0, label: "" };
-
     const totalWeight = parseFloat(weightInput) || 0;
     const qty = parseInt(qtyInput) || 1;
     const freeLimit = result.trip.company?.default_free_weight_limit || 0;
@@ -80,28 +92,12 @@ export default function AgencyLuggage() {
 
     if (currentRate) {
       if (currentRate.is_weight_based) {
-        return {
-          total: excessWeight * currentRate.price * qty,
-          excessWeight,
-          pricePerUnit: currentRate.price,
-          label: `${currentRate.label}`
-        };
+        return { total: excessWeight * currentRate.price * qty, excessWeight, pricePerUnit: currentRate.price, label: `${currentRate.label}` };
       }
-      return {
-        total: currentRate.price * qty,
-        excessWeight: 0,
-        pricePerUnit: currentRate.price,
-        label: currentRate.label
-      };
+      return { total: currentRate.price * qty, excessWeight: 0, pricePerUnit: currentRate.price, label: currentRate.label };
     }
-
     const standardPrice = result.trip.company?.default_excess_weight_price || 0;
-    return {
-      total: excessWeight * standardPrice * qty,
-      excessWeight,
-      pricePerUnit: standardPrice,
-      label: "Excédent Standard"
-    };
+    return { total: excessWeight * standardPrice * qty, excessWeight, pricePerUnit: standardPrice, label: "Excédent Standard" };
   }, [weightInput, selectedRateId, qtyInput, result, currentRate]);
 
   const currentCalculation = calculationDetails.total;
@@ -112,44 +108,21 @@ export default function AgencyLuggage() {
     if (!result || !isWeightFilled) return;
     setLoading(true);
     try {
-      // Identifier s'il existe déjà un "Excédent Standard" pour le mettre à jour au lieu d'en créer un nouveau
       const existingStandard = result.luggages.find((l: any) => l.label.includes("Excédent Standard"));
-      
-      const label = calculationDetails.excessWeight > 0 
-        ? `${calculationDetails.label} (${weightInput}kg)` 
-        : calculationDetails.label;
+      const label = calculationDetails.excessWeight > 0 ? `${calculationDetails.label} (${weightInput}kg)` : calculationDetails.label;
 
       if (!selectedRateId && existingStandard) {
-        // MISE À JOUR DU POIDS EXISTANT
-        const { error: upError } = await supabase
-          .from('luggages')
-          .update({
-            label: label,
-            total_price: currentCalculation,
-            quantity: 1
-          })
-          .eq('id', existingStandard.id);
-        if (upError) throw upError;
+        await supabase.from('luggages').update({ label, total_price: currentCalculation, quantity: 1 }).eq('id', existingStandard.id);
       } else {
-        // NOUVEL INSERTION (Pour les types de bagages ou premier excédent)
-        const { error: lugError } = await supabase.from('luggages').insert([{
-          booking_id: result.id,
-          passenger_id: result.passengers[0]?.id,
-          label,
-          quantity: parseInt(qtyInput),
-          total_price: currentCalculation
-        }]);
-        if (lugError) throw lugError;
+        await supabase.from('luggages').insert([{ booking_id: result.id, passenger_id: result.passengers[0]?.id, label, quantity: parseInt(qtyInput), total_price: currentCalculation }]);
       }
 
-      // Si le total est supérieur à 0, le billet doit être payé
       if (currentCalculation > 0) {
         await supabase.from('bookings').update({ status: 'ATTENTE' }).eq('id', result.id);
         toast.warning("Montant mis à jour : Caisse requise");
       } else {
         toast.success("Vérification enregistrée");
       }
-
       setWeightInput("");
       setSelectedRateId("");
       handleSearch();
@@ -169,8 +142,8 @@ export default function AgencyLuggage() {
             <Scale size={28} />
           </div>
           <div>
-            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Vérification Bagages</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Inspection et Pesée Officielle</p>
+            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Poste de Pesage</h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Vérification de sécurité agence</p>
           </div>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
@@ -190,14 +163,14 @@ export default function AgencyLuggage() {
       {result && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4">
           
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-6 text-left">
             <div className="bg-card border-2 border-border p-6 rounded-[2rem] shadow-xl relative overflow-hidden">
-              <div className="flex items-center gap-3 mb-6 text-left">
+              <div className="flex items-center gap-3 mb-6">
                 <div className="h-12 w-12 bg-slate-800 rounded-2xl flex items-center justify-center text-primary border border-slate-700">
                   <User size={24} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black text-slate-500 uppercase">Billet Passager</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase">Passager</p>
                   <p className="font-black text-white uppercase truncate">{result.passengers[0]?.first_name} {result.passengers[0]?.last_name}</p>
                 </div>
               </div>
@@ -219,12 +192,12 @@ export default function AgencyLuggage() {
             </div>
 
             <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-border">
-               <h3 className="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest flex items-center gap-2 text-left">
+               <h3 className="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest flex items-center gap-2">
                  <Package size={14} /> Déjà Enregistré
                </h3>
                <div className="space-y-2 text-left">
                   {result.luggages.length === 0 ? (
-                    <p className="text-[10px] text-slate-600 italic text-center py-4">Aucun supplément pesé</p>
+                    <p className="text-[10px] text-slate-600 italic text-center py-4">Aucune pesée</p>
                   ) : (
                     result.luggages.map((lug: any) => (
                       <div key={lug.id} className="flex justify-between items-center p-3 bg-slate-900 rounded-xl border border-white/5">
@@ -232,7 +205,7 @@ export default function AgencyLuggage() {
                           <p className="text-[10px] font-black text-white uppercase truncate">{lug.label}</p>
                           <p className="text-[9px] font-bold text-primary">{Number(lug.total_price).toLocaleString()} F</p>
                         </div>
-                        <Badge variant="outline" className="text-[8px] border-slate-700 h-5">x{lug.quantity}</Badge>
+                        <Badge variant="outline" className="text-[8px] border-slate-700">x{lug.quantity}</Badge>
                       </div>
                     ))
                   )}
@@ -247,7 +220,7 @@ export default function AgencyLuggage() {
                     <div className="p-3 bg-primary rounded-2xl text-white shadow-lg">
                       <Calculator size={24} />
                     </div>
-                    <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Poste d'inspection</h2>
+                    <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Mise à jour du poids</h2>
                   </div>
                   {hasExcess && (
                     <Badge className="bg-red-500 text-white border-none font-black animate-pulse px-3 py-1 text-[8px]">EXCÉDENT DÉTECTÉ</Badge>
@@ -257,7 +230,7 @@ export default function AgencyLuggage() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-6">
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Type de bagage (Tarif)</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Type de bagage supplémentaire</Label>
                         <select 
                           value={selectedRateId} 
                           onChange={e => setSelectedRateId(e.target.value)}
@@ -292,29 +265,17 @@ export default function AgencyLuggage() {
                       <div className={`text-4xl md:text-5xl font-black tracking-tighter mb-2 ${hasExcess ? 'text-primary' : 'text-emerald-500'}`}>
                         {Math.round(currentCalculation).toLocaleString()} <span className="text-sm">F</span>
                       </div>
-                      
-                      <div className="mb-6 h-6">
-                         {isWeightFilled && (
-                            <p className="text-[9px] font-bold text-slate-500 uppercase">
-                               {calculationDetails.excessWeight > 0 
-                                 ? `Détail : ${calculationDetails.excessWeight} kg (facturés) x ${calculationDetails.pricePerUnit} F`
-                                 : "Poids dans la franchise autorisée"}
-                            </p>
-                         )}
-                      </div>
-                      
                       <div className="mb-8">
                         {hasExcess ? (
                             <div className="flex items-center gap-2 text-amber-500 bg-amber-500/5 p-3 rounded-xl text-[9px] font-bold uppercase italic border border-amber-500/10">
                                 <AlertTriangle size={14}/> Règlement en caisse requis
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2 text-emerald-500 bg-emerald-500/5 p-3 rounded-xl text-[9px] font-bold uppercase italic border border-emerald-500/10">
-                                <CheckCircle2 size={14}/> Bagages conformes
+                            <div className="flex items-center gap-2 text-emerald-500 bg-emerald-500/5 p-3 rounded-xl text-[9px] font-bold uppercase italic border border-amber-500/10">
+                                <CheckCircle2 size={14}/> Poids conforme
                             </div>
                         )}
                       </div>
-                      
                       <Button 
                         onClick={handleConfirmInspection}
                         disabled={loading || !isWeightFilled}
@@ -322,17 +283,7 @@ export default function AgencyLuggage() {
                           ${hasExcess ? 'bg-primary text-white' : 'bg-emerald-600 text-white'}
                           text-[10px] tracking-tighter sm:tracking-normal md:text-[11px]`}
                       >
-                         {hasExcess ? (
-                           <>
-                             <Plus size={18} className="shrink-0" /> 
-                             <span className="truncate">Enregistrer l'excédent</span>
-                           </>
-                         ) : (
-                           <>
-                             <CheckCircle2 size={18} className="shrink-0" /> 
-                             <span className="truncate">Confirmer la conformité</span>
-                           </>
-                         )}
+                         {hasExcess ? <><Plus size={20} className="mr-2" /> Enregistrer Excédent</> : <><CheckCircle2 size={20} className="mr-2" /> Confirmer Conformité</>}
                       </Button>
                   </div>
                </div>
