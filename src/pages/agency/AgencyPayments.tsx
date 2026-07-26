@@ -132,19 +132,28 @@ export default function AgencyPayments() {
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 pb-20 bg-background text-foreground">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black italic text-white flex items-center gap-3">
-            <BarChart3 className="h-8 w-8 text-primary" /> État de Caisse
+      {/* HEADER CORRIGÉ POUR MOBILE */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 px-1">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-black italic text-white flex items-center gap-3">
+            <BarChart3 className="h-7 w-7 sm:h-8 sm:w-8 text-primary shrink-0" /> 
+            <span className="truncate uppercase tracking-tighter">État de Caisse</span>
           </h1>
-          <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest mt-1">Suivi des encaissements agence</p>
+          <p className="text-muted-foreground font-bold text-[9px] sm:text-[10px] uppercase tracking-widest mt-1">Suivi des encaissements agence</p>
         </div>
-        <div className="flex gap-2">
-            <Button variant="outline" onClick={() => window.print()} className="rounded-xl font-bold border-border bg-card text-foreground h-11 print:hidden hover:bg-muted transition-colors">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+            <Button 
+              variant="outline" 
+              onClick={() => window.print()} 
+              className="flex-1 sm:flex-none rounded-xl font-bold border-border bg-card text-foreground h-11 print:hidden hover:bg-muted transition-colors text-xs sm:text-sm"
+            >
               <Printer className="h-4 w-4 mr-2" /> Imprimer
             </Button>
-            <Button variant="outline" onClick={loadData} className="rounded-xl border-border bg-card h-11 w-11 flex items-center justify-center print:hidden hover:bg-muted transition-colors">
+            <Button 
+              variant="outline" 
+              onClick={loadData} 
+              className="rounded-xl border-border bg-card h-11 w-11 flex items-center justify-center print:hidden hover:bg-muted transition-colors shrink-0"
+            >
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </Button>
         </div>
