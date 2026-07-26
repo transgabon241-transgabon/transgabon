@@ -20,10 +20,11 @@ import {
   ShieldCheck, 
   Menu, 
   X,
-  Plane // AJOUT DE L'ICÔNE PLANE POUR LA COHÉRENCE
+  Plane 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 const NAV_ITEMS = [
   { path: '/agency', label: 'Tableau de bord', icon: LayoutDashboard },
@@ -48,9 +49,15 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
     if (!isLoading && !user) loginWithRedirect({ initialView: 'signin' });
   }, [isLoading, user, loginWithRedirect]);
 
+  // --- RESTRICTION STRICTE DES RÔLES ---
   useEffect(() => {
-    const allowedRoles = ['Agent', 'Administrateur', 'Agent Embarquement', 'Service Colis', 'Caissier'];
-    if (user && !allowedRoles.includes(user.role)) navigate('/');
+    // Liste limitée au Chef d'agence (Admin/Agent) et à la Caisse (Caissier)
+    const allowedRoles = ['Administrateur', 'Agent', 'Chef d\'agence', 'Caissier'];
+    
+    if (user && !allowedRoles.includes(user.role)) {
+      toast.error("Accès restreint au Chef d'agence et à la Caisse.");
+      navigate('/');
+    }
   }, [user, navigate]);
 
   useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
@@ -61,11 +68,14 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
     </div>
   );
 
+  // Filtrage des éléments du menu selon le rôle spécifique au sein du groupe autorisé
   const allowedItems = NAV_ITEMS.filter(item => {
     const role = user.role;
-    if (role === 'Agent Embarquement') return ['/agency/departures', '/agency/validate'].includes(item.path);
-    if (role === 'Service Colis') return ['/agency/parcels'].includes(item.path);
-    if (role === 'Caissier') return ['/agency/validate', '/agency/refunds', '/agency/payments', '/agency/parcels'].includes(item.path);
+    // La Caisse n'a pas accès à la gestion de l'équipe ou aux réglages de prix
+    if (role === 'Caissier') {
+      return ['/agency', '/agency/validate', '/agency/refunds', '/agency/payments', '/agency/parcels'].includes(item.path);
+    }
+    // Le Chef d'agence (Admin/Agent) voit tout
     return true;
   });
 
@@ -85,7 +95,6 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
         </button>
       </div>
 
-      {/* OVERLAY MOBILE */}
       {isSidebarOpen && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
       {/* --- SIDEBAR AGENCE --- */}
@@ -111,7 +120,6 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        {/* PROFILE CARD SOMBRE */}
         <div className="mx-6 mb-8 p-5 bg-white/5 rounded-[1.5rem] border border-white/10 backdrop-blur-sm">
             <div className="flex items-center gap-4">
                 <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-black text-xs border border-primary/20">
