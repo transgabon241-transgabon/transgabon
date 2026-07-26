@@ -61,7 +61,8 @@ export default function App() {
         <Route path="/agency/luggage-settings" element={<AgencyLayout><LuggageSettings /></AgencyLayout>} />
         <Route path="/agency/parcel-settings" element={<AgencyLayout><ParcelSettings /></AgencyLayout>} />
         <Route path="/agency/payments" element={<AgencyLayout><AgencyPayments /></AgencyLayout>} />
-        <Route path="/agency/bookings" element={<AgencyBookings />} />
+        <Route path="/agency/bookings" element={<AgencyLayout><AgencyBookings /></AgencyLayout>} />
+
 
         {/* Admin routes */}
         <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
