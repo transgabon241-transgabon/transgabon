@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from "@/lib/auth-context";
-import { Button } from '@/components/ui/input'; // Note: check your UI library path
+import { Button } from '@/components/ui/button'; // CORRECTION ICI : importé de /button et non /input
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
-  Scale, Search, RefreshCw, Trash2, Plus, 
+  Scale, Search, RefreshCw, Plus, 
   User, Package, Calculator, ArrowRight, Hash, Info
 } from 'lucide-react';
 
@@ -259,7 +259,6 @@ export default function AgencyLuggage() {
         </div>
       )}
 
-      {/* EMPTY STATE */}
       {!result && (
         <div className="py-20 text-center opacity-10">
           <Scale size={80} className="mx-auto mb-4 text-white" />
