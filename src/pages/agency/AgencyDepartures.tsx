@@ -50,6 +50,12 @@ export default function AgencyDepartures() {
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Pagination & Tabs states
+  const [activeTab, setActiveTab] = useState("today");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Form states
   const [routeId, setRouteId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [depDate, setDepDate] = useState('');
@@ -64,6 +70,7 @@ export default function AgencyDepartures() {
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // Catégorisation
   const categorizedTrips = useMemo(() => {
     return {
       today: departures.filter(d => d.departureDate === todayStr),
@@ -71,6 +78,18 @@ export default function AgencyDepartures() {
       past: departures.filter(d => d.departureDate < todayStr),
     };
   }, [departures, todayStr]);
+
+  // Données paginées selon l'onglet actif
+  const paginatedTrips = useMemo(() => {
+    const currentList = categorizedTrips[activeTab as keyof typeof categorizedTrips] || [];
+    const start = (currentPage - 1) * itemsPerPage;
+    return currentList.slice(start, start + itemsPerPage);
+  }, [categorizedTrips, activeTab, currentPage]);
+
+  const totalPages = useMemo(() => {
+    const currentList = categorizedTrips[activeTab as keyof typeof categorizedTrips] || [];
+    return Math.ceil(currentList.length / itemsPerPage);
+  }, [categorizedTrips, activeTab]);
 
   const stats = useMemo(() => {
     const totalSeats = departures.reduce((acc, d) => acc + d.totalSeats, 0);
@@ -178,9 +197,9 @@ export default function AgencyDepartures() {
   return (
     <div className="w-full max-w-6xl mx-auto p-2 sm:p-4 text-left space-y-6 bg-background text-foreground pb-20">
       
-      {/* HEADER CORRIGÉ */}
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 bg-card p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border-2 border-border shadow-xl">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 text-left">
           <div className="p-2 sm:p-3 bg-primary/10 rounded-xl text-primary border border-primary/20 shrink-0">
             <CalendarDays className="h-6 w-6 sm:h-8 sm:w-8" />
           </div>
@@ -196,7 +215,7 @@ export default function AgencyDepartures() {
         )}
       </div>
 
-      {/* STATS DASHBOARD CORRIGÉ */}
+      {/* STATS DASHBOARD */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
           <StatCard icon={BarChart3} label="Total" value={stats.total} color="text-blue-400" bg="bg-blue-500/10" />
           <StatCard icon={Clock} label="Auj." value={stats.today} color="text-primary" bg="bg-primary/10" />
@@ -205,7 +224,7 @@ export default function AgencyDepartures() {
       </div>
 
       {/* TABS FILTRÉS */}
-      <Tabs defaultValue="today" className="w-full space-y-6">
+      <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setCurrentPage(1); }} className="w-full space-y-6">
         <TabsList className="bg-slate-900 border-2 border-slate-800 p-1 rounded-2xl h-auto flex w-full md:w-fit mx-1">
             <TabsTrigger value="today" className="flex-1 md:w-40 rounded-xl font-black uppercase text-[8px] sm:text-[10px] py-3 data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
                 Aujourd'hui ({categorizedTrips.today.length})
@@ -214,33 +233,53 @@ export default function AgencyDepartures() {
                 À venir ({categorizedTrips.upcoming.length})
             </TabsTrigger>
             <TabsTrigger value="past" className="flex-1 md:w-40 rounded-xl font-black uppercase text-[8px] sm:text-[10px] py-3 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-500">
-                Archives
+                Archives ({categorizedTrips.past.length})
             </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="today" className="space-y-4 outline-none px-1">
-            {categorizedTrips.today.length === 0 ? <EmptyDisplay message="Aucun départ aujourd'hui" /> : 
-            categorizedTrips.today.map(dep => <DepartureCard key={dep.id} dep={dep} canEdit={canEdit} onEdit={openEdit} />)}
-        </TabsContent>
+        <div className="space-y-4 px-1">
+            {paginatedTrips.length === 0 ? (
+                <EmptyDisplay message={`Aucun trajet dans "${activeTab === 'today' ? "Aujourd'hui" : activeTab === 'upcoming' ? "À venir" : "Archives"}"`} />
+            ) : (
+                paginatedTrips.map(dep => <DepartureCard key={dep.id} dep={dep} canEdit={canEdit} onEdit={openEdit} />)
+            )}
+        </div>
 
-        <TabsContent value="upcoming" className="space-y-4 outline-none px-1">
-            {categorizedTrips.upcoming.length === 0 ? <EmptyDisplay message="Aucun départ futur" /> : 
-            categorizedTrips.upcoming.map(dep => <DepartureCard key={dep.id} dep={dep} canEdit={canEdit} onEdit={openEdit} />)}
-        </TabsContent>
-
-        <TabsContent value="past" className="space-y-4 outline-none px-1">
-            {categorizedTrips.past.length === 0 ? <EmptyDisplay message="Aucun historique" /> : 
-            categorizedTrips.past.map(dep => <DepartureCard key={dep.id} dep={dep} canEdit={canEdit} onEdit={openEdit} />)}
-        </TabsContent>
+        {/* CONTRÔLE DE PAGINATION */}
+        {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-xl">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    disabled={currentPage === 1} 
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    className="h-8 w-8 text-slate-400 hover:text-white"
+                >
+                    <ChevronLeft size={20} />
+                </Button>
+                <span className="text-[10px] font-black text-slate-500 uppercase px-4">
+                    Page {currentPage} / {totalPages}
+                </span>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    disabled={currentPage === totalPages} 
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    className="h-8 w-8 text-slate-400 hover:text-white"
+                >
+                    <ChevronRight size={20} />
+                </Button>
+            </div>
+        )}
       </Tabs>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="rounded-[2rem] p-6 md:p-10 w-[95vw] max-w-2xl bg-slate-900 text-white border-border overflow-y-auto max-h-[90vh]">
-          <DialogTitle className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle>
+          <DialogTitle className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter text-left">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle>
           <div className="space-y-6 mt-6">
             {!editId && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2 text-left">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Trajet</Label>
                   <Select value={routeId} onValueChange={setRouteId}>
                     <SelectTrigger className="h-12 bg-slate-950 border-none rounded-xl text-white"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
@@ -249,7 +288,7 @@ export default function AgencyDepartures() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 text-left">
+                <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Véhicule</Label>
                   <Select value={vehicleId} onValueChange={setVehicleId}>
                     <SelectTrigger className="h-12 bg-slate-950 border-none rounded-xl text-white"><SelectValue placeholder="Sélect. véhicule" /></SelectTrigger>
@@ -268,9 +307,9 @@ export default function AgencyDepartures() {
             <div className="p-4 sm:p-6 bg-slate-950 rounded-2xl border border-border space-y-4 text-left">
                <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Tarification (FCFA)</Label>
                <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  <Input type="number" placeholder="Eco" value={price} onChange={e => setPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-base" />
-                  <Input type="number" placeholder="Biz" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-base" />
-                  <Input type="number" placeholder="VIP" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-base" />
+                  <div className="space-y-1"><Label className="text-[8px] uppercase text-slate-500">Eco</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-base" /></div>
+                  <div className="space-y-1"><Label className="text-[8px] uppercase text-slate-500">Business</Label><Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-base" /></div>
+                  <div className="space-y-1"><Label className="text-[8px] uppercase text-slate-500">VIP</Label><Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-base" /></div>
                </div>
             </div>
             <Button onClick={handleSave} disabled={saving} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl text-xs">
