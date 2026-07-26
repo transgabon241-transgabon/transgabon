@@ -10,12 +10,12 @@ import {
   Calendar as CalendarIcon, 
   User, 
   ArrowRight,
-  Filter,
   RefreshCw,
   FileText,
   TrendingUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ export default function AgencyBookings() {
   const itemsPerPage = 8;
 
   const loadBookings = async () => {
+    // Utiliser le companyId de l'agent connecté
     if (!user?.companyId) return;
     setLoading(true);
     try {
@@ -45,11 +46,15 @@ export default function AgencyBookings() {
             departure_time,
             from:cities!from_id(name),
             to:cities!to_id(name),
+            company:companies(name),
             vehicle:vehicles(registration)
           ),
-          passengers (first_name, last_name, seat_number)
+          passengers (first_name, last_name, seat_number),
+          luggages (total_price)
         `)
-        .eq('trip.company_id', user.companyId)
+        // CORRECTION CRITIQUE : On filtre par l'agence qui a fait la vente
+        // et non par le propriétaire du voyage
+        .eq('company_id', user.companyId) 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -63,23 +68,36 @@ export default function AgencyBookings() {
 
   useEffect(() => { loadBookings(); }, [user]);
 
+  // Calcul du montant total incluant les bagages pour chaque ligne
+  const processedBookings = useMemo(() => {
+    return bookings.map(b => {
+      const ticketAmount = Number(b.total_amount) || 0;
+      const luggageAmount = (b.luggages || []).reduce((sum: number, l: any) => sum + (Number(l.total_price) || 0), 0);
+      return {
+        ...b,
+        realTotal: ticketAmount + luggageAmount,
+        luggageTotal: luggageAmount
+      };
+    });
+  }, [bookings]);
+
   // Filtrage
   const filteredBookings = useMemo(() => {
-    return bookings.filter(b => {
+    return processedBookings.filter(b => {
+      const name = `${b.passengers?.[0]?.first_name} ${b.passengers?.[0]?.last_name}`.toLowerCase();
       const matchSearch = 
         b.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.passengers?.[0]?.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.passengers?.[0]?.last_name.toLowerCase().includes(searchTerm.toLowerCase());
+        name.includes(searchTerm.toLowerCase());
       
       const matchDate = dateFilter ? b.created_at.startsWith(dateFilter) : true;
       
       return matchSearch && matchDate;
     });
-  }, [bookings, searchTerm, dateFilter]);
+  }, [processedBookings, searchTerm, dateFilter]);
 
   // Statistiques du rapport
   const stats = useMemo(() => {
-    const total = filteredBookings.reduce((sum, b) => sum + (Number(b.total_amount) || 0), 0);
+    const total = filteredBookings.reduce((sum, b) => sum + b.realTotal, 0);
     return {
       revenue: total,
       count: filteredBookings.length
@@ -103,28 +121,26 @@ export default function AgencyBookings() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Rapport des Ventes</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Historique des billets émis</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Chiffre d'affaires encaissé par votre agence</p>
           </div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" size="sm" onClick={loadBookings} className="rounded-xl font-black border-slate-800 bg-slate-950 h-11 px-6 text-[10px] uppercase hover:bg-slate-800 text-slate-300">
-                <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
-            </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={loadBookings} className="rounded-xl font-black border-slate-800 bg-slate-950 h-11 px-6 text-[10px] uppercase hover:bg-slate-800 text-slate-300">
+            <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
+        </Button>
       </div>
 
       {/* STATS RAPIDES */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-slate-900 border border-border p-6 rounded-[1.5rem] flex items-center justify-between">
+        <div className="bg-slate-900 border border-border p-6 rounded-[1.5rem] flex items-center justify-between shadow-lg">
             <div className="text-left">
-                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Volume de Ventes (Sélection)</p>
-                <p className="text-3xl font-black text-white tracking-tighter">{stats.count} <span className="text-sm text-slate-600">Billets</span></p>
+                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Billets Émis</p>
+                <p className="text-3xl font-black text-white tracking-tighter">{stats.count}</p>
             </div>
             <Ticket className="text-primary opacity-20" size={40} />
         </div>
-        <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-[1.5rem] flex items-center justify-between">
+        <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-[1.5rem] flex items-center justify-between shadow-lg">
             <div className="text-left">
-                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Chiffre d'Affaires (Sélection)</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Total Encaissé (Billet + Fret)</p>
                 <p className="text-3xl font-black text-emerald-500 tracking-tighter">{stats.revenue.toLocaleString()} <span className="text-sm">FCFA</span></p>
             </div>
             <TrendingUp className="text-emerald-500 opacity-20" size={40} />
@@ -136,7 +152,7 @@ export default function AgencyBookings() {
         <div className="relative md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <Input 
-            placeholder="Rechercher une référence ou un nom..." 
+            placeholder="Référence ou nom passager..." 
             value={searchTerm}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 h-12 rounded-xl border-none bg-slate-950 text-white font-bold"
@@ -159,42 +175,42 @@ export default function AgencyBookings() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-950/50 border-b border-border">
-                <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Référence / Date</th>
+                <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Date / Réf</th>
                 <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Passager</th>
+                <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Transporteur</th>
                 <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Trajet</th>
-                <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Statut</th>
-                <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Montant</th>
+                <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {paginated.map((b) => (
                 <tr key={b.id} className="hover:bg-white/5 transition-colors">
                   <td className="p-5">
-                    <p className="font-mono font-black text-primary text-xs">{b.reference}</p>
-                    <p className="text-[9px] font-bold text-slate-500 mt-1">{new Date(b.created_at).toLocaleDateString()}</p>
+                    <p className="text-[10px] font-bold text-slate-400 mb-1">{new Date(b.created_at).toLocaleDateString()}</p>
+                    <p className="font-mono font-black text-primary text-xs uppercase">{b.reference}</p>
                   </td>
                   <td className="p-5">
-                    <p className="font-black text-white text-xs uppercase">
+                    <p className="font-black text-white text-xs uppercase leading-none">
                       {b.passengers?.[0]?.first_name} {b.passengers?.[0]?.last_name}
                     </p>
-                    <Badge variant="outline" className="mt-1 text-[8px] border-slate-700 text-slate-500">Siège {b.passengers?.[0]?.seat_number}</Badge>
-                  </td>
-                  <td className="p-5">
-                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-300 uppercase">
-                      <span>{b.trip?.from?.name}</span>
-                      <ArrowRight size={10} className="text-primary" />
-                      <span>{b.trip?.to?.name}</span>
+                    <div className="flex items-center gap-1 mt-2">
+                        <Badge variant="outline" className="text-[7px] border-slate-700 text-slate-500">Siège {b.passengers?.[0]?.seat_number}</Badge>
+                        {b.luggageTotal > 0 && <Badge className="text-[7px] bg-amber-500/10 text-amber-500 border-none"><Package size={8} className="mr-1"/> + Bagage</Badge>}
                     </div>
                   </td>
                   <td className="p-5">
-                    <Badge className={`text-[8px] font-black ${
-                      b.status === 'PAYE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
-                    }`}>
-                      {b.status}
-                    </Badge>
+                    <p className="text-[10px] font-black text-slate-400 uppercase italic">{b.trip?.company?.name}</p>
+                  </td>
+                  <td className="p-5">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-300 uppercase">
+                      <span className="truncate max-w-[80px]">{b.trip?.from?.name}</span>
+                      <ArrowRight size={10} className="text-primary shrink-0" />
+                      <span className="truncate max-w-[80px] text-primary">{b.trip?.to?.name}</span>
+                    </div>
                   </td>
                   <td className="p-5 text-right">
-                    <p className="font-black text-white text-sm">{(Number(b.total_amount) || 0).toLocaleString()} F</p>
+                    <p className="font-black text-white text-sm">{b.realTotal.toLocaleString()} F</p>
+                    <p className="text-[8px] font-bold text-slate-500 uppercase">{b.payment_method}</p>
                   </td>
                 </tr>
               ))}
@@ -205,30 +221,28 @@ export default function AgencyBookings() {
         {filteredBookings.length === 0 && (
           <div className="py-20 text-center text-slate-600">
             <Ticket size={48} className="mx-auto mb-4 opacity-10" />
-            <p className="text-[10px] font-black uppercase tracking-widest">Aucune vente trouvée</p>
+            <p className="text-[10px] font-black uppercase tracking-widest">Aucune vente enregistrée pour votre agence</p>
           </div>
         )}
       </div>
 
       {/* PAGINATION */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-4">
+        <div className="flex items-center justify-center gap-4 mt-4 bg-slate-900 p-2 rounded-2xl border border-border w-fit mx-auto shadow-xl">
           <Button 
-            variant="ghost" 
-            size="icon" 
+            variant="ghost" size="icon" 
             disabled={currentPage === 1} 
             onClick={() => setCurrentPage(p => p - 1)}
-            className="rounded-xl border border-border bg-slate-900 text-white"
+            className="rounded-xl border border-border text-white h-10 w-10"
           >
             <ChevronLeft size={20} />
           </Button>
-          <span className="text-[10px] font-black text-slate-500 uppercase">Page {currentPage} / {totalPages}</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase px-4">Page {currentPage} / {totalPages}</span>
           <Button 
-            variant="ghost" 
-            size="icon" 
+            variant="ghost" size="icon" 
             disabled={currentPage === totalPages} 
             onClick={() => setCurrentPage(p => p + 1)}
-            className="rounded-xl border border-border bg-slate-900 text-white"
+            className="rounded-xl border border-border text-white h-10 w-10"
           >
             <ChevronRight size={20} />
           </Button>
