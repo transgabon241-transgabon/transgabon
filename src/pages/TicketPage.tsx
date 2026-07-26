@@ -34,7 +34,9 @@ type MappedBooking = {
   departureDate: string;
   departureTime: string;
   seatNumber: string;
-  amount: number;
+  ticketAmount: number;
+  luggageAmount: number;
+  amount: number; // Montant total (Billet + Bagages)
   paymentMethod: string;
   paymentStatus: string;
   qrCodeData: string;
@@ -83,6 +85,11 @@ export default function TicketPage() {
           const destination = b.arrival_city_name || b.trip.to.name;
           const prettyClass = classMapping[b.class_type] || b.travel_class || 'Standard';
 
+          // CORRECTION DU CALCUL TOTAL : Prix Billet + Somme des Bagages
+          const ticketAmount = Number(b.total_amount) || 0;
+          const luggageAmount = (b.luggages || []).reduce((sum: number, l: any) => sum + (Number(l.total_price) || 0), 0);
+          const totalAmount = ticketAmount + luggageAmount;
+
           const qrPayload = JSON.stringify({
             ref: b.reference,
             pass: passengerName,
@@ -100,7 +107,6 @@ export default function TicketPage() {
             departureCity: b.trip.from.name,
             arrivalCity: destination,
             companyName: b.trip.company.name,
-            // LOGIQUE DE MAPPING MISE À JOUR POUR L'AVION
             transportType: b.trip.type === 'TRAIN' ? 'Train' : b.trip.type === 'BOAT' ? 'Bateau' : b.trip.type === 'PLANE' ? 'Avion' : 'Bus',
             transportTypeCode: b.trip.type,
             registration: b.trip.vehicle?.registration || '—',
@@ -109,7 +115,9 @@ export default function TicketPage() {
             departureDate: b.trip.departure_date,
             departureTime: b.trip.departure_time,
             seatNumber,
-            amount: b.total_amount,
+            ticketAmount,
+            luggageAmount,
+            amount: totalAmount, // MONTANT MIS À JOUR
             paymentMethod: b.payment_method === 'AGENCE' ? 'Paiement Agence' : b.payment_method,
             paymentStatus: b.status === 'PAYE' ? 'Réglé' : 'À régler',
             qrCodeData: qrPayload,
@@ -131,8 +139,6 @@ export default function TicketPage() {
   if (!booking) return <div className="p-20 text-center font-bold text-red-500 uppercase">Billet introuvable</div>;
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(booking.qrCodeData)}`;
-  
-  // LOGIQUE D'ICÔNE MISE À JOUR POUR L'AVION
   const TransportIcon = booking.transportTypeCode === 'BOAT' ? Ship : booking.transportTypeCode === 'TRAIN' ? Train : booking.transportTypeCode === 'PLANE' ? Plane : Bus;
 
   return (
@@ -144,7 +150,7 @@ export default function TicketPage() {
 
       <div className="bg-card border-2 border-border rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] print:border-none print:shadow-none">
         
-        {/* HEADER - Couleur Indigo pour PLANE */}
+        {/* HEADER */}
         <div className={`p-8 text-white ${
           booking.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 
           booking.transportTypeCode === 'TRAIN' ? 'bg-slate-950 border-b border-border' : 
@@ -210,18 +216,18 @@ export default function TicketPage() {
                 </InfoField>
             </div>
 
-            {/* SECTION BAGAGES SOMBRE */}
+            {/* SECTION BAGAGES SOMBRE AVEC PRIX */}
             {booking.luggages.length > 0 ? (
               <div className="p-5 bg-slate-950 rounded-[2rem] border-2 border-border animate-in slide-in-from-bottom-2 text-left">
                 <div className="flex items-center gap-2 text-slate-500 mb-4">
                    <Package size={14} className="text-primary" />
-                   <span className="text-[10px] font-black uppercase tracking-widest">Bagages enregistrés</span>
+                   <span className="text-[10px] font-black uppercase tracking-widest">Bagages & Suppléments</span>
                 </div>
                 <div className="space-y-2">
                    {booking.luggages.map((lug) => (
                      <div key={lug.id} className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-border shadow-sm">
-                        <span className="text-[10px] font-black text-slate-300 uppercase">{lug.label}</span>
-                        <Badge className="bg-slate-800 text-slate-400 border-none font-black text-[10px]">x{lug.quantity}</Badge>
+                        <span className="text-[10px] font-black text-slate-300 uppercase">{lug.label} (x{lug.quantity})</span>
+                        <span className="font-mono font-bold text-xs text-primary">{Number(lug.total_price || 0).toLocaleString()} F</span>
                      </div>
                    ))}
                 </div>
@@ -233,7 +239,7 @@ export default function TicketPage() {
               </div>
             )}
 
-            {/* BOX RÉCAPITULATIF */}
+            {/* BOX RÉCAPITULATIF FINANCIER */}
             <div className="grid grid-cols-3 gap-2 bg-slate-950 p-6 rounded-[2rem] border border-border shadow-xl text-white">
                <div className="text-left">
                   <p className="text-[8px] font-black text-primary uppercase opacity-70">Date</p>
@@ -244,8 +250,8 @@ export default function TicketPage() {
                   <p className="font-black text-xs text-slate-200">{booking.departureTime}</p>
                </div>
                <div className="text-right">
-                  <p className="text-[8px] font-black text-primary uppercase opacity-70">Montant</p>
-                  <p className="font-black text-xs text-slate-200">{booking.amount.toLocaleString()} F</p>
+                  <p className="text-[8px] font-black text-emerald-400 uppercase opacity-70">Total Réglé</p>
+                  <p className="font-black text-xs text-emerald-400">{booking.amount.toLocaleString()} F</p>
                </div>
             </div>
         </div>
