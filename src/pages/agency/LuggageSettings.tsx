@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox'; // Assurez-vous d'avoir ce composant
 import { 
   Package, 
   Scale, 
@@ -62,12 +61,12 @@ export default function LuggageSettings() {
         company_id: user?.companyId, 
         label: newItem.label.trim(), 
         price: parseFloat(newItem.price),
-        is_weight_based: newItem.is_weight_based // Ajout de la gestion du poids
+        is_weight_based: newItem.is_weight_based 
       };
 
       if (editingId) {
         await supabase.from('company_luggage_settings').update(payload).eq('id', editingId);
-        toast.success("Tarif mis à jour");
+        toast.success("Tarif bagage mis à jour");
       } else {
         const { data, error } = await supabase.from('company_luggage_settings').insert([payload]).select().single();
         if (error) throw error;
@@ -108,13 +107,13 @@ export default function LuggageSettings() {
   return (
     <div className="max-w-2xl mx-auto w-full p-2 md:p-4 pb-20 space-y-6 text-left animate-in fade-in duration-500 bg-background text-foreground">
       
-      <header className="flex items-center gap-4 bg-slate-900 p-5 rounded-[1.5rem] md:rounded-[2rem] border-2 border-slate-800 shadow-2xl">
+      <header className="flex items-center gap-4 bg-slate-900 p-5 rounded-[1.5rem] md:rounded-[2rem] border-2 border-border shadow-2xl">
         <div className="p-3 bg-primary/10 rounded-2xl text-primary border border-primary/20 shrink-0">
           <Settings2 className="h-6 w-6" />
         </div>
         <div>
           <h1 className="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">Règles Bagages</h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Gestion des suppléments et kilos</p>
+          <p className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Gestion des suppléments et kilos</p>
         </div>
       </header>
 
@@ -143,23 +142,26 @@ export default function LuggageSettings() {
             </div>
             
             <div className="space-y-5">
-              <div className="space-y-2">
+              <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Nom de l'article (Ex: Glacière, Sac de voyage...)</Label>
-                <Input placeholder="Désignation..." className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-4" value={newItem.label} onChange={e => setNewItem({...newItem, label: e.target.value})} />
+                <Input placeholder="Désignation..." className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-4 shadow-inner" value={newItem.label} onChange={e => setNewItem({...newItem, label: e.target.value})} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Prix (FCFA)</Label>
-                    <Input type="number" className="h-12 rounded-xl border-none bg-slate-950 text-primary font-black text-lg px-4" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
+                    <Input type="number" className="h-12 rounded-xl border-none bg-slate-950 text-primary font-black text-lg px-4 shadow-inner" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
                 </div>
+                {/* Remplacement du Checkbox UI par un Input Checkbox standard HTML */}
                 <div className="flex items-center gap-3 bg-slate-950/50 p-4 rounded-xl border border-white/5 self-end">
-                    <Checkbox 
+                    <input 
+                        type="checkbox"
                         id="isWeight" 
+                        className="w-5 h-5 accent-primary rounded cursor-pointer bg-slate-900 border-slate-700"
                         checked={newItem.is_weight_based} 
-                        onCheckedChange={(checked) => setNewItem({...newItem, is_weight_based: !!checked})} 
+                        onChange={(e) => setNewItem({...newItem, is_weight_based: e.target.checked})} 
                     />
-                    <Label htmlFor="isWeight" className="text-[10px] font-black uppercase text-slate-400 cursor-pointer">Prix calculé au Kilo ?</Label>
+                    <Label htmlFor="isWeight" className="text-[10px] font-black uppercase text-slate-400 cursor-pointer select-none">Prix calculé au Kilo ?</Label>
                 </div>
               </div>
 
@@ -171,11 +173,11 @@ export default function LuggageSettings() {
           </div>
 
           <div className="space-y-4">
-             <h3 className="font-black text-[10px] uppercase text-slate-500 ml-4 tracking-[0.2em]">Catalogue Agence</h3>
+             <h3 className="font-black text-[10px] uppercase text-slate-500 ml-4 tracking-[0.2em] text-left">Catalogue Agence</h3>
              <div className="space-y-3">
                {busItems.map((item) => (
                   <div key={item.id} className={`flex items-center justify-between p-4 rounded-[1.5rem] border-2 transition-all ${editingId === item.id ? 'bg-amber-500/5 border-amber-500/50' : 'bg-slate-900 border-slate-800'}`}>
-                    <div className="flex items-center gap-4 text-left overflow-hidden">
+                    <div className="flex items-center gap-4 text-left overflow-hidden text-left">
                       <div className={`h-10 w-10 rounded-xl shrink-0 flex items-center justify-center font-black ${item.is_weight_based ? 'bg-blue-500 text-white' : 'bg-slate-950 text-slate-600'}`}>
                         {item.is_weight_based ? <Scale size={18}/> : item.label.charAt(0).toUpperCase()}
                       </div>
@@ -208,16 +210,16 @@ export default function LuggageSettings() {
                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2">Applicable aux Vols, Trains et Bateaux</p>
             </div>
 
-            <div className="space-y-8 relative z-10">
-              <div className="space-y-3">
+            <div className="space-y-8 relative z-10 text-left">
+              <div className="space-y-3 text-left">
                 <Label className="font-black text-[10px] uppercase text-slate-500 ml-4 tracking-widest">Franchise Offerte (Poids gratuit)</Label>
                 <div className="relative">
-                   <Input type="number" value={trainSettings.free_limit} onChange={e => setTrainSettings({...trainSettings, free_limit: parseFloat(e.target.value)})} className="h-16 md:h-20 pl-6 pr-16 font-black text-3xl md:text-4xl rounded-2xl border-none bg-slate-950 text-white shadow-inner" />
+                   <Input type="number" value={trainSettings.free_limit} onChange={e => setTrainSettings({...trainSettings, free_limit: parseFloat(e.target.value)})} className="h-16 md:h-20 pl-6 pr-16 font-black text-3xl md:text-4xl rounded-2xl border-none bg-slate-950 text-white shadow-inner appearance-none" />
                    <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-slate-700 text-xl">KG</span>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 text-left">
                 <Label className="font-black text-[10px] uppercase text-slate-500 ml-4 tracking-widest">Prix par KG supplémentaire</Label>
                 <div className="relative">
                    <Input type="number" value={trainSettings.price_per_kg} onChange={e => setTrainSettings({...trainSettings, price_per_kg: parseFloat(e.target.value)})} className="h-16 md:h-20 pl-6 pr-32 font-black text-3xl md:text-4xl rounded-2xl border-none bg-slate-950 text-white shadow-inner" />
