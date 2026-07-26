@@ -112,11 +112,26 @@ export default function AgencyLuggage() {
     if (!result || !isWeightFilled) return;
     setLoading(true);
     try {
-      if (hasExcess || selectedRateId) {
-        const label = calculationDetails.excessWeight > 0 
-          ? `${calculationDetails.label} : ${calculationDetails.excessWeight}kg facturés`
-          : calculationDetails.label;
+      // Identifier s'il existe déjà un "Excédent Standard" pour le mettre à jour au lieu d'en créer un nouveau
+      const existingStandard = result.luggages.find((l: any) => l.label.includes("Excédent Standard"));
+      
+      const label = calculationDetails.excessWeight > 0 
+        ? `${calculationDetails.label} (${weightInput}kg)` 
+        : calculationDetails.label;
 
+      if (!selectedRateId && existingStandard) {
+        // MISE À JOUR DU POIDS EXISTANT
+        const { error: upError } = await supabase
+          .from('luggages')
+          .update({
+            label: label,
+            total_price: currentCalculation,
+            quantity: 1
+          })
+          .eq('id', existingStandard.id);
+        if (upError) throw upError;
+      } else {
+        // NOUVEL INSERTION (Pour les types de bagages ou premier excédent)
         const { error: lugError } = await supabase.from('luggages').insert([{
           booking_id: result.id,
           passenger_id: result.passengers[0]?.id,
@@ -125,13 +140,14 @@ export default function AgencyLuggage() {
           total_price: currentCalculation
         }]);
         if (lugError) throw lugError;
+      }
 
-        if (hasExcess) {
-          await supabase.from('bookings').update({ status: 'ATTENTE' }).eq('id', result.id);
-          toast.warning("Excédent enregistré");
-        }
+      // Si le total est supérieur à 0, le billet doit être payé
+      if (currentCalculation > 0) {
+        await supabase.from('bookings').update({ status: 'ATTENTE' }).eq('id', result.id);
+        toast.warning("Montant mis à jour : Caisse requise");
       } else {
-        toast.success("Conforme : Embarquement autorisé");
+        toast.success("Vérification enregistrée");
       }
 
       setWeightInput("");
@@ -304,17 +320,17 @@ export default function AgencyLuggage() {
                         disabled={loading || !isWeightFilled}
                         className={`w-full h-16 rounded-2xl font-black uppercase shadow-xl active:scale-95 transition-all border-none flex items-center justify-center gap-2 px-4 
                           ${hasExcess ? 'bg-primary text-white' : 'bg-emerald-600 text-white'}
-                          text-[10px] tracking-tight sm:tracking-normal md:text-[11px]`}
+                          text-[10px] tracking-tighter sm:tracking-normal md:text-[11px]`}
                       >
                          {hasExcess ? (
                            <>
                              <Plus size={18} className="shrink-0" /> 
-                             <span className="truncate">Enregistrer Excédent</span>
+                             <span className="truncate">Enregistrer l'excédent</span>
                            </>
                          ) : (
                            <>
                              <CheckCircle2 size={18} className="shrink-0" /> 
-                             <span className="truncate">Confirmer Conformité</span>
+                             <span className="truncate">Confirmer la conformité</span>
                            </>
                          )}
                       </Button>
