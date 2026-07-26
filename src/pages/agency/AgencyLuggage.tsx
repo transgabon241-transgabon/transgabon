@@ -70,7 +70,6 @@ export default function AgencyLuggage() {
     return agencyRates.find(r => r.id === selectedRateId);
   }, [selectedRateId, agencyRates]);
 
-  // --- LOGIQUE DE CALCUL CORRIGÉE AVEC DÉDUCTION DE FRANCHISE ---
   const calculationDetails = useMemo(() => {
     if (!result) return { total: 0, excessWeight: 0, pricePerUnit: 0, label: "" };
 
@@ -79,14 +78,13 @@ export default function AgencyLuggage() {
     const freeLimit = result.trip.company?.default_free_weight_limit || 0;
     const excessWeight = Math.max(0, totalWeight - freeLimit);
 
-    // CAS 1 : Tarif spécifique (Forfait) sélectionné
     if (currentRate) {
       if (currentRate.is_weight_based) {
         return {
           total: excessWeight * currentRate.price * qty,
           excessWeight,
           pricePerUnit: currentRate.price,
-          label: `${currentRate.label} (Excédent)`
+          label: `${currentRate.label}`
         };
       }
       return {
@@ -97,7 +95,6 @@ export default function AgencyLuggage() {
       };
     }
 
-    // CAS 2 : Pesée Libre (Standard)
     const standardPrice = result.trip.company?.default_excess_weight_price || 0;
     return {
       total: excessWeight * standardPrice * qty,
@@ -150,7 +147,6 @@ export default function AgencyLuggage() {
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6 text-left animate-in fade-in duration-500 bg-background pb-20">
       
-      {/* BARRE DE RECHERCHE */}
       <div className="bg-card p-6 rounded-[2rem] border-2 border-border shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4 text-left">
           <div className="p-3 bg-primary/10 rounded-2xl border border-primary/20 text-primary">
@@ -281,7 +277,6 @@ export default function AgencyLuggage() {
                         {Math.round(currentCalculation).toLocaleString()} <span className="text-sm">F</span>
                       </div>
                       
-                      {/* DÉTAIL DU CALCUL POUR TRANSPARENCE */}
                       <div className="mb-6 h-6">
                          {isWeightFilled && (
                             <p className="text-[9px] font-bold text-slate-500 uppercase">
@@ -307,9 +302,21 @@ export default function AgencyLuggage() {
                       <Button 
                         onClick={handleConfirmInspection}
                         disabled={loading || !isWeightFilled}
-                        className={`w-full h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all border-none ${hasExcess ? 'bg-primary text-white' : 'bg-emerald-600 text-white'}`}
+                        className={`w-full h-16 rounded-2xl font-black uppercase shadow-xl active:scale-95 transition-all border-none flex items-center justify-center gap-2 px-4 
+                          ${hasExcess ? 'bg-primary text-white' : 'bg-emerald-600 text-white'}
+                          text-[10px] tracking-tight sm:tracking-normal md:text-[11px]`}
                       >
-                         {hasExcess ? <><Plus size={20} className="mr-2" /> Enregistrer Excédent</> : <><CheckCircle2 size={20} className="mr-2" /> Confirmer Conformité</>}
+                         {hasExcess ? (
+                           <>
+                             <Plus size={18} className="shrink-0" /> 
+                             <span className="truncate">Enregistrer Excédent</span>
+                           </>
+                         ) : (
+                           <>
+                             <CheckCircle2 size={18} className="shrink-0" /> 
+                             <span className="truncate">Confirmer Conformité</span>
+                           </>
+                         )}
                       </Button>
                   </div>
                </div>
