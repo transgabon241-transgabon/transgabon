@@ -9,12 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { 
   Package, 
   Search, 
   RefreshCw, 
-  Trash2, 
   Scale, 
   Calculator, 
   ChevronLeft, 
@@ -29,7 +27,12 @@ import {
   Phone,
   User,
   Lock,
-  Wallet
+  Wallet,
+  LayoutDashboard,
+  TrendingUp,
+  Clock,
+  Truck,
+  CheckCircle
 } from 'lucide-react'; 
 import { toast } from 'sonner';
 
@@ -81,6 +84,24 @@ export default function AgencyParcels() {
 
   const userRole = user?.role;
   const canCollectMoney = ['Administrateur', 'Agent', 'Caissier'].includes(userRole || '');
+
+  // CALCUL DES STATISTIQUES
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      total: parcels.length,
+      today: parcels.filter(p => p.departureDate === today).length,
+      pending: parcels.filter(p => p.status === 'En attente').length,
+      inTransit: parcels.filter(p => p.status === 'En transit').length,
+      delivered: parcels.filter(p => p.status === 'Livré').length,
+      revenueToday: parcels
+        .filter(p => p.departureDate === today && p.paymentStatus === 'Payé')
+        .reduce((sum, p) => sum + p.price, 0),
+      toCollect: parcels
+        .filter(p => p.paymentStatus === 'À payer')
+        .reduce((sum, p) => sum + p.price, 0),
+    };
+  }, [parcels]);
 
   const loadData = async () => {
     if (!user?.companyId) return;
@@ -197,14 +218,15 @@ export default function AgencyParcels() {
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
+      {/* HEADER AVEC BOUTON ACTUALISER */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-card p-6 rounded-[2rem] border-2 border-border shadow-2xl">
         <div className="flex items-center gap-4 text-left">
           <div className="p-3 bg-slate-950 rounded-2xl shadow-lg text-primary border border-slate-800">
-            <Package size={28} />
+            <LayoutDashboard size={28} />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Gestion du Fret</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Logistique et Messagerie Nationale</p>
+            <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Tableau de Bord Fret</h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Analyse des flux et logistique</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={loadData} className="rounded-xl font-black border-slate-700 bg-slate-950 h-11 px-6 text-[10px] uppercase tracking-widest hover:bg-slate-800 text-slate-300 transition-all">
@@ -212,6 +234,48 @@ export default function AgencyParcels() {
         </Button>
       </div>
 
+      {/* SECTION STATISTIQUES (WIDGETS) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="bg-card p-4 rounded-[1.5rem] border border-border shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary"><Package size={16}/></div>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Global</span>
+          </div>
+          <p className="text-2xl font-black text-white">{stats.total}</p>
+          <div className="mt-2 flex items-center gap-1 text-[8px] font-bold text-emerald-500">
+            <TrendingUp size={10}/> {stats.today} aujourd'hui
+          </div>
+        </div>
+
+        <div className="bg-card p-4 rounded-[1.5rem] border border-border shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-yellow-500/10 rounded-lg text-yellow-500"><Clock size={16}/></div>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">En Attente</span>
+          </div>
+          <p className="text-2xl font-black text-white">{stats.pending}</p>
+          <p className="text-[8px] font-bold text-slate-600 mt-2 uppercase tracking-tighter">Action requise en agence</p>
+        </div>
+
+        <div className="bg-card p-4 rounded-[1.5rem] border border-border shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Truck size={16}/></div>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">En Transit</span>
+          </div>
+          <p className="text-2xl font-black text-white">{stats.inTransit}</p>
+          <p className="text-[8px] font-bold text-slate-600 mt-2 uppercase tracking-tighter">En cours de transport</p>
+        </div>
+
+        <div className="bg-card p-4 rounded-[1.5rem] border border-border shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><Wallet size={16}/></div>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Recettes Jour</span>
+          </div>
+          <p className="text-xl font-black text-emerald-500">{stats.revenueToday.toLocaleString()} F</p>
+          <p className="text-[8px] font-bold text-amber-500 mt-2 uppercase tracking-tighter">Reste à percevoir : {stats.toCollect.toLocaleString()} F</p>
+        </div>
+      </div>
+
+      {/* BARRE DE RECHERCHE ET FILTRES */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-card p-5 rounded-[2rem] border border-border shadow-2xl">
         <div className="md:col-span-3 relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 group-focus-within:text-primary transition-colors" />
@@ -237,6 +301,7 @@ export default function AgencyParcels() {
         </Select>
       </div>
 
+      {/* LISTE DES COLIS */}
       <div className="space-y-4">
         {paginatedParcels.map(p => (
           <ParcelCard 
@@ -257,6 +322,7 @@ export default function AgencyParcels() {
         )}
       </div>
 
+      {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-8 bg-card p-2 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
           <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"><ChevronLeft size={18} /></Button>
@@ -402,7 +468,6 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
               </div>
            </div>
 
-           {/* ACTIONS : Correction du débordement sur mobile */}
            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full md:w-auto justify-end">
               {p.status === 'En attente' && !isPaid && (
                 <>

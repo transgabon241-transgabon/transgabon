@@ -11,7 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, Ship, Train, Bus, Plane, Save, RefreshCw, Hash, MapPin, Clock, X } from 'lucide-react';
+import { 
+  Plus, Pencil, Trash2, Users, ArrowRight, ChevronLeft, ChevronRight, 
+  Ship, Train, Bus, Plane, Save, RefreshCw, Hash, MapPin, Clock, X,
+  BarChart3, Activity, PieChart, Percent, TrendingUp
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -72,10 +76,20 @@ export default function AgencyDepartures() {
 
   const canEdit = user?.role === 'Agent' || user?.role === 'Administrateur';
 
-  const currentVehicleType = useMemo(() => {
-    if (editId) return departures.find(d => d.id === editId)?.type;
-    return vehicles.find(v => v.id === vehicleId)?.type;
-  }, [editId, vehicleId, departures, vehicles]);
+  // --- CALCUL DES STATISTIQUES EN TEMPS RÉEL ---
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const totalSeats = departures.reduce((acc, d) => acc + d.totalSeats, 0);
+    const soldSeats = departures.reduce((acc, d) => acc + d.bookingCount, 0);
+    
+    return {
+      totalDepartures: departures.length,
+      todayDepartures: departures.filter(d => d.departureDate === today).length,
+      totalBookings: soldSeats,
+      occupancyRate: totalSeats > 0 ? Math.round((soldSeats / totalSeats) * 100) : 0,
+      activeVehicles: new Set(departures.map(d => d.registration)).size
+    };
+  }, [departures]);
 
   const loadData = async () => {
     if (!user?.companyId) return;
@@ -195,9 +209,12 @@ export default function AgencyDepartures() {
   const totalPages = Math.ceil(departures.length / itemsPerPage);
 
   if (loading && departures.length === 0) return (
-    <div className="p-4 space-y-4 bg-background min-h-screen">
-      <Skeleton className="h-12 w-48 bg-card" />
-      <Skeleton className="h-64 w-full bg-card" />
+    <div className="p-8 space-y-8 bg-background min-h-screen">
+      <Skeleton className="h-32 w-full rounded-[2.5rem] bg-card" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-2xl bg-card" />)}
+      </div>
+      <Skeleton className="h-64 w-full rounded-[2.5rem] bg-card" />
     </div>
   );
 
@@ -205,12 +222,15 @@ export default function AgencyDepartures() {
     <div className="w-full max-w-6xl mx-auto p-2 md:p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 px-2">
-        <div className="text-left">
-          <h1 className="text-3xl md:text-4xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3">
-             <Clock className="text-primary h-8 w-8 md:h-10 md:w-10" /> Gestion départs
-          </h1>
-          <p className="text-[11px] md:text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Planning Agence</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 px-2 bg-card p-6 rounded-[2rem] border-2 border-border shadow-2xl">
+        <div className="text-left flex items-center gap-4">
+          <div className="p-3 bg-primary/10 rounded-2xl border border-primary/20 text-primary">
+            <Activity size={32} />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-4xl font-black italic text-white uppercase tracking-tighter leading-none">Console Exploitation</h1>
+            <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Planification des départs et suivi</p>
+          </div>
         </div>
         {canEdit && (
           <Button onClick={() => { resetForm(); setShowForm(true); }} className="w-full sm:w-auto rounded-xl font-black gap-2 h-14 md:h-16 px-8 shadow-xl bg-primary text-white border-none hover:bg-primary/90 transition-all">
@@ -219,8 +239,50 @@ export default function AgencyDepartures() {
         )}
       </div>
 
+      {/* --- TABLEAU DE BORD STATISTIQUE --- */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard 
+            icon={Clock} 
+            label="Trajets Jour" 
+            value={stats.todayDepartures} 
+            color="text-blue-400" 
+            bg="bg-blue-500/10" 
+            sub="Départs programmés" 
+          />
+          <StatCard 
+            icon={Users} 
+            label="Passagers" 
+            value={stats.totalBookings} 
+            color="text-emerald-400" 
+            bg="bg-emerald-500/10" 
+            sub="Sièges réservés" 
+          />
+          <StatCard 
+            icon={Percent} 
+            label="Occupation" 
+            value={`${stats.occupancyRate}%`} 
+            color="text-amber-400" 
+            bg="bg-amber-500/10" 
+            sub="Remplissage moyen" 
+          />
+          <StatCard 
+            icon={Ship} 
+            label="Flotte Active" 
+            value={stats.activeVehicles} 
+            color="text-primary" 
+            bg="bg-primary/10" 
+            sub="Unités mobilisées" 
+          />
+      </div>
+
       {/* LISTE DES DÉPARTS */}
       <div className="space-y-4 md:space-y-6">
+        <div className="flex items-center gap-3 px-4">
+            <TrendingUp size={18} className="text-primary" />
+            <h2 className="text-xs font-black uppercase text-slate-500 tracking-widest italic">Liste opérationnelle des trajets</h2>
+            <div className="h-px bg-slate-800 flex-1 ml-2" />
+        </div>
+
         {currentItems.map(dep => {
           const TransportIcon = dep.type === 'BOAT' ? Ship : dep.type === 'TRAIN' ? Train : dep.type === 'PLANE' ? Plane : Bus;
           
@@ -260,23 +322,23 @@ export default function AgencyDepartures() {
                    
                    <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
                       <Link to={`/agency/passengers/${dep.id}`} className="col-span-1 flex-1">
-                          <Button variant="outline" className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl border border-border bg-slate-950 text-slate-300 font-black text-[10px] md:text-xs uppercase gap-2 px-4 hover:bg-slate-800 hover:text-white transition-colors">
+                          <Button variant="outline" className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl border border-border bg-slate-950 text-slate-300 font-black text-[10px] md:text-xs uppercase gap-2 px-4 hover:bg-slate-800 hover:text-white transition-colors shadow-lg">
                               <Users size={18} /> Manifeste
                           </Button>
                       </Link>
 
                       {canEdit && (
                         <div className="col-span-1 flex gap-2 flex-1">
-                            <Button variant="outline" onClick={() => openEdit(dep)} className="flex-1 h-12 md:h-14 rounded-xl md:rounded-2xl border border-border bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white p-0 shadow-sm transition-colors"><Pencil size={20} /></Button>
+                            <Button variant="outline" onClick={() => openEdit(dep)} className="flex-1 h-12 md:h-14 rounded-xl border border-border bg-slate-950 text-slate-300 hover:bg-slate-800 p-0 transition-colors shadow-lg"><Pencil size={20} /></Button>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <button className="flex-1 flex items-center justify-center h-12 md:h-14 rounded-xl md:rounded-2xl border border-border bg-slate-950 text-red-400 hover:text-red-300 hover:bg-red-500/10 p-0 shadow-sm transition-colors"><Trash2 size={20} /></button>
+                                    <button className="flex-1 flex items-center justify-center h-12 md:h-14 rounded-xl border border-border bg-slate-950 text-red-400 hover:text-red-300 hover:bg-red-500/10 p-0 transition-colors shadow-lg"><Trash2 size={20} /></button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent className="rounded-[2rem] bg-slate-900 border border-border text-white w-[90vw] max-w-md mx-auto">
+                                <AlertDialogContent className="rounded-[2rem] bg-slate-900 border border-border text-white">
                                     <AlertDialogHeader className="text-left"><AlertDialogTitle className="font-black uppercase italic text-xl">Supprimer ?</AlertDialogTitle></AlertDialogHeader>
-                                    <AlertDialogDescription className="text-slate-400">Cette action supprimera toutes les programmations liées à ce trajet.</AlertDialogDescription>
+                                    <AlertDialogDescription className="text-slate-400 font-bold text-xs uppercase">Cette action supprimera toutes les programmations liées à ce trajet.</AlertDialogDescription>
                                     <AlertDialogFooter className="flex-row gap-2 mt-6">
-                                        <AlertDialogCancel className="rounded-xl flex-1 m-0 bg-slate-800 border-none text-white hover:bg-slate-700">NON</AlertDialogCancel>
+                                        <AlertDialogCancel className="rounded-xl flex-1 m-0 bg-slate-800 border-none text-white">NON</AlertDialogCancel>
                                         <AlertDialogAction onClick={() => supabase.from('trips').delete().eq('id', dep.id).then(()=>loadData())} className="bg-red-600 rounded-xl text-white flex-1 m-0 hover:bg-red-700">OUI</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -317,13 +379,13 @@ export default function AgencyDepartures() {
       {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 bg-card p-3 rounded-2xl border border-border w-fit mx-auto shadow-2xl">
-          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-all"><ChevronLeft size={24}/></Button>
+          <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 transition-all"><ChevronLeft size={24}/></Button>
           <div className="flex items-center gap-1 font-black text-[10px] uppercase text-slate-500 px-4">
              <span className="text-primary">Page {currentPage}</span>
              <span className="opacity-20">/</span>
              <span>{totalPages}</span>
           </div>
-          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white transition-all"><ChevronRight size={24}/></Button>
+          <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 border border-border bg-slate-950 text-slate-400 hover:bg-slate-800 transition-all"><ChevronRight size={24}/></Button>
         </div>
       )}
 
@@ -395,7 +457,7 @@ export default function AgencyDepartures() {
             <div className="p-5 md:p-8 bg-slate-950 rounded-[2rem] border border-border shadow-inner">
                <div className="flex justify-between items-center mb-6 px-1">
                   <h3 className="text-[10px] font-black uppercase flex items-center gap-2 text-slate-400 tracking-widest leading-none italic"><MapPin size={16} className="text-primary"/> Escales</h3>
-                  <Button type="button" variant="outline" onClick={addStop} className="h-8 rounded-lg font-black border border-border text-[9px] px-4 bg-slate-900 text-slate-300 hover:bg-slate-800">
+                  <Button type="button" variant="outline" onClick={addStop} className="h-8 rounded-lg font-black border border-border text-[9px] px-4 bg-slate-900 text-slate-300 hover:bg-slate-800 shadow-sm">
                     <Plus size={14} className="mr-1" /> AJOUTER
                   </Button>
                </div>
@@ -423,6 +485,24 @@ export default function AgencyDepartures() {
       </Dialog>
     </div>
   );
+}
+
+/**
+ * SOUS-COMPOSANT : STAT CARD
+ */
+function StatCard({ icon: Icon, label, value, color, bg, sub }: any) {
+    return (
+        <div className="bg-card border-2 border-border rounded-[1.5rem] md:rounded-[2rem] p-5 shadow-xl flex items-center gap-4 transition-all hover:border-primary/20 group">
+            <div className={`h-12 w-12 md:h-14 md:w-14 rounded-2xl ${bg} flex items-center justify-center shrink-0 border border-white/5 group-hover:scale-110 transition-transform shadow-inner`}>
+                <Icon size={24} className={color} />
+            </div>
+            <div className="min-w-0 text-left">
+                <p className="text-[9px] md:text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none mb-1">{label}</p>
+                <p className={`text-xl md:text-2xl font-black tracking-tighter leading-none ${color}`}>{value}</p>
+                <p className="text-[8px] md:text-[9px] font-bold text-slate-600 mt-1 uppercase italic leading-none">{sub}</p>
+            </div>
+        </div>
+    );
 }
 
 function StatusBadge({ status }: { status: string }) {
