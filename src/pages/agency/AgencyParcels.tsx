@@ -83,9 +83,9 @@ export default function AgencyParcels() {
   const itemsPerPage = 6;
 
   const userRole = user?.role;
-  const canCollectMoney = ['Administrateur', 'Agent', 'Caissier'].includes(userRole || '');
+  const canCollectMoney = ['Administrateur', 'Agent', 'Caissier', 'Chef d\'agence'].includes(userRole || '');
 
-  // CALCUL DES STATISTIQUES
+  // CALCUL DES STATISTIQUES (Se met à jour dès que 'parcels' change)
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     return {
@@ -182,7 +182,7 @@ export default function AgencyParcels() {
       const { error } = await supabase.from('parcels').update({ status: dbStatusMap[newStatusDisplay] }).eq('id', id);
       if (error) throw error;
       toast.success(`Statut mis à jour : ${newStatusDisplay}`);
-      loadData();
+      await loadData(); // Ajout de await pour forcer la mise à jour
     } catch (e) { toast.error('Erreur de mise à jour'); }
   };
 
@@ -191,7 +191,7 @@ export default function AgencyParcels() {
       const { error } = await supabase.from('parcels').update({ is_paid: true }).eq('id', id);
       if (error) throw error;
       toast.success("Paiement encaissé !");
-      loadData();
+      await loadData(); // Ajout de await pour forcer la mise à jour
     } catch (e) { toast.error("Erreur d'encaissement"); }
   };
 
@@ -234,7 +234,7 @@ export default function AgencyParcels() {
         </Button>
       </div>
 
-      {/* SECTION STATISTIQUES (WIDGETS) */}
+      {/* SECTION STATISTIQUES */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-card p-4 rounded-[1.5rem] border border-border shadow-lg">
           <div className="flex items-center gap-3 mb-2">
@@ -258,7 +258,7 @@ export default function AgencyParcels() {
 
         <div className="bg-card p-4 rounded-[1.5rem] border border-border shadow-lg">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Truck size={16}/></div>
+            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Truck size={16}/></div>
             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">En Transit</span>
           </div>
           <p className="text-2xl font-black text-white">{stats.inTransit}</p>
@@ -271,7 +271,7 @@ export default function AgencyParcels() {
             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Recettes Jour</span>
           </div>
           <p className="text-xl font-black text-emerald-500">{stats.revenueToday.toLocaleString()} F</p>
-          <p className="text-[8px] font-bold text-amber-500 mt-2 uppercase tracking-tighter">Reste à percevoir : {stats.toCollect.toLocaleString()} F</p>
+          <p className="text-[8px] font-bold text-amber-500 mt-2 uppercase tracking-tighter">À percevoir : {stats.toCollect.toLocaleString()} F</p>
         </div>
       </div>
 
@@ -345,12 +345,15 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
     setQuantity(p.quantity.toString());
   }, [p.weightKg, p.quantity]);
 
-  const calculatedPrice = useMemo(() => {
-    if (!selectedTariff) return 0;
+  const calculationDetails = useMemo(() => {
+    if (!selectedTariff) return { total: 0, excessWeight: 0, pricePerUnit: 0, label: "" };
     const qty = parseInt(quantity) || 1;
     const w = parseFloat(weight) || 0;
-    return selectedTariff.is_weight_based ? qty * w * selectedTariff.price : qty * selectedTariff.price;
+    const total = selectedTariff.is_weight_based ? qty * w * selectedTariff.price : qty * selectedTariff.price;
+    return { total };
   }, [selectedTariff, weight, quantity]);
+
+  const calculatedPrice = calculationDetails.total;
 
   const handleFinalize = async () => {
     if (!selectedTariff) return;
@@ -366,8 +369,8 @@ function ParcelCard({ parcel: p, tariffs, onRefresh, onUpdateStatus, onCollectPa
       if (error) throw error;
       
       toast.success("Tarification validée");
-      onRefresh(); 
       setPricingMode(false);
+      await onRefresh(); // Force le rechargement immédiat
     } catch (e) { toast.error("Erreur"); }
   };
 
