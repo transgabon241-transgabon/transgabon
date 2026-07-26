@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 
 const NAV_ITEMS = [
   { path: '/agency', label: 'Tableau de bord', icon: LayoutDashboard },
+  { path: '/agency/luggage', label: 'Poste de Pesage', icon: Scale }, 
   { path: '/agency/departures', label: 'Gestion Départs', icon: CalendarDays },
   { path: '/agency/vehicles', label: 'Ma Flotte', icon: Bus },
   { path: '/agency/validate', label: 'Contrôle QR', icon: QrCode },
@@ -68,6 +69,13 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
         <RefreshCw className="h-10 w-10 animate-spin" />
     </div>
   );
+
+  const allowedItems = NAV_ITEMS.filter(item => {
+    const role = user.role;
+    // Si c'est l'agent d'embarquement ou l'agent fret
+    if (role === 'Agent Embarquement' || role === 'Service Colis') {
+      return ['/agency/departures', '/agency/validate', '/agency/luggage'].includes(item.path);
+    }
 
   // Filtrage des éléments du menu selon le rôle spécifique au sein du groupe autorisé
   const allowedItems = NAV_ITEMS.filter(item => {

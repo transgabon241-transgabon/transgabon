@@ -32,6 +32,7 @@ import ParcelSettings from './pages/agency/ParcelSettings';
 import AgencyPayments from './pages/agency/AgencyPayments';
 import ResetPasswordPage from "./pages/ResetPasswordPage"
 import AgencyBookings from './pages/agency/AgencyBookings';
+import AgencyLuggage from './pages/agency/AgencyLuggage';
 
 
 export default function App() {
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/agency/parcel-settings" element={<AgencyLayout><ParcelSettings /></AgencyLayout>} />
         <Route path="/agency/payments" element={<AgencyLayout><AgencyPayments /></AgencyLayout>} />
         <Route path="/agency/bookings" element={<AgencyLayout><AgencyBookings /></AgencyLayout>} />
+        <Route path="/agency/luggage" element={<AgencyLayout><AgencyLuggage /></AgencyLayout>} />
 
 
         {/* Admin routes */}
