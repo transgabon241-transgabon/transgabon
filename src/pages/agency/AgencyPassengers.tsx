@@ -22,9 +22,11 @@ import {
   MapPin,
   UserCheck,
   Lock,
-  Baby, // AJOUTÉ
-  User, // AJOUTÉ
-  Plane
+  Baby,
+  User,
+  Plane,
+  Calendar,
+  Clock
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -41,7 +43,7 @@ type Passenger = {
   paymentStatus: string;
   amount: number;
   boarded: boolean;
-  isChild: boolean; // AJOUTÉ
+  isChild: boolean;
 };
 
 type Data = {
@@ -113,7 +115,7 @@ export default function AgencyPassengers() {
             paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
             amount: Math.round((b.total_amount || 0) / (b.passengers?.length || 1)),
             boarded: p.boarded ?? false,
-            isChild: b.is_child ?? false // RÉCUPÉRATION DU STATUT ENFANT
+            isChild: b.is_child ?? false
           });
         });
       });
@@ -174,6 +176,16 @@ export default function AgencyPassengers() {
     };
   }, [data]);
 
+  const formattedDate = useMemo(() => {
+    if (!data?.departureDate) return '';
+    return new Date(data.departureDate).toLocaleDateString('fr-FR', { 
+        weekday: 'long', 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+    });
+  }, [data?.departureDate]);
+
   const totalPages = Math.ceil((data?.passengers.length || 0) / itemsPerPage);
   const TransportIcon = data?.transportType === 'TRAIN' ? Train : data?.transportType === 'BOAT' ? Ship : data?.transportType === 'PLANE' ? Plane : Bus;
 
@@ -190,15 +202,35 @@ export default function AgencyPassengers() {
         </Link>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-10">
-          <div className="flex items-center gap-4 text-left">
-            <div className={`p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl ${data.transportType === 'BOAT' ? 'bg-blue-600' : data.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'} text-white`}>
+          <div className="flex items-center gap-4">
+            <div className={`p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl ${
+                data.transportType === 'BOAT' ? 'bg-blue-600' : 
+                data.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 
+                data.transportType === 'PLANE' ? 'bg-indigo-600' : 
+                'bg-primary'} text-white`}>
                <TransportIcon className="h-6 w-6 md:h-10 md:w-10" />
             </div>
             <div className="text-left">
               <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">Manifeste</h1>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <Badge variant="outline" className="font-black text-[10px] border-primary/30 text-primary bg-primary/5 px-2 py-0.5">{data.departureCity} ➔ {data.arrivalCity}</Badge>
-                <span className="text-[10px] font-black text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 uppercase tracking-tighter">
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <Badge variant="outline" className="font-black text-[10px] border-primary/30 text-primary bg-primary/5 px-2 py-0.5 uppercase">
+                    {data.departureCity} ➔ {data.arrivalCity}
+                </Badge>
+                
+                {/* DÉTAILS DE LA DATE ET HEURE DANS LE HEADER */}
+                <div className="flex items-center gap-3 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 text-[9px] font-black uppercase text-slate-400">
+                    <div className="flex items-center gap-1">
+                        <Calendar size={12} className="text-primary" />
+                        <span>{formattedDate}</span>
+                    </div>
+                    <span className="opacity-20">|</span>
+                    <div className="flex items-center gap-1">
+                        <Clock size={12} className="text-primary" />
+                        <span>{data.departureTime}</span>
+                    </div>
+                </div>
+
+                <span className="text-[10px] font-black text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 uppercase tracking-tighter italic">
                    {data.vehicleRegistration}
                 </span>
               </div>
@@ -243,7 +275,6 @@ export default function AgencyPassengers() {
                   <td className="p-4 md:p-6 text-slate-600 font-black text-sm md:text-lg">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
                   <td className="p-4 md:p-6">
                       <div className="flex items-center gap-3">
-                          {/* ICÔNE ADULTE / ENFANT DYNAMIQUE */}
                           <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${p.isChild ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 text-slate-500'}`}>
                              {p.isChild ? <Baby size={16} /> : <User size={16} />}
                           </div>
@@ -256,17 +287,17 @@ export default function AgencyPassengers() {
                           </div>
                       </div>
                   </td>
-                  <td className="p-4 md:p-6 text-center text-left">
+                  <td className="p-4 md:p-6 text-center">
                     <div className="inline-flex h-10 w-10 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-slate-950 border border-slate-800 items-center justify-center text-primary font-black text-sm md:text-lg shadow-inner">
                         {p.seatNumber}
                     </div>
                   </td>
-                  <td className="p-4 md:p-6 hidden sm:table-cell text-left">
+                  <td className="p-4 md:p-6 hidden sm:table-cell">
                     <Badge variant="outline" className={`text-[9px] font-black uppercase border-2 px-3 py-1 ${p.travelClass.includes('VIP') || p.travelClass.includes('Business') ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'text-slate-400 border-slate-800 bg-slate-950'}`}>
                         {p.travelClass}
                     </Badge>
                   </td>
-                  <td className="p-4 md:p-6 text-left">
+                  <td className="p-4 md:p-6">
                     <div className="flex items-center gap-2 font-black text-slate-300 uppercase text-[10px] md:text-sm tracking-tighter">
                         <MapPin size={14} className="text-primary shrink-0" />
                         <span className="truncate max-w-[80px] md:max-w-none">{p.destination}</span>
