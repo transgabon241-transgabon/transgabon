@@ -187,8 +187,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-white">Voyages Nationaux</h3>
               <p className="text-slate-400 leading-relaxed font-medium">
-                Accédez aux vols intérieurs, aux horaires de la SETRAG et des bus. 
-                Réservez vos places en <strong>VIP, Business ou 1ère Classe</strong> et recevez votre ticket numérique sécurisé.
+                Reservez vos trajets en bus, train, avion ou bateau.
+                Consulter les horaires, choisissez votre place  <strong>VIP, Business ou 1ère Classe</strong> et recevez instantanément votre billet numérique sécurisé.
               </p>
             </div>
             
@@ -198,7 +198,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-white">Expédition Fret & Colis</h3>
               <p className="text-slate-400 leading-relaxed font-medium">
-                Envoyez des marchandises partout au Gabon par air ou par terre. Enregistrez vos colis, obtenez un <strong>bordereau de suivi</strong> et surveillez chaque étape.
+                Envoyez et suivez vos colis partout au Gabon. <strong>Enregistrez votre envoi, obtenez votre bordereau numérique</strong> et suivez son acheminement en temps réel.
               </p>
             </div>
           </div>
