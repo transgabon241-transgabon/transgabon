@@ -15,7 +15,8 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
-  Package
+  Package,
+  Baby // Ajouté pour les enfants
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +34,6 @@ export default function AgencyBookings() {
   const itemsPerPage = 8;
 
   const loadBookings = async () => {
-    // Utiliser le companyId de l'agent connecté
     if (!user?.companyId) return;
     setLoading(true);
     try {
@@ -52,8 +52,6 @@ export default function AgencyBookings() {
           passengers (first_name, last_name, seat_number),
           luggages (total_price)
         `)
-        // CORRECTION CRITIQUE : On filtre par l'agence qui a fait la vente
-        // et non par le propriétaire du voyage
         .eq('company_id', user.companyId) 
         .order('created_at', { ascending: false });
 
@@ -68,7 +66,6 @@ export default function AgencyBookings() {
 
   useEffect(() => { loadBookings(); }, [user]);
 
-  // Calcul du montant total incluant les bagages pour chaque ligne
   const processedBookings = useMemo(() => {
     return bookings.map(b => {
       const ticketAmount = Number(b.total_amount) || 0;
@@ -81,7 +78,6 @@ export default function AgencyBookings() {
     });
   }, [bookings]);
 
-  // Filtrage
   const filteredBookings = useMemo(() => {
     return processedBookings.filter(b => {
       const name = `${b.passengers?.[0]?.first_name} ${b.passengers?.[0]?.last_name}`.toLowerCase();
@@ -95,16 +91,18 @@ export default function AgencyBookings() {
     });
   }, [processedBookings, searchTerm, dateFilter]);
 
-  // Statistiques du rapport
+  // STATISTIQUES MISES À JOUR (Inclusion Adultes/Enfants)
   const stats = useMemo(() => {
     const total = filteredBookings.reduce((sum, b) => sum + b.realTotal, 0);
+    const childrenCount = filteredBookings.filter(b => b.is_child).length;
     return {
       revenue: total,
-      count: filteredBookings.length
+      count: filteredBookings.length,
+      adults: filteredBookings.length - childrenCount,
+      children: childrenCount
     };
   }, [filteredBookings]);
 
-  // Pagination
   const paginated = filteredBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
 
@@ -121,29 +119,36 @@ export default function AgencyBookings() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter text-white leading-none">Rapport des Ventes</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Chiffre d'affaires encaissé par votre agence</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Analyse comptable de l'agence</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={loadBookings} className="rounded-xl font-black border-slate-800 bg-slate-950 h-11 px-6 text-[10px] uppercase hover:bg-slate-800 text-slate-300">
+        <Button variant="outline" size="sm" onClick={loadBookings} className="rounded-xl font-black border-slate-800 bg-slate-950 h-11 px-6 text-[10px] uppercase hover:bg-slate-800 text-slate-300 transition-all">
             <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
         </Button>
       </div>
 
-      {/* STATS RAPIDES */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* STATS RAPIDES ENRICHIER */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-900 border border-border p-6 rounded-[1.5rem] flex items-center justify-between shadow-lg">
             <div className="text-left">
-                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Billets Émis</p>
-                <p className="text-3xl font-black text-white tracking-tighter">{stats.count}</p>
-            </div>
-            <Ticket className="text-primary opacity-20" size={40} />
-        </div>
-        <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-[1.5rem] flex items-center justify-between shadow-lg">
-            <div className="text-left">
-                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Total Encaissé (Billet + Fret)</p>
-                <p className="text-3xl font-black text-emerald-500 tracking-tighter">{stats.revenue.toLocaleString()} <span className="text-sm">FCFA</span></p>
+                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Total Encaissé</p>
+                <p className="text-2xl font-black text-emerald-500 tracking-tighter">{stats.revenue.toLocaleString()} F</p>
             </div>
             <TrendingUp className="text-emerald-500 opacity-20" size={40} />
+        </div>
+        <div className="bg-slate-900 border border-border p-6 rounded-[1.5rem] flex items-center justify-between shadow-lg">
+            <div className="text-left">
+                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Ventes Adultes</p>
+                <p className="text-2xl font-black text-white tracking-tighter">{stats.adults}</p>
+            </div>
+            <User className="text-primary opacity-20" size={40} />
+        </div>
+        <div className="bg-slate-900 border border-border p-6 rounded-[1.5rem] flex items-center justify-between shadow-lg">
+            <div className="text-left">
+                <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Ventes Enfants</p>
+                <p className="text-2xl font-black text-blue-400 tracking-tighter">{stats.children}</p>
+            </div>
+            <Baby className="text-blue-400 opacity-20" size={40} />
         </div>
       </div>
 
@@ -155,7 +160,7 @@ export default function AgencyBookings() {
             placeholder="Référence ou nom passager..." 
             value={searchTerm}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-12 rounded-xl border-none bg-slate-950 text-white font-bold"
+            className="pl-10 h-12 rounded-xl border-none bg-slate-950 text-white font-bold shadow-inner"
           />
         </div>
         <div className="relative">
@@ -164,7 +169,7 @@ export default function AgencyBookings() {
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="pl-10 h-12 rounded-xl border-none bg-slate-950 text-white font-bold"
+            className="pl-10 h-12 rounded-xl border-none bg-slate-950 text-white font-bold shadow-inner"
           />
         </div>
       </div>
@@ -184,18 +189,27 @@ export default function AgencyBookings() {
             </thead>
             <tbody className="divide-y divide-white/5">
               {paginated.map((b) => (
-                <tr key={b.id} className="hover:bg-white/5 transition-colors">
+                <tr key={b.id} className="hover:bg-white/5 transition-colors group">
                   <td className="p-5">
                     <p className="text-[10px] font-bold text-slate-400 mb-1">{new Date(b.created_at).toLocaleDateString()}</p>
                     <p className="font-mono font-black text-primary text-xs uppercase">{b.reference}</p>
                   </td>
                   <td className="p-5">
-                    <p className="font-black text-white text-xs uppercase leading-none">
-                      {b.passengers?.[0]?.first_name} {b.passengers?.[0]?.last_name}
-                    </p>
-                    <div className="flex items-center gap-1 mt-2">
-                        <Badge variant="outline" className="text-[7px] border-slate-700 text-slate-500">Siège {b.passengers?.[0]?.seat_number}</Badge>
-                        {b.luggageTotal > 0 && <Badge className="text-[7px] bg-amber-500/10 text-amber-500 border-none"><Package size={8} className="mr-1"/> + Bagage</Badge>}
+                    <div className="flex items-center gap-3">
+                        {/* ICÔNE DYNAMIQUE */}
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${b.is_child ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-800 text-slate-500'}`}>
+                           {b.is_child ? <Baby size={16} /> : <User size={16} />}
+                        </div>
+                        <div className="text-left">
+                            <p className="font-black text-white text-xs uppercase leading-tight">
+                            {b.passengers?.[0]?.first_name} {b.passengers?.[0]?.last_name}
+                            </p>
+                            <div className="flex items-center gap-1 mt-1">
+                                <Badge variant="outline" className="text-[7px] border-slate-700 text-slate-500 px-1 py-0">Siège {b.passengers?.[0]?.seat_number}</Badge>
+                                {b.is_child && <span className="text-[7px] font-black bg-blue-600 text-white px-1.5 rounded uppercase">Enfant</span>}
+                                {b.luggageTotal > 0 && <Badge className="text-[7px] bg-amber-500/10 text-amber-500 border-none"><Package size={8} className="mr-1"/> + Fret</Badge>}
+                            </div>
+                        </div>
                     </div>
                   </td>
                   <td className="p-5">
@@ -210,7 +224,7 @@ export default function AgencyBookings() {
                   </td>
                   <td className="p-5 text-right">
                     <p className="font-black text-white text-sm">{b.realTotal.toLocaleString()} F</p>
-                    <p className="text-[8px] font-bold text-slate-500 uppercase">{b.payment_method}</p>
+                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{b.payment_method}</p>
                   </td>
                 </tr>
               ))}
@@ -221,7 +235,7 @@ export default function AgencyBookings() {
         {filteredBookings.length === 0 && (
           <div className="py-20 text-center text-slate-600">
             <Ticket size={48} className="mx-auto mb-4 opacity-10" />
-            <p className="text-[10px] font-black uppercase tracking-widest">Aucune vente enregistrée pour votre agence</p>
+            <p className="text-[10px] font-black uppercase tracking-widest italic">Aucun flux financier sur cette sélection</p>
           </div>
         )}
       </div>
@@ -255,12 +269,11 @@ export default function AgencyBookings() {
 function LoadingSkeleton() {
   return (
     <div className="max-w-6xl mx-auto p-8 space-y-8 bg-background min-h-screen">
-      <Skeleton className="h-20 w-full rounded-2xl bg-card" />
-      <div className="grid grid-cols-2 gap-4">
-        <Skeleton className="h-32 rounded-2xl bg-card" />
-        <Skeleton className="h-32 rounded-2xl bg-card" />
+      <Skeleton className="h-20 w-full rounded-2xl bg-card border-border" />
+      <div className="grid grid-cols-3 gap-4">
+        {[1,2,3].map(i => <Skeleton key={i} className="h-32 rounded-2xl bg-card border-border" />)}
       </div>
-      <Skeleton className="h-96 w-full rounded-2xl bg-card" />
+      <Skeleton className="h-96 w-full rounded-2xl bg-card border-border" />
     </div>
   );
 }

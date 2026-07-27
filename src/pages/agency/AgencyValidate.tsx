@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { 
   CheckCircle, Search, RefreshCw, AlertCircle, Package, Ticket, 
   Hash, Ship, Bus, Train, Plane, ArrowRight, Phone, Wallet, Plus, Scale, Gem, Calculator, Info, Lock,
-  Calendar, Clock, MapPin, Car, UserCheck
+  Calendar, Clock, MapPin, Car, UserCheck, Baby, User // AJOUT DE Baby et User
 } from 'lucide-react';
 
 export default function AgencyValidate() {
@@ -48,7 +48,7 @@ export default function AgencyValidate() {
     const targetRef = forcedRef || qrInput.trim();
     if (!targetRef) return;
     setLoading(true);
-    setResult(null); // Reset précédent résultat
+    setResult(null);
 
     try {
       let ref = targetRef.toUpperCase();
@@ -63,8 +63,6 @@ export default function AgencyValidate() {
         return; 
       }
 
-      // --- BARRIÈRE DE SÉCURITÉ : VÉRIFICATION DE L'APPARTENANCE ---
-      // On vérifie si la compagnie du trajet est la même que celle de l'agent
       if (b.trip.company_id !== user?.companyId) {
         toast.error("ACCÈS REFUSÉ : Ce billet appartient à une autre compagnie.");
         setResult({ valid: false, message: 'ACCÈS INTERDIT (HORS RÉSEAU)' });
@@ -87,12 +85,12 @@ export default function AgencyValidate() {
           bookingNumber: b.reference,
           passengerName: `${b.passengers[0]?.first_name || ''} ${b.passengers[0]?.last_name || ''}`,
           passengerPhone: b.contact_phone || b.passengers[0]?.phone || '—',
+          isChild: b.is_child, // RÉCUPÉRATION DE L'OPTION ENFANT
           departureCity: b.trip.from_city?.name,
           arrivalCity: b.arrival_city_name || b.trip.to_city?.name,
           departureDate: b.trip.departure_date,
           departureTime: b.trip.departure_time,
           vehicleName: b.trip.vehicle?.name || 'Standard',
-          registration: b.trip.vehicle?.registration || 'N/A',
           classLabel: classMapping[b.class_type] || b.class_type,
           ticketAmount: Number(b.total_amount) || 0,
           luggageAmount: luggageTotal,
@@ -163,7 +161,7 @@ export default function AgencyValidate() {
         <div className="p-2 bg-emerald-600 rounded-xl text-white shrink-0"><UserCheck size={20} /></div>
         <div className="min-w-0">
           <h1 className="text-lg font-black italic uppercase leading-none text-white">Boarding Pass Control</h1>
-          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">Vérification Billets & Manifeste</p>
+          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Vérification Billets & Manifeste</p>
         </div>
       </header>
 
@@ -195,9 +193,17 @@ export default function AgencyValidate() {
                   </p>
                 </div>
               </div>
-              <Badge className="bg-slate-950 border border-slate-800 text-white h-8 px-4 font-black uppercase text-[10px] tracking-widest">
-                {result.booking.classLabel}
-              </Badge>
+              <div className="flex flex-col items-end gap-2">
+                <Badge className="bg-slate-950 border border-slate-800 text-white h-8 px-4 font-black uppercase text-[10px] tracking-widest">
+                    {result.booking.classLabel}
+                </Badge>
+                {/* ALERTE TARIF ENFANT */}
+                {result.booking.isChild && (
+                    <Badge className="bg-blue-600 text-white border-none font-black animate-pulse px-3 py-1 text-[8px] uppercase tracking-widest">
+                        Tarif Enfant
+                    </Badge>
+                )}
+              </div>
             </div>
 
             {/* DÉTAILS VOYAGE */}
@@ -242,11 +248,18 @@ export default function AgencyValidate() {
                 </div>
             </div>
 
-            {/* PASSAGER INFO */}
-            <div className="bg-slate-800/30 p-4 rounded-2xl mb-6 border border-slate-700/50 flex items-center justify-between">
-                <div>
-                   <Label className="text-[8px] font-black uppercase text-slate-500">Nom du passager</Label>
-                   <p className="text-sm font-black text-white uppercase">{result.booking.passengerName}</p>
+            {/* PASSAGER INFO - MISE À JOUR AVEC Baby/User Icon */}
+            <div className={`p-4 rounded-2xl mb-6 border flex items-center justify-between ${result.booking.isChild ? 'bg-blue-500/10 border-blue-500/20' : 'bg-slate-800/30 border-slate-700/50'}`}>
+                <div className="flex items-center gap-3">
+                   <div className={`h-10 w-10 rounded-full flex items-center justify-center border ${result.booking.isChild ? 'bg-blue-600 text-white border-blue-400' : 'bg-slate-900 text-slate-400 border-slate-700'}`}>
+                      {result.booking.isChild ? <Baby size={20} /> : <User size={20} />}
+                   </div>
+                   <div>
+                      <Label className="text-[8px] font-black uppercase text-slate-500">
+                        {result.booking.isChild ? "Passager Enfant (-12 ans)" : "Nom du passager"}
+                      </Label>
+                      <p className="text-sm font-black text-white uppercase">{result.booking.passengerName}</p>
+                   </div>
                 </div>
                 <div className="text-right">
                    <Label className="text-[8px] font-black uppercase text-slate-500">Contact</Label>
@@ -255,7 +268,7 @@ export default function AgencyValidate() {
             </div>
 
             {/* SECTION BAGAGES */}
-            <div className="space-y-2 mb-6">
+            <div className="space-y-2 mb-6 text-left">
                 <Label className="text-[9px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em]">Bagages Enregistrés</Label>
                 {result.booking.luggages.length > 0 ? (
                     <div className="grid grid-cols-1 gap-2">
@@ -263,39 +276,36 @@ export default function AgencyValidate() {
                             <div key={lug.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
                                 <div className="text-left">
                                     <p className="text-[10px] font-black text-white uppercase">{lug.label} (x{lug.quantity})</p>
-                                    <p className="text-[9px] font-bold text-primary italic">Tarif : {Number(lug.total_price).toLocaleString()} F</p>
+                                    <p className="text-[9px] font-bold text-primary italic">Inclus : {Number(lug.total_price).toLocaleString()} F</p>
                                 </div>
-                                <div className="bg-slate-900 h-8 w-8 rounded-lg flex items-center justify-center text-primary">
-                                    <Package size={14}/>
-                                </div>
+                                <Package size={14} className="text-slate-600"/>
                             </div>
                         ))}
                     </div>
                 ) : (
                     <div className="p-4 rounded-2xl border-2 border-dashed border-slate-800 text-center opacity-40">
-                         <p className="text-[9px] font-black uppercase tracking-widest italic">Aucun bagage déclaré</p>
+                         <p className="text-[9px] font-black uppercase tracking-widest italic text-center">Aucun bagage déclaré</p>
                     </div>
                 )}
             </div>
 
             {/* POSTE DE PESAGE */}
             <div className="bg-slate-950 p-4 rounded-[2rem] border-2 border-slate-800 mb-6 shadow-inner">
-                <h4 className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-2 mb-4 tracking-widest"><Scale size={14} className="text-primary"/> Nouveau Bagage / Pesée</h4>
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-2"><Scale size={14} className="text-primary"/> Poste de Pesage</h4>
+                    <Badge variant="outline" className="text-[7px] border-emerald-500/30 text-emerald-500 uppercase">{result.booking.freeWeight}kg Inclus</Badge>
+                </div>
                 <div className="space-y-4">
-                    {(result.booking.tripType === 'TRAIN' || result.booking.tripType === 'PLANE') ? (
-                        <div className="relative">
-                            <Input type="number" placeholder="0.0" value={weightInput} onChange={e => setWeightInput(e.target.value)} className="h-14 rounded-xl border-none bg-slate-900 text-white font-black text-3xl text-center shadow-inner" />
-                            <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-slate-700 text-sm tracking-widest">KG</span>
+                    <div className="flex gap-2">
+                         <select value={selectedRateId} onChange={e => setSelectedRateId(e.target.value)} className="flex-1 h-12 rounded-xl bg-slate-900 border-none px-4 text-[10px] font-black uppercase text-white outline-none">
+                            <option value="">Pesée Libre (Standard)</option>
+                            {agencyRates.map(r => <option key={r.id} value={r.id}>{r.label} ({r.price} F{r.is_weight_based ? '/kg' : ''})</option>)}
+                        </select>
+                        <div className="relative w-24">
+                            <Input type="number" placeholder="0" value={weightInput} onChange={e => setWeightInput(e.target.value)} className="h-12 rounded-xl border-none bg-slate-900 text-white font-black text-center" />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[7px] font-black text-slate-600">KG</span>
                         </div>
-                    ) : (
-                        <div className="flex gap-2">
-                             <select value={selectedRateId} onChange={e => setSelectedRateId(e.target.value)} className="flex-1 h-12 rounded-xl bg-slate-900 border-none px-4 text-[10px] font-black uppercase text-white outline-none shadow-inner">
-                                <option value="">SÉLECTIONNER TYPE...</option>
-                                {agencyRates.map(r => <option key={r.id} value={r.id}>{r.label} ({r.price} F)</option>)}
-                            </select>
-                            <Input type="number" value={qtyInput} onChange={e => setQtyInput(e.target.value)} className="w-20 h-12 rounded-xl border-none bg-slate-900 text-white font-black text-center shadow-inner" />
-                        </div>
-                    )}
+                    </div>
                     <Button onClick={handleAddLuggage} className="w-full h-14 rounded-2xl font-black bg-emerald-600 text-white uppercase text-[10px] tracking-widest gap-2 active:scale-95 transition-all shadow-xl">
                         <Plus size={18} /> {currentCalculation > 0 ? `Enregistrer Excédent (+${currentCalculation.toLocaleString()} F)` : 'Confirmer Poids'}
                     </Button>
@@ -306,44 +316,32 @@ export default function AgencyValidate() {
             {!result.valid && (
                 <div className="bg-slate-800 p-5 rounded-[2rem] border border-slate-700 mb-6 shadow-2xl">
                     <div className="space-y-2 mb-4">
-                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                            <span>Prix Billet :</span>
-                            <span>{result.booking.ticketAmount.toLocaleString()} F</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                            <span>Frais Bagages :</span>
-                            <span className="text-primary">{result.booking.luggageAmount.toLocaleString()} F</span>
-                        </div>
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase"><span>Billet :</span><span>{result.booking.ticketAmount.toLocaleString()} F</span></div>
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase"><span>Frais Bagages :</span><span className="text-primary">{result.booking.luggageAmount.toLocaleString()} F</span></div>
                         <div className="h-px bg-slate-700 my-2" />
-                        <div className="flex justify-between items-center">
-                            <Label className="text-[10px] font-black uppercase text-white tracking-widest">Total Global dû</Label>
-                            <span className="text-3xl font-black text-emerald-500 tracking-tighter">{result.booking.totalToPay.toLocaleString()} F</span>
-                        </div>
+                        <div className="flex justify-between items-center"><Label className="text-[10px] font-black uppercase text-white tracking-widest">Total Global dû</Label><span className="text-3xl font-black text-emerald-500 tracking-tighter">{result.booking.totalToPay.toLocaleString()} F</span></div>
                     </div>
                     {canCollectMoney ? (
-                        <Button onClick={handleProcessPayment} className="w-full h-14 bg-emerald-600 text-white font-black uppercase text-xs rounded-2xl shadow-lg active:scale-95 gap-3 border-none">
+                        <Button onClick={handleProcessPayment} className="w-full h-14 bg-emerald-600 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl active:scale-95 gap-3 border-none">
                             <Wallet size={18}/> Encaisser et Valider
                         </Button>
                     ) : (
                         <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center gap-2">
-                            <Info size={16} className="text-amber-500" />
-                            <p className="text-[9px] font-bold text-amber-500 uppercase italic">Paiement requis au guichet principal</p>
+                            <Info size={16} className="text-amber-500" /><p className="text-[9px] font-bold text-amber-500 uppercase italic">Paiement requis au guichet</p>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* MANIFESTE D'EMBARQUEMENT */}
+            {/* MANIFESTE EMBARQUEMENT */}
             {result.valid && (
                 <div className="space-y-3">
-                    <h3 className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-[0.3em]">Manifeste d'embarquement</h3>
+                    <h3 className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-[0.3em]">Manifeste Passager</h3>
                     {result.booking.passengers.map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-2xl group hover:border-primary transition-colors">
                             <div className="text-left">
                                 <p className="font-black text-sm text-white uppercase leading-none">{p.first_name} {p.last_name}</p>
-                                <p className="text-[10px] font-bold text-primary mt-1 flex items-center gap-1">
-                                    <MapPin size={10}/> Siège {result.booking.seatNumber}
-                                </p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Siège {result.booking.seatNumber}</p>
                             </div>
                             {p.boarded ? (
                                 <div className="flex items-center gap-2 bg-emerald-500/10 text-emerald-500 px-4 py-2 rounded-xl border border-emerald-500/20">
@@ -356,7 +354,7 @@ export default function AgencyValidate() {
                                         onClick={() => handleBoardPassenger(p.id)} 
                                         className="h-11 px-8 rounded-xl font-black bg-emerald-600 text-white shadow-lg active:scale-95 transition-all text-[10px] uppercase tracking-widest border-none"
                                     >
-                                        Valider
+                                        Embarquer
                                     </Button>
                                 )
                             )}

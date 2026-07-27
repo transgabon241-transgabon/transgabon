@@ -18,7 +18,9 @@ import {
   TrendingUp,
   BarChart3,
   MapPin,
-  Tag
+  Tag,
+  User,
+  Baby // AJOUTÉ
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +36,7 @@ type Booking = {
   rawDate: Date;
   classLabel: string;
   destination: string;
+  isChild: boolean; // AJOUTÉ
 };
 
 export default function AgencyPayments() {
@@ -86,7 +89,8 @@ export default function AgencyPayments() {
           dateStr: new Date(b.created_at).toLocaleDateString('fr-FR'),
           rawDate: new Date(b.created_at),
           classLabel: classMapping[b.class_type] || 'Standard',
-          destination: b.arrival_city_name || b.trip?.to?.name || 'Terminus'
+          destination: b.arrival_city_name || b.trip?.to?.name || 'Terminus',
+          isChild: b.is_child || false // RÉCUPÉRATION DU STATUT
         };
       });
 
@@ -134,7 +138,7 @@ export default function AgencyPayments() {
       
       {/* HEADER CORRIGÉ POUR MOBILE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 px-1">
-        <div className="min-w-0">
+        <div className="min-w-0 text-left">
           <h1 className="text-2xl sm:text-3xl font-black italic text-white flex items-center gap-3">
             <BarChart3 className="h-7 w-7 sm:h-8 sm:w-8 text-primary shrink-0" /> 
             <span className="truncate uppercase tracking-tighter">État de Caisse</span>
@@ -168,18 +172,18 @@ export default function AgencyPayments() {
 
       {/* FILTRES SOMBRES */}
       <div className="bg-card border border-border rounded-[2.5rem] p-6 shadow-2xl print:hidden grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 text-left">
              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Recherche rapide</Label>
              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Billet, Nom, Ville..." value={search} onChange={e => setSearch(e.target.value)} className="h-11 pl-10 rounded-xl border-border bg-background text-foreground focus-visible:ring-primary/50" />
              </div>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 text-left">
              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Filtrer par date</Label>
              <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="h-11 rounded-xl border-border bg-background text-foreground font-bold appearance-none" />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 text-left">
              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Règlement</Label>
              <div className="flex bg-background p-1 rounded-xl border border-border shadow-inner">
                 {(['all', 'Payé', 'Non payé'] as const).map(f => (
@@ -209,13 +213,18 @@ export default function AgencyPayments() {
             ) : (
               paginated.map(b => (
                 <tr key={b.id} className="hover:bg-muted/30 transition-colors group">
-                  <td className="p-4">
+                  <td className="p-4 text-left">
                     <p className="font-mono font-black text-primary text-xs tracking-tighter">{b.bookingNumber}</p>
                     <p className="text-[9px] font-bold text-muted-foreground uppercase mt-0.5">{b.dateStr}</p>
                   </td>
-                  <td className="p-4">
-                    <p className="font-bold text-slate-200 group-hover:text-white transition-colors">{b.passengerName}</p>
-                    <div className="flex items-center gap-1 text-[9px] font-black text-muted-foreground uppercase">
+                  <td className="p-4 text-left">
+                    <div className="flex items-center gap-2">
+                        {/* ICÔNE ADULTE / ENFANT */}
+                        {b.isChild ? <Baby size={14} className="text-blue-400" /> : <User size={14} className="text-slate-400" />}
+                        <p className="font-bold text-slate-200 group-hover:text-white transition-colors uppercase">{b.passengerName}</p>
+                        {b.isChild && <span className="text-[7px] font-black bg-blue-600 text-white px-1 rounded">ENFANT</span>}
+                    </div>
+                    <div className="flex items-center gap-1 text-[9px] font-black text-muted-foreground uppercase mt-1">
                        <MapPin size={10} className="text-primary/50" /> {b.destination}
                     </div>
                   </td>
@@ -235,7 +244,7 @@ export default function AgencyPayments() {
                     <p className="text-[8px] font-bold text-muted-foreground mt-1 uppercase">{b.paymentMethod}</p>
                   </td>
                   <td className="p-4 text-right font-black text-white text-base">
-                    {b.amount.toLocaleString()} <span className="text-[10px] text-muted-foreground">F CFA</span>
+                    {b.amount.toLocaleString()} <span className="text-[10px] text-muted-foreground">F</span>
                   </td>
                 </tr>
               ))
@@ -254,7 +263,7 @@ export default function AgencyPayments() {
       )}
 
       <footer className="text-center pb-10 opacity-20">
-        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.3em]">Document Comptable Interne • TransGabon-Connect</p>
+        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.3em]">Gabon Mobilité Connect • Rapport de Caisse</p>
       </footer>
     </div>
   );
@@ -269,7 +278,7 @@ function SummaryCard({ label, value, color, bg, icon: Icon, sub }: any) {
       <div className="text-left">
         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1.5">{label}</p>
         <div className={`text-2xl font-black tracking-tighter leading-none ${color}`}>{value}</div>
-        <p className="text-[9px] font-bold text-muted-foreground mt-2 uppercase italic leading-none">{sub}</p>
+        <p className="text-[9px] font-bold text-muted-foreground mt-2 uppercase italic leading-none text-left">{sub}</p>
       </div>
     </div>
   );

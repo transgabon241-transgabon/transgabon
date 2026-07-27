@@ -6,7 +6,10 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, CheckCircle, Printer, RefreshCw, Ship, Train, Bus, Hash, MapPin, Gem, Package, Info, ArrowRight, Plane } from 'lucide-react';
+import { 
+  ArrowLeft, CheckCircle, Printer, RefreshCw, Ship, Train, Bus, 
+  Hash, MapPin, Gem, Package, Info, ArrowRight, Plane, Baby, User 
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 // Type précis pour les bagages
@@ -41,6 +44,7 @@ type MappedBooking = {
   paymentStatus: string;
   qrCodeData: string;
   luggages: Luggage[];
+  isChild: boolean; // AJOUTÉ
 };
 
 export default function TicketPage() {
@@ -85,7 +89,7 @@ export default function TicketPage() {
           const destination = b.arrival_city_name || b.trip.to.name;
           const prettyClass = classMapping[b.class_type] || b.travel_class || 'Standard';
 
-          // CORRECTION DU CALCUL TOTAL : Prix Billet + Somme des Bagages
+          // CALCUL TOTAL : Prix Billet + Somme des Bagages
           const ticketAmount = Number(b.total_amount) || 0;
           const luggageAmount = (b.luggages || []).reduce((sum: number, l: any) => sum + (Number(l.total_price) || 0), 0);
           const totalAmount = ticketAmount + luggageAmount;
@@ -95,7 +99,7 @@ export default function TicketPage() {
             pass: passengerName,
             to: destination,
             seat: seatNumber,
-            lugs: b.luggages?.length || 0
+            child: b.is_child
           });
 
           setBooking({
@@ -117,11 +121,12 @@ export default function TicketPage() {
             seatNumber,
             ticketAmount,
             luggageAmount,
-            amount: totalAmount, // MONTANT MIS À JOUR
+            amount: totalAmount,
             paymentMethod: b.payment_method === 'AGENCE' ? 'Paiement Agence' : b.payment_method,
             paymentStatus: b.status === 'PAYE' ? 'Réglé' : 'À régler',
             qrCodeData: qrPayload,
-            luggages: b.luggages || []
+            luggages: b.luggages || [],
+            isChild: b.is_child // RÉCUPÉRATION DU STATUT ENFANT
           });
         }
       } catch (err) {
@@ -196,7 +201,13 @@ export default function TicketPage() {
         {/* DÉTAILS */}
         <div className="p-8 space-y-8 bg-card">
             <div className="grid grid-cols-2 gap-y-8 text-left">
-                <InfoField label="Voyageur" value={booking.passengerName} />
+                <InfoField label="Voyageur">
+                    <div className="flex items-center gap-2">
+                        {booking.isChild ? <Baby size={16} className="text-blue-400" /> : <User size={16} className="text-slate-400" />}
+                        <span className="font-black text-sm text-slate-200 uppercase truncate">{booking.passengerName}</span>
+                    </div>
+                </InfoField>
+
                 <InfoField label="Siège">
                    <span className="bg-slate-950 text-primary border border-primary/20 px-3 py-1 rounded-lg font-black text-xs shadow-lg">
                      {booking.seatNumber}
@@ -210,13 +221,21 @@ export default function TicketPage() {
                 </InfoField>
 
                 <InfoField label="Confort choisi">
-                    <div className="flex items-center gap-1.5 font-black text-[10px] text-primary uppercase italic tracking-wider">
-                        {booking.travelClass}
+                    <div className="flex items-center gap-2">
+                        <span className="font-black text-[10px] text-primary uppercase italic tracking-wider">
+                            {booking.travelClass}
+                        </span>
+                        {/* BADGE ENFANT SUR LE BILLET */}
+                        {booking.isChild && (
+                            <Badge className="bg-blue-600 text-white text-[7px] uppercase font-black px-1.5 h-4 border-none shadow-sm">
+                                ENFANT
+                            </Badge>
+                        )}
                     </div>
                 </InfoField>
             </div>
 
-            {/* SECTION BAGAGES SOMBRE AVEC PRIX */}
+            {/* SECTION BAGAGES */}
             {booking.luggages.length > 0 ? (
               <div className="p-5 bg-slate-950 rounded-[2rem] border-2 border-border animate-in slide-in-from-bottom-2 text-left">
                 <div className="flex items-center gap-2 text-slate-500 mb-4">

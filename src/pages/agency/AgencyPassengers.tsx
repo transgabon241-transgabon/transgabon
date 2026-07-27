@@ -21,7 +21,10 @@ import {
   Train,
   MapPin,
   UserCheck,
-  Lock // Ajout de l'icône de verrouillage
+  Lock,
+  Baby, // AJOUTÉ
+  User, // AJOUTÉ
+  Plane
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -38,6 +41,7 @@ type Passenger = {
   paymentStatus: string;
   amount: number;
   boarded: boolean;
+  isChild: boolean; // AJOUTÉ
 };
 
 type Data = {
@@ -108,7 +112,8 @@ export default function AgencyPassengers() {
             status: b.status === 'PAYE' ? 'Confirmé' : 'En attente',
             paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
             amount: Math.round((b.total_amount || 0) / (b.passengers?.length || 1)),
-            boarded: p.boarded ?? false
+            boarded: p.boarded ?? false,
+            isChild: b.is_child ?? false // RÉCUPÉRATION DU STATUT ENFANT
           });
         });
       });
@@ -137,9 +142,8 @@ export default function AgencyPassengers() {
   useEffect(() => { loadPassengersData(); }, [departureId, user]);
 
   const handleBoardPassenger = async (passenger: Passenger) => {
-    // Sécurité supplémentaire : vérification du paiement avant action
     if (passenger.paymentStatus !== 'Payé') {
-        toast.error("Embarquement impossible : paiement non validé en caisse.");
+        toast.error("Embarquement impossible : paiement non validé.");
         return;
     }
 
@@ -171,7 +175,7 @@ export default function AgencyPassengers() {
   }, [data]);
 
   const totalPages = Math.ceil((data?.passengers.length || 0) / itemsPerPage);
-  const TransportIcon = data?.transportType === 'TRAIN' ? Train : data?.transportType === 'BOAT' ? Ship : Bus;
+  const TransportIcon = data?.transportType === 'TRAIN' ? Train : data?.transportType === 'BOAT' ? Ship : data?.transportType === 'PLANE' ? Plane : Bus;
 
   if (loading) return <div className="p-4 space-y-4 bg-background min-h-screen"><Skeleton className="h-12 w-48 bg-slate-800" /><Skeleton className="h-64 w-full rounded-3xl bg-slate-800" /></div>;
   if (!data) return null;
@@ -186,7 +190,7 @@ export default function AgencyPassengers() {
         </Link>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-10">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-left">
             <div className={`p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl ${data.transportType === 'BOAT' ? 'bg-blue-600' : data.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'} text-white`}>
                <TransportIcon className="h-6 w-6 md:h-10 md:w-10" />
             </div>
@@ -221,8 +225,8 @@ export default function AgencyPassengers() {
       {/* TABLEAU */}
       <div className="border border-slate-800 rounded-[2rem] md:rounded-[3rem] overflow-hidden bg-slate-900 shadow-2xl print:shadow-none print:border-slate-900 print:rounded-none">
         <div className="overflow-x-auto">
-          <table className="w-full text-base min-w-[600px]">
-            <thead className="bg-slate-950 border-b border-slate-800 print:bg-slate-100">
+          <table className="w-full text-base min-w-[700px]">
+            <thead className="bg-slate-950 border-b border-slate-800">
               <tr>
                 <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">#</th>
                 <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">Passager</th>
@@ -238,20 +242,31 @@ export default function AgencyPassengers() {
                 <tr key={p.id} className="hover:bg-slate-800/40 transition-colors group">
                   <td className="p-4 md:p-6 text-slate-600 font-black text-sm md:text-lg">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
                   <td className="p-4 md:p-6">
-                      <p className="font-black text-white uppercase text-sm md:text-lg leading-tight mb-1">{p.passengerName}</p>
-                      <p className="text-[10px] font-mono text-primary font-bold tracking-widest hidden sm:block">{p.bookingNumber}</p>
+                      <div className="flex items-center gap-3">
+                          {/* ICÔNE ADULTE / ENFANT DYNAMIQUE */}
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${p.isChild ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 text-slate-500'}`}>
+                             {p.isChild ? <Baby size={16} /> : <User size={16} />}
+                          </div>
+                          <div className="text-left">
+                            <p className="font-black text-white uppercase text-sm md:text-lg leading-tight">{p.passengerName}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] font-mono text-primary font-bold tracking-widest">{p.bookingNumber}</span>
+                                {p.isChild && <span className="text-[7px] font-black bg-blue-600 text-white px-1.5 rounded uppercase">Enfant</span>}
+                            </div>
+                          </div>
+                      </div>
                   </td>
-                  <td className="p-4 md:p-6 text-center">
+                  <td className="p-4 md:p-6 text-center text-left">
                     <div className="inline-flex h-10 w-10 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-slate-950 border border-slate-800 items-center justify-center text-primary font-black text-sm md:text-lg shadow-inner">
                         {p.seatNumber}
                     </div>
                   </td>
-                  <td className="p-4 md:p-6 hidden sm:table-cell">
-                    <Badge variant="outline" className={`text-[9px] font-black uppercase border-2 px-3 py-1 ${p.travelClass.includes('VIP') || p.travelClass.includes('1ERE') ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'text-slate-400 border-slate-800 bg-slate-950'}`}>
+                  <td className="p-4 md:p-6 hidden sm:table-cell text-left">
+                    <Badge variant="outline" className={`text-[9px] font-black uppercase border-2 px-3 py-1 ${p.travelClass.includes('VIP') || p.travelClass.includes('Business') ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'text-slate-400 border-slate-800 bg-slate-950'}`}>
                         {p.travelClass}
                     </Badge>
                   </td>
-                  <td className="p-4 md:p-6">
+                  <td className="p-4 md:p-6 text-left">
                     <div className="flex items-center gap-2 font-black text-slate-300 uppercase text-[10px] md:text-sm tracking-tighter">
                         <MapPin size={14} className="text-primary shrink-0" />
                         <span className="truncate max-w-[80px] md:max-w-none">{p.destination}</span>
@@ -263,15 +278,12 @@ export default function AgencyPassengers() {
                           <CheckCircle2 className="h-5 w-5 md:h-6 md:w-6" strokeWidth={3} /> <span className="hidden sm:inline">À BORD</span>
                       </div>
                     ) : p.paymentStatus !== 'Payé' ? (
-                      /* État si le paiement n'est pas encore validé par le caissier */
                       <div className="flex flex-col items-center gap-1.5 opacity-60">
                         <div className="h-10 md:h-14 px-4 md:px-6 flex items-center justify-center rounded-xl md:rounded-2xl bg-slate-950 border border-red-900/30 text-red-500/80 font-black uppercase text-[8px] md:text-[9px] tracking-widest cursor-not-allowed">
                            <Lock className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Impayé
                         </div>
-                        <p className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase tracking-tighter italic">Validation caisse requise</p>
                       </div>
                     ) : (
-                      /* État si payé : l'agent d'embarquement peut cliquer */
                       <Button 
                           size="sm"
                           className="h-10 md:h-14 px-4 md:px-8 font-black uppercase rounded-xl md:rounded-2xl bg-slate-950 text-slate-300 border border-slate-800 hover:bg-emerald-600 hover:text-white hover:border-transparent shadow-lg text-[9px] md:text-xs transition-all"

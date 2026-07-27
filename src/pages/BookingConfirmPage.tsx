@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Building2, Check, Ship, Gem, RefreshCw, Train, Bus, 
-  MapPin, Package, Plus, Trash2, Scale, Calculator, Info, Plane 
+  MapPin, Package, Plus, Trash2, Scale, Calculator, Info, Plane, User, Baby
 } from 'lucide-react';
 
 const PAYMENT_METHODS = [
@@ -27,6 +27,10 @@ type TripDetails = {
   registration: string;
   freeWeight: number;
   excessPrice: number;
+  // Nouveaux tarifs enfants
+  childPrice: number | null;
+  childBusinessPrice: number | null;
+  childVipPrice: number | null;
 };
 
 type DeclaredLuggage = {
@@ -43,13 +47,15 @@ export default function BookingConfirmPage() {
 
   const seat = params.get('seat') || '';
   const selectedClass = params.get('class') || 'STANDARD';
-  const ticketPrice = Number(params.get('price')) || 0;
+  const adultTicketPrice = Number(params.get('price')) || 0;
   const destinationName = params.get('to') || '';
   
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
+  // États passager
+  const [isChild, setIsChild] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -87,13 +93,30 @@ export default function BookingConfirmPage() {
             registration: d.vehicle?.registration || '—',
             type: d.type,
             freeWeight: d.company.default_free_weight_limit || 30,
-            excessPrice: d.company.default_excess_weight_price || 500
+            excessPrice: d.company.default_excess_weight_price || 500,
+            childPrice: d.child_price,
+            childBusinessPrice: d.child_business_price,
+            childVipPrice: d.child_vip_price
           });
         }
       } finally { setLoading(false); }
     };
     loadDetails();
   }, [departureId]);
+
+  // --- CALCUL DU PRIX BILLET (ADULTE VS ENFANT) ---
+  const activeTicketPrice = useMemo(() => {
+    if (!isChild) return adultTicketPrice;
+    
+    // Si enfant, on cherche le prix spécifique dans le voyage
+    let price = 0;
+    if (selectedClass === 'VIP') price = trip?.childVipPrice || 0;
+    else if (selectedClass === 'BUSINESS') price = trip?.childBusinessPrice || 0;
+    else price = trip?.childPrice || 0;
+
+    // Fallback : si l'agence n'a pas mis de prix enfant, on applique -50% par défaut
+    return price > 0 ? price : Math.round(adultTicketPrice * 0.5);
+  }, [isChild, adultTicketPrice, trip, selectedClass]);
 
   const addLuggage = () => {
     if (!tempLabel || !tempWeight) return toast.error("Précisez l'objet et son poids");
@@ -119,7 +142,7 @@ export default function BookingConfirmPage() {
     return excess * trip.excessPrice;
   }, [totalWeight, trip]);
 
-  const finalTotal = ticketPrice + luggageTotal;
+  const finalTotal = activeTicketPrice + luggageTotal;
 
   const handleSubmit = async () => {
     if (!name || !phone || !paymentMethod) return toast.error('Informations incomplètes');
@@ -130,20 +153,20 @@ export default function BookingConfirmPage() {
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || '—';
 
-      // MISE À JOUR RPC : On envoie l'ID de l'agence (companyId) de l'utilisateur connecté
       const { data: res, error } = await supabase.rpc('create_booking_transaction', {
         p_trip_id: departureId,
         p_user_id: user?.id,
-        p_company_id: user?.companyId || null, // CRITIQUE : Définit qui a vendu le billet
+        p_company_id: user?.companyId || null,
         p_contact_phone: phone,
         p_contact_email: user?.email,
         p_passenger_first_name: firstName,
         p_passenger_last_name: lastName,
         p_seat_number: seat,
         p_payment_method: paymentMethod.toUpperCase(),
-        p_total_amount: ticketPrice,
+        p_total_amount: activeTicketPrice, // Utilise le prix calculé (Adulte ou Enfant)
         p_arrival_city_name: destinationName,
-        p_class_type: selectedClass
+        p_class_type: selectedClass,
+        p_is_child: isChild // Paramètre ajouté
       });
 
       if (error || !res?.success) throw new Error(error?.message || res?.error);
@@ -181,6 +204,27 @@ export default function BookingConfirmPage() {
       
       <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-none">Finaliser ma place</h1>
 
+      {/* TYPE DE PASSAGER : NOUVELLE SECTION */}
+      <div className="space-y-3">
+        <Label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest">Type de voyageur</Label>
+        <div className="flex bg-slate-900 p-1 rounded-2xl border border-border shadow-inner">
+          <button 
+            type="button"
+            onClick={() => setIsChild(false)}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${!isChild ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <User size={14} /> Adulte
+          </button>
+          <button 
+            type="button"
+            onClick={() => setIsChild(true)}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${isChild ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <Baby size={14} /> Enfant (-12 ans)
+          </button>
+        </div>
+      </div>
+
       {/* RECAP BILLET */}
       <div className="bg-card border-2 border-border rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
           <div className="flex justify-between items-start mb-6">
@@ -198,10 +242,25 @@ export default function BookingConfirmPage() {
                 <MapPin size={16} className="text-primary" />
                 <p className="font-black text-sm text-slate-100 uppercase truncate">{destinationName}</p>
             </div>
-            <div className="flex items-center gap-3 border-t border-slate-800 pt-3">
-                <div className={`h-2 w-2 rounded-full ${trip?.type === 'PLANE' ? 'bg-indigo-500' : 'bg-primary'}`} />
-                <p className="font-black text-[11px] text-slate-400 uppercase tracking-tighter">{selectedClass.replace('_', ' ')}</p>
+            <div className="flex items-center justify-between border-t border-slate-800 pt-3">
+                <div className="flex items-center gap-2">
+                   <div className={`h-2 w-2 rounded-full ${isChild ? 'bg-blue-500' : 'bg-primary'}`} />
+                   <p className="font-black text-[11px] text-slate-400 uppercase tracking-tighter">{selectedClass.replace('_', ' ')}</p>
+                </div>
+                {isChild && <Badge variant="outline" className="text-[8px] font-black border-blue-500/30 text-blue-400 uppercase">Tarif réduit</Badge>}
             </div>
+          </div>
+      </div>
+
+      {/* FORMULAIRE PASSAGER */}
+      <div className="space-y-4 bg-card border-2 border-border rounded-[2.5rem] p-8 shadow-xl">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Nom complet du passager</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Prénom et Nom" className="h-12 bg-slate-950 border-none rounded-xl font-bold text-white shadow-inner" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Téléphone de contact</Label>
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="066 00 00 00" className="h-12 bg-slate-950 border-none rounded-xl font-bold text-white shadow-inner" />
           </div>
       </div>
 
@@ -270,7 +329,10 @@ export default function BookingConfirmPage() {
         <div className="bg-slate-900 border border-border p-6 sm:p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
             <Calculator className="absolute -right-4 -bottom-4 h-24 w-24 opacity-5 text-primary" />
             <div className="space-y-2 relative z-10 text-left">
-                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60"><span>Prix Billet</span><span className="text-slate-200">{ticketPrice.toLocaleString()} F</span></div>
+                <div className="flex justify-between text-[10px] font-bold uppercase opacity-60">
+                   <span>Billet {isChild ? '(Enfant)' : '(Adulte)'}</span>
+                   <span className="text-slate-200">{activeTicketPrice.toLocaleString()} F</span>
+                </div>
                 {luggageTotal > 0 && (
                     <div className="flex justify-between text-[10px] font-bold uppercase text-primary">
                         <span>Excédent ({totalWeight}kg)</span>
@@ -281,10 +343,6 @@ export default function BookingConfirmPage() {
                 <div className="flex justify-between items-center">
                     <p className="text-[10px] sm:text-xs font-black uppercase text-primary tracking-widest leading-none">Total à régler</p>
                     <p className="text-3xl sm:text-4xl font-black tracking-tighter text-white leading-none">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
-                </div>
-                <div className="flex items-center gap-2 mt-4 text-left">
-                    <Info size={10} className="text-slate-500 shrink-0" />
-                    <p className="text-[8px] font-bold text-slate-500 uppercase italic leading-none">* {trip?.freeWeight}kg inclus sans supplément.</p>
                 </div>
             </div>
         </div>
@@ -330,7 +388,6 @@ export default function BookingConfirmPage() {
   );
 }
 
-// Composant icône interne pour éviter les erreurs d'importation
 function CheckCircleIcon(props: any) {
   return (
     <svg

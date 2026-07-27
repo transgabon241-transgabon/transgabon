@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { Clock, MapPin, Users, Train, Bus, Ship, ArrowRight, Hash, Info, Plane } from 'lucide-react'; 
+import { Clock, MapPin, Users, Train, Bus, Ship, ArrowRight, Hash, Info, Plane, Baby } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ type Trip = {
   departureTime: string;
   arrivalTime: string;
   price: number;
+  childPrice: number; // AJOUTÉ
   availableSeats: number;
   isStop: boolean;
 };
@@ -69,6 +70,14 @@ export default function SearchResultsPage() {
                 if (t.type === 'BOAT') typeLabel = 'Bateau';
                 if (t.type === 'PLANE') typeLabel = 'Avion';
 
+                // LOGIQUE PRIX ADULTE VS ENFANT
+                const adultPrice = isStop ? stopAtDestination.price_from_start : t.price;
+                
+                // Si c'est une escale, on applique 50% sur le prix escale, 
+                // sinon on prend le child_price de la base ou 50% du prix normal.
+                const rawChildPrice = t.child_price || Math.round(adultPrice * 0.5);
+                const finalChildPrice = isStop ? Math.round(adultPrice * 0.5) : rawChildPrice;
+
                 return {
                   departureId: t.id,
                   companyName: t.company?.name || 'Opérateur',
@@ -77,7 +86,8 @@ export default function SearchResultsPage() {
                   registration: t.vehicle?.registration || '—',
                   departureTime: t.departure_time,
                   arrivalTime: isStop ? stopAtDestination.arrival_time : t.arrival_time,
-                  price: isStop ? stopAtDestination.price_from_start : t.price,
+                  price: adultPrice,
+                  childPrice: finalChildPrice,
                   availableSeats: t.seats_left,
                   isStop: isStop
                 };
@@ -96,7 +106,6 @@ export default function SearchResultsPage() {
     fetchTrips();
   }, [from, to, date]);
 
-  // LOGIQUE DE REGROUPEMENT PAR SECTION
   const groupedTrips = useMemo(() => {
     const groups = {
       'Avion': [] as Trip[],
@@ -111,7 +120,6 @@ export default function SearchResultsPage() {
       }
     });
 
-    // Trier chaque groupe
     Object.keys(groups).forEach(key => {
       groups[key as keyof typeof groups].sort((a, b) =>
         sortBy === 'price' ? a.price - b.price : a.departureTime.localeCompare(b.departureTime)
@@ -155,7 +163,6 @@ export default function SearchResultsPage() {
         </div>
       ) : (
         <div className="space-y-12">
-          {/* BOUCLE SUR LES GROUPES : AVION, TRAIN, BATEAU, BUS */}
           {(['Avion', 'Train', 'Bateau', 'Bus'] as const).map(type => {
             const list = groupedTrips[type];
             if (list.length === 0) return null;
@@ -165,7 +172,7 @@ export default function SearchResultsPage() {
 
             return (
               <div key={type} className="space-y-6">
-                <div className="flex items-center gap-3 px-2">
+                <div className="flex items-center gap-3 px-2 text-left">
                   <div className="p-2 bg-primary/10 rounded-lg text-primary border border-primary/20">
                     <SectionIcon size={18} />
                   </div>
@@ -187,13 +194,12 @@ export default function SearchResultsPage() {
       )}
 
       <footer className="text-center pt-10 opacity-20">
-         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white">TransGabon Connect • Mobilité Aérienne, Maritime & Terrestre</p>
+         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white">TransGabon Connect • Mobilité Nationale</p>
       </footer>
     </div>
   );
 }
 
-// Sous-composant pour plus de clarté
 function TripCard({ trip, from, to, navigate }: { trip: Trip, from: string, to: string, navigate: any }) {
   const TransportIcon = trip.transportType === 'Train' ? Train : trip.transportType === 'Bateau' ? Ship : trip.transportType === 'Avion' ? Plane : Bus;
 
@@ -244,7 +250,12 @@ function TripCard({ trip, from, to, navigate }: { trip: Trip, from: string, to: 
               {trip.price.toLocaleString()} 
               <span className="text-[9px] ml-1 font-black text-slate-500">FCFA</span>
             </div>
-            <div className="flex items-center lg:justify-end gap-1 text-[10px] font-black text-emerald-500 uppercase mt-2 tracking-tighter">
+            {/* AFFICHAGE DU TARIF ENFANT */}
+            <div className="flex items-center lg:justify-end gap-1.5 text-[10px] font-black text-blue-400 uppercase mt-1 tracking-tighter">
+              <Baby size={12} />
+              Enfant : {trip.childPrice.toLocaleString()} F
+            </div>
+            <div className="flex items-center lg:justify-end gap-1 text-[10px] font-black text-emerald-500 uppercase mt-1 tracking-tighter">
               <Users className="h-3 w-3" />
               {trip.availableSeats} places libres
             </div>

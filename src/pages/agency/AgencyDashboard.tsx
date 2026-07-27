@@ -25,7 +25,9 @@ import {
   Box,
   Truck,
   Wallet,
-  Users
+  Users,
+  User,
+  Baby // Ajout de l'icône enfant
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -35,14 +37,17 @@ type DashData = {
   todayDepartures: number;
   totalBookingsToday: number;
   totalRevenue: number;
-  // Stats Colis (Ajoutées)
+  // Stats Démographiques (Adultes / Enfants)
+  adultsToday: number;
+  childrenToday: number;
+  // Stats Colis
   totalParcelsToday: number;
   totalParcelRevenueToday: number;
   pendingParcelsCount: number;
   // Listes
   upcomingDepartures: any[];
   recentBookings: any[];
-  recentParcels: any[]; // Ajouté
+  recentParcels: any[];
 };
 
 export default function AgencyDashboard() {
@@ -66,7 +71,6 @@ export default function AgencyDashboard() {
           return;
         }
 
-        // On appelle la fonction RPC qui doit maintenant retourner aussi les stats colis
         const { data: res, error: rpcError } = await supabase.rpc('get_agency_dashboard_stats', {
           p_company_id: companyId
         });
@@ -84,7 +88,17 @@ export default function AgencyDashboard() {
     fetchAgencyData();
   }, [user]);
 
-  // Pagination pour les réservations
+  // Calcul du ratio Adulte / Enfant pour le graphique visuel
+  const passengerStats = useMemo(() => {
+    if (!data || !data.totalBookingsToday) return { adultPct: 0, childPct: 0 };
+    const total = data.adultsToday + data.childrenToday;
+    if (total === 0) return { adultPct: 0, childPct: 0 };
+    return {
+      adultPct: Math.round((data.adultsToday / total) * 100),
+      childPct: Math.round((data.childrenToday / total) * 100)
+    };
+  }, [data]);
+
   const currentBookings = useMemo(() => {
     if (!data?.recentBookings) return [];
     const start = (currentPage - 1) * itemsPerPage;
@@ -102,7 +116,7 @@ export default function AgencyDashboard() {
   return (
     <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-700 bg-background text-foreground pb-20">
       
-      {/* HEADER PREMIUM */}
+      {/* HEADER PREMIUM AVEC CHIFFRE GLOBAL */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card p-6 md:p-8 rounded-[2rem] border-2 border-border shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-white">
             <Activity size={120} />
@@ -110,38 +124,76 @@ export default function AgencyDashboard() {
         <div className="relative z-10 text-left">
           <p className="text-primary font-black uppercase text-[10px] tracking-[0.3em] mb-2">Tableau de Bord Direction</p>
           <h1 className="text-2xl md:text-4xl font-black italic text-white tracking-tighter uppercase leading-none">{data.companyName}</h1>
-          <p className="text-xs md:text-sm font-bold text-slate-500 mt-2">Vue consolidée : Voyageurs & Fret</p>
+          <p className="text-xs md:text-sm font-bold text-slate-500 mt-2 italic">Vue consolidée : Voyageurs & Logistique</p>
         </div>
-        <div className="relative z-10 bg-slate-950/50 p-4 rounded-2xl border border-white/5">
-           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Chiffre d'Affaires Global Jour</p>
-           <p className="text-2xl font-black text-emerald-500 tracking-tighter">
+        <div className="relative z-10 bg-slate-950/50 p-4 rounded-2xl border border-white/5 shadow-inner">
+           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Caisse Globale Jour (Billet + Fret)</p>
+           <p className="text-2xl md:text-3xl font-black text-emerald-500 tracking-tighter">
             {((data.totalRevenue || 0) + (data.totalParcelRevenueToday || 0)).toLocaleString()} F
            </p>
         </div>
       </div>
 
-      {/* SECTION KPIs VOYAGEURS */}
-      <div className="space-y-4">
-        <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] ml-2 flex items-center gap-2">
-            <Users size={14} className="text-primary"/> Flux Voyageurs
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <KPI icon={CalendarDays} label="Mouvements" value={data.todayDepartures || 0} color="text-blue-400" bg="bg-blue-500/10" sub="Départs aujourd'hui" />
+      {/* SECTION KPIs VOYAGEURS & DÉMOGRAPHIE */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* STATS CLASSIQUES VOYAGEURS */}
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <KPI icon={CalendarDays} label="Trajets" value={data.todayDepartures || 0} color="text-blue-400" bg="bg-blue-500/10" sub="Départs aujourd'hui" />
             <KPI icon={Ticket} label="Billets" value={data.totalBookingsToday || 0} color="text-emerald-400" bg="bg-emerald-500/10" sub="Ventes confirmées" />
-            <KPI icon={TrendingUp} label="Recettes Billets" value={`${(data.totalRevenue || 0).toLocaleString()} F`} color="text-primary" bg="bg-primary/10" sub="Encaissé en agence/ligne" />
+            <KPI icon={TrendingUp} label="Recettes Billets" value={`${(data.totalRevenue || 0).toLocaleString()} F`} color="text-primary" bg="bg-primary/10" sub="Flux de caisse transport" />
+            <KPI icon={Package} label="Flux Fret" value={data.totalParcelsToday || 0} color="text-amber-400" bg="bg-amber-500/10" sub="Colis enregistrés" />
+        </div>
+
+        {/* RÉPARTITION ADULTES / ENFANTS VISUELLE */}
+        <div className="bg-card border-2 border-border rounded-[2rem] p-6 shadow-xl flex flex-col justify-center">
+            <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mb-6 flex items-center gap-2">
+                <Users size={14} className="text-primary"/> Type de passagers
+            </h3>
+            
+            <div className="space-y-6">
+                <div className="space-y-2">
+                    <div className="flex justify-between items-end">
+                        <div className="flex items-center gap-2">
+                            <User size={14} className="text-slate-200"/>
+                            <span className="text-[10px] font-black text-white uppercase">Adultes</span>
+                        </div>
+                        <span className="text-xs font-black text-white">{data.adultsToday}</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary" style={{ width: `${passengerStats.adultPct}%` }} />
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <div className="flex justify-between items-end">
+                        <div className="flex items-center gap-2">
+                            <Baby size={14} className="text-blue-400"/>
+                            <span className="text-[10px] font-black text-blue-400 uppercase">Enfants</span>
+                        </div>
+                        <span className="text-xs font-black text-blue-400">{data.childrenToday}</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500" style={{ width: `${passengerStats.childPct}%` }} />
+                    </div>
+                </div>
+                
+                <p className="text-[8px] font-bold text-slate-600 uppercase text-center pt-2 italic">Répartition sur les départs du jour</p>
+            </div>
         </div>
       </div>
 
-      {/* SECTION KPIs FRET */}
-      <div className="space-y-4">
-        <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] ml-2 flex items-center gap-2">
-            <Package size={14} className="text-amber-500"/> Flux Logistique
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <KPI icon={Box} label="Colis Reçus" value={data.totalParcelsToday || 0} color="text-amber-400" bg="bg-amber-500/10" sub="Enregistrés ce jour" />
-            <KPI icon={Truck} label="En Attente" value={data.pendingParcelsCount || 0} color="text-purple-400" bg="bg-purple-500/10" sub="Colis au dépôt" />
-            <KPI icon={Wallet} label="Recettes Fret" value={`${(data.totalParcelRevenueToday || 0).toLocaleString()} F`} color="text-emerald-500" bg="bg-emerald-500/10" sub="Chiffre d'affaires colis" />
-        </div>
+      {/* SECTION KPIs FRET DÉTAILLÉ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <KPI icon={Truck} label="Logistique Dépôt" value={data.pendingParcelsCount || 0} color="text-purple-400" bg="bg-purple-500/10" sub="Colis en attente" />
+          <KPI icon={Wallet} label="Recettes Fret" value={`${(data.totalParcelRevenueToday || 0).toLocaleString()} F`} color="text-emerald-500" bg="bg-emerald-500/10" sub="Aujourd'hui" />
+          <div className="bg-slate-900/50 border border-border rounded-[1.5rem] p-6 flex flex-col justify-center">
+             <div className="flex items-center gap-3 mb-2">
+                <Activity size={16} className="text-primary" />
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Activité Globale</span>
+             </div>
+             <p className="text-xs font-bold text-slate-400">Système opérationnel • {new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}</p>
+          </div>
       </div>
 
       {/* GRILLE D'ACTIVITÉ */}
@@ -162,7 +214,7 @@ export default function AgencyDashboard() {
                  return (
                   <div key={dep.id} className="p-4 rounded-2xl bg-slate-950/50 border border-border hover:border-primary/40 transition-all group">
                       <div className="flex items-center justify-between mb-3">
-                         <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-3 text-left">
                             <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center text-primary border border-border">
                                 <Icon size={18} />
                             </div>
@@ -174,7 +226,7 @@ export default function AgencyDashboard() {
                             {dep.departureTime}
                          </Badge>
                       </div>
-                      <div className="flex items-center gap-2 text-xs font-black text-white uppercase">
+                      <div className="flex items-center gap-2 text-xs font-black text-white uppercase text-left">
                          <span className="truncate">{dep.departureCity}</span>
                          <ArrowRight size={12} className="text-slate-600 shrink-0" />
                          <span className="text-primary truncate">{dep.arrivalCity}</span>
@@ -188,9 +240,9 @@ export default function AgencyDashboard() {
           </div>
         </div>
 
-        {/* DERNIÈRES TRANSACTIONS (MIXTE) */}
+        {/* DERNIÈRES TRANSACTIONS */}
         <div className="bg-card border border-border rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
-          <h2 className="text-sm font-black uppercase tracking-widest mb-8 text-white text-left">Transactions Récentes</h2>
+          <h2 className="text-sm font-black uppercase tracking-widest mb-8 text-white text-left">Flux de Caisse Récent</h2>
           
           <div className="space-y-3">
              {currentBookings.length > 0 ? (
@@ -210,7 +262,6 @@ export default function AgencyDashboard() {
                 <EmptyState message="Aucune vente récente" />
              )}
              
-             {/* LIEN VERS LES RAPPORTS */}
              <div className="pt-4 grid grid-cols-2 gap-4">
                 <Link to="/agency/bookings" className="w-full">
                     <Button variant="outline" className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-widest border-slate-800 hover:bg-slate-800 text-slate-400">Rapport Ventes</Button>

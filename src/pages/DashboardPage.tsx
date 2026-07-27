@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase';
@@ -8,7 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { CalendarDays, MapPin, Ticket, X, Eye, Bus, Package, Ship, Train, Hash, Gem, ArrowRight, ChevronLeft, ChevronRight, Plane } from 'lucide-react';
+import { 
+  CalendarDays, MapPin, Ticket, X, Eye, Bus, Package, Ship, 
+  Train, Hash, Gem, ArrowRight, ChevronLeft, ChevronRight, Plane, Baby, User 
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -28,6 +31,7 @@ type Booking = {
   amount: number;
   paymentMethod: string;
   classLabel: string;
+  isChild: boolean; // AJOUTÉ
 };
 
 type Parcel = {
@@ -79,7 +83,6 @@ export default function DashboardPage() {
           departureCity: b.trip.from.name,
           arrivalCity: b.arrival_city_name || b.trip.to.name,
           companyName: b.trip.company.name,
-          // MISE À JOUR DU MAPPING POUR L'AVION
           transportType: b.trip.type === 'TRAIN' ? 'Train' : b.trip.type === 'BOAT' ? 'Bateau' : b.trip.type === 'PLANE' ? 'Avion' : 'Bus',
           transportTypeCode: b.trip.type,
           departureDate: b.trip.departure_date,
@@ -87,7 +90,8 @@ export default function DashboardPage() {
           seatNumber: b.passengers[0]?.seat_number || '—',
           amount: b.total_amount,
           paymentMethod: b.payment_method.replace('_', ' '),
-          classLabel: classMapping[b.class_type] || 'Standard'
+          classLabel: classMapping[b.class_type] || 'Standard',
+          isChild: b.is_child || false // MAPPING DU STATUT ENFANT
         }));
 
         setBookings(formattedBookings);
@@ -138,7 +142,7 @@ export default function DashboardPage() {
   if (isLoading || !user) return null;
 
   const today = new Date().toISOString().split('T')[0];
-  const upcoming = bookings.filter(b => b.status === 'Confirmé' && b.departureDate >= today);
+  const upcoming = bookings.filter(b => (b.status === 'Confirmé' || b.status === 'En attente') && b.departureDate >= today);
   const past = bookings.filter(b => b.status !== 'Annulé' && b.status !== 'Remboursé' && (b.status === 'Terminé' || b.departureDate < today));
   const cancelled = bookings.filter(b => b.status === 'Annulé' || b.status === 'Remboursé');
 
@@ -148,21 +152,24 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-12 max-w-5xl text-left space-y-8 sm:space-y-10 animate-in fade-in duration-500 bg-background text-foreground">
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-12 max-w-5xl text-left space-y-8 sm:space-y-10 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
       {/* Welcome Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-slate-900 p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] text-white shadow-2xl border border-slate-800 overflow-hidden">
-        <div className="space-y-1">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-slate-900 p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] text-white shadow-2xl border border-slate-800 overflow-hidden relative">
+        <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+            <User size={150} />
+        </div>
+        <div className="space-y-1 relative z-10">
           <p className="text-primary font-black uppercase text-[9px] sm:text-[10px] tracking-[0.3em]">Mon Espace Personnel</p>
           <h1 className="text-2xl sm:text-3xl font-black italic leading-tight">Bonjour, {user.firstName || 'Voyageur'}</h1>
-          <p className="text-slate-400 text-xs sm:text-sm">Gérez vos billets et suivez vos colis en temps réel.</p>
+          <p className="text-slate-400 text-xs sm:text-sm">Suivez vos voyages et vos expéditions de fret.</p>
         </div>
-        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-          <Button variant="outline" onClick={() => navigate('/send-parcel')} className="flex-1 sm:flex-none rounded-xl sm:rounded-2xl font-black bg-white/5 border-white/10 hover:bg-white/10 text-white h-11 sm:h-12 text-[11px] sm:text-sm gap-2">
-            <Package size={16} /> FRET
+        <div className="flex flex-wrap gap-3 w-full sm:w-auto relative z-10">
+          <Button variant="outline" onClick={() => navigate('/send-parcel')} className="flex-1 sm:flex-none rounded-xl font-black bg-white/5 border-white/10 hover:bg-white/10 text-white h-11 sm:h-12 text-[11px] sm:text-sm gap-2">
+            <Package size={16} /> ENVOYER COLIS
           </Button>
-          <Button onClick={() => navigate('/')} className="flex-1 sm:flex-none rounded-xl sm:rounded-2xl font-black shadow-lg shadow-primary/20 h-11 sm:h-12 text-[11px] sm:text-sm gap-2 bg-primary text-white">
-            <Bus size={16} /> NOUVEAU VOYAGE
+          <Button onClick={() => navigate('/')} className="flex-1 sm:flex-none rounded-xl font-black shadow-lg h-11 sm:h-12 text-[11px] sm:text-sm gap-2 bg-primary text-white border-none">
+            <Ticket size={16} /> RÉSERVER BILLET
           </Button>
         </div>
       </div>
@@ -186,7 +193,7 @@ export default function DashboardPage() {
         </div>
 
         {loading ? (
-            <div className="space-y-4"><Skeleton className="h-32 w-full rounded-[1.5rem] sm:rounded-[2rem] bg-slate-900" /><Skeleton className="h-32 w-full rounded-[1.5rem] sm:rounded-[2rem] bg-slate-900" /></div>
+            <div className="space-y-4"><Skeleton className="h-32 w-full rounded-[2rem] bg-slate-900" /><Skeleton className="h-32 w-full rounded-[2rem] bg-slate-900" /></div>
         ) : (
           <div className="mt-2">
             <TabsContent value="upcoming" className="space-y-6">
@@ -212,22 +219,7 @@ export default function DashboardPage() {
   );
 }
 
-function PaginationControls({ currentPage, totalItems, itemsPerPage, onPageChange }: any) {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (totalPages <= 1) return null;
-
-    return (
-        <div className="flex items-center justify-center gap-3 mt-8 bg-slate-900 p-2 rounded-2xl border border-slate-800 w-fit mx-auto shadow-xl">
-            <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} className="rounded-xl h-9 w-9 border border-slate-800 hover:bg-slate-800 text-slate-400">
-                <ChevronLeft size={16} />
-            </Button>
-            <span className="text-[9px] sm:text-[10px] font-black uppercase text-slate-500 px-2">Page {currentPage} / {totalPages}</span>
-            <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-9 w-9 border border-slate-800 hover:bg-slate-800 text-slate-400">
-                <ChevronRight size={16} />
-            </Button>
-        </div>
-    );
-}
+// --- SOUS-COMPOSANTS ---
 
 function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[], onCancel?: (id: string) => void, showActions?: boolean }) {
   const navigate = useNavigate();
@@ -236,12 +228,11 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
   return (
     <div className="grid gap-4">
       {bookings.map(b => {
-        // LOGIQUE D'ICÔNE MISE À JOUR POUR L'AVION
         const TransportIcon = b.transportTypeCode === 'BOAT' ? Ship : b.transportTypeCode === 'TRAIN' ? Train : b.transportTypeCode === 'PLANE' ? Plane : Bus;
         
         return (
-          <div key={b.id} className="bg-slate-900 border-2 border-slate-800/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-primary/20 transition-all group flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 overflow-hidden">
-            <div className="flex items-center gap-4 sm:gap-5 flex-1 w-full overflow-hidden">
+          <div key={b.id} className="bg-slate-900 border-2 border-slate-800/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 hover:shadow-xl transition-all flex flex-col md:flex-row justify-between items-center gap-4 group">
+            <div className="flex items-center gap-4 sm:gap-5 flex-1 w-full overflow-hidden text-left">
                <div className={`h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg ${
                  b.transportTypeCode === 'BOAT' ? 'bg-blue-600' : 
                  b.transportTypeCode === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 
@@ -249,9 +240,11 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
                  'bg-primary'}`}>
                   <TransportIcon size={20} className="sm:w-6 sm:h-6" />
                </div>
-               <div className="overflow-hidden text-left">
+               <div className="overflow-hidden">
                   <div className="flex items-center gap-2 font-black text-sm sm:text-lg text-slate-100 uppercase tracking-tighter truncate">
                      {b.departureCity} <ArrowRight size={12} className="text-primary opacity-30 shrink-0" /> {b.arrivalCity}
+                     {/* BADGE ENFANT */}
+                     {b.isChild && <Badge className="bg-blue-600 text-white text-[7px] uppercase font-black h-4 border-none shrink-0">ENFANT</Badge>}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5 sm:mt-1">
                      <Badge variant="outline" className="text-[7px] sm:text-[8px] font-black uppercase h-4 sm:h-5 border-primary/20 text-primary bg-primary/5">{b.classLabel}</Badge>
@@ -262,25 +255,25 @@ function BookingList({ bookings, onCancel, showActions }: { bookings: Booking[],
 
             <div className="flex items-center gap-3 w-full md:w-auto shrink-0 border-t border-slate-800 sm:border-t-0 pt-3 sm:pt-0 mt-1 sm:mt-0">
                <div className="text-left md:text-right md:mr-4 flex-1 md:flex-none">
-                  <p className="text-[7px] sm:text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Montant</p>
+                  <p className="text-[7px] sm:text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Total Réglé</p>
                   <p className="font-black text-slate-100 text-sm sm:text-base mt-1">{b.amount.toLocaleString()} F</p>
                </div>
                <Button onClick={() => navigate(`/ticket/${b.id}`)} variant="outline" className="flex-1 md:flex-none h-10 sm:h-11 rounded-lg sm:rounded-xl border-slate-800 bg-slate-950 text-slate-300 font-black text-[9px] sm:text-[10px] uppercase gap-2 hover:bg-slate-800 hover:text-white transition-all">
-                 <Eye size={14} /> Billet
+                 <Eye size={14} /> Voir Billet
                </Button>
                {showActions && b.status === 'Confirmé' && onCancel && (
                  <AlertDialog>
                    <AlertDialogTrigger asChild>
                      <Button variant="ghost" className="h-10 w-10 sm:h-11 sm:w-11 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg sm:rounded-xl transition-colors shrink-0"><X size={18}/></Button>
                    </AlertDialogTrigger>
-                   <AlertDialogContent className="rounded-[2rem] sm:rounded-[2.5rem] w-[90vw] max-w-md bg-slate-900 border border-slate-800 text-white">
+                   <AlertDialogContent className="rounded-[2.5rem] bg-slate-900 border border-slate-800 text-white">
                      <AlertDialogHeader className="text-left">
-                       <AlertDialogTitle className="font-black italic uppercase text-lg sm:text-xl text-white">Annuler le voyage ?</AlertDialogTitle>
-                       <AlertDialogDescription className="font-medium text-slate-400 text-sm italic mt-2">Cette action est soumise aux conditions de remboursement de {b.companyName}.</AlertDialogDescription>
+                       <AlertDialogTitle className="font-black italic uppercase text-lg sm:text-xl text-white tracking-tighter">Annuler le voyage ?</AlertDialogTitle>
+                       <AlertDialogDescription className="font-medium text-slate-400 text-sm italic mt-2">Cette action est définitive. Les frais de service ne sont pas remboursables.</AlertDialogDescription>
                      </AlertDialogHeader>
                      <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-6">
-                       <AlertDialogCancel className="rounded-xl font-bold mt-0 bg-slate-800 border-none hover:bg-slate-700 text-white">RETOUR</AlertDialogCancel>
-                       <AlertDialogAction onClick={() => onCancel(b.id)} className="bg-red-600 hover:bg-red-700 rounded-xl font-bold border-none text-white">ANNULER BILLET</AlertDialogAction>
+                       <AlertDialogCancel className="rounded-xl font-bold bg-slate-800 border-none hover:bg-slate-700 text-white m-0">RETOUR</AlertDialogCancel>
+                       <AlertDialogAction onClick={() => onCancel(b.id)} className="bg-red-600 hover:bg-red-700 rounded-xl font-bold border-none text-white m-0">ANNULER BILLET</AlertDialogAction>
                      </AlertDialogFooter>
                    </AlertDialogContent>
                  </AlertDialog>
@@ -299,7 +292,7 @@ function ParcelList({ parcels }: { parcels: Parcel[] }) {
   return (
     <div className="grid gap-4">
       {parcels.map(p => (
-        <div key={p.id} className="bg-slate-900 border-2 border-slate-800/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 hover:shadow-xl transition-all flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6 overflow-hidden">
+        <div key={p.id} className="bg-slate-900 border-2 border-slate-800/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 hover:shadow-xl transition-all flex flex-col md:flex-row justify-between items-center gap-4 overflow-hidden">
           <div className="flex items-center gap-4 sm:gap-5 flex-1 w-full text-left overflow-hidden">
              <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl sm:rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-950/20">
                 <Package size={20} className="sm:w-6 sm:h-6" />
@@ -325,11 +318,28 @@ function ParcelList({ parcels }: { parcels: Parcel[] }) {
   );
 }
 
+function PaginationControls({ currentPage, totalItems, itemsPerPage, onPageChange }: any) {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="flex items-center justify-center gap-3 mt-8 bg-slate-900 p-2 rounded-2xl border border-slate-800 w-fit mx-auto shadow-xl">
+            <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} className="rounded-xl h-9 w-9 border border-slate-800 hover:bg-slate-800 text-slate-400">
+                <ChevronLeft size={16} />
+            </Button>
+            <span className="text-[9px] sm:text-[10px] font-black uppercase text-slate-500 px-2">Page {currentPage} / {totalPages}</span>
+            <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} className="rounded-xl h-9 w-9 border border-slate-800 hover:bg-slate-800 text-slate-400">
+                <ChevronRight size={16} />
+            </Button>
+        </div>
+    );
+}
+
 function StatItem({ label, value, icon: Icon, color }: any) {
   return (
     <div className="bg-slate-900 border-2 border-slate-800/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xl hover:border-primary/30 transition-all flex flex-col items-start group">
       <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${color} mb-2 sm:mb-3 group-hover:scale-110 transition-transform`} />
-      <p className="text-xl sm:text-2xl font-black text-slate-100 leading-none mb-1">{value}</p>
+      <p className="text-xl sm:text-2xl font-black text-slate-100 leading-none mb-1 tracking-tighter">{value}</p>
       <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-tight">{label}</p>
     </div>
   );
