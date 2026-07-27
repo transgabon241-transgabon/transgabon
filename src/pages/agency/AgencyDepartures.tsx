@@ -32,7 +32,6 @@ type Departure = {
   price: number;
   vipPrice: number;
   businessPrice: number;
-  // Nouveaux champs tarifs enfants
   childPrice: number;
   childVipPrice: number;
   childBusinessPrice: number;
@@ -54,12 +53,10 @@ export default function AgencyDepartures() {
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Pagination & Tabs states
   const [activeTab, setActiveTab] = useState("today");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Form states
   const [routeId, setRouteId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [depDate, setDepDate] = useState('');
@@ -68,7 +65,6 @@ export default function AgencyDepartures() {
   const [price, setPrice] = useState('');
   const [vipPrice, setVipPrice] = useState('');
   const [businessPrice, setBusinessPrice] = useState('');
-  // Form states enfants
   const [childPrice, setChildPrice] = useState('');
   const [childVipPrice, setChildVipPrice] = useState('');
   const [childBusinessPrice, setChildBusinessPrice] = useState('');
@@ -115,9 +111,17 @@ export default function AgencyDepartures() {
       const { data: citiesData } = await supabase.from('cities').select('id, name').order('name');
       if (citiesData) setCities(citiesData);
 
+      // CORRECTION : On demande le count des passagers liés
       const { data: tripsData } = await supabase
         .from('trips')
-        .select(`*, from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration), trip_stops(*)`)
+        .select(`
+          *, 
+          from:cities!from_id(name), 
+          to:cities!to_id(name), 
+          vehicle:vehicles(registration), 
+          trip_stops(*),
+          passengers:passengers(count)
+        `)
         .eq('company_id', user.companyId)
         .order('departure_date', { ascending: true });
 
@@ -137,7 +141,8 @@ export default function AgencyDepartures() {
         childVipPrice: Number(t.child_vip_price) || 0,
         childBusinessPrice: Number(t.child_business_price) || 0,
         totalSeats: t.seats_total || 0,
-        bookingCount: (t.seats_total || 0) - (t.seats_left || 0),
+        // CORRECTION : On utilise le count réel renvoyé par Supabase
+        bookingCount: t.passengers?.[0]?.count || 0,
         status: t.status || 'Programmé',
         type: t.type,
         stops: t.trip_stops || []
@@ -215,7 +220,6 @@ export default function AgencyDepartures() {
   return (
     <div className="w-full max-w-6xl mx-auto p-2 sm:p-4 text-left space-y-6 bg-background text-foreground pb-20">
       
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 bg-card p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border-2 border-border shadow-xl">
         <div className="flex items-center gap-3 text-left">
           <div className="p-2 sm:p-3 bg-primary/10 rounded-xl text-primary border border-primary/20 shrink-0">
@@ -233,7 +237,6 @@ export default function AgencyDepartures() {
         )}
       </div>
 
-      {/* STATS DASHBOARD */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
           <StatCard icon={BarChart3} label="Total" value={stats.total} color="text-blue-400" bg="bg-blue-500/10" />
           <StatCard icon={Clock} label="Auj." value={stats.today} color="text-primary" bg="bg-primary/10" />
@@ -241,7 +244,6 @@ export default function AgencyDepartures() {
           <StatCard icon={Percent} label="Remplissage" value={`${stats.occupancy}%`} color="text-amber-400" bg="bg-amber-500/10" />
       </div>
 
-      {/* TABS FILTRÉS */}
       <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setCurrentPage(1); }} className="w-full space-y-6">
         <TabsList className="bg-slate-900 border-2 border-slate-800 p-1 rounded-2xl h-auto flex w-full md:w-fit mx-1">
             <TabsTrigger value="today" className="flex-1 md:w-40 rounded-xl font-black uppercase text-[8px] sm:text-[10px] py-3 data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
@@ -263,30 +265,11 @@ export default function AgencyDepartures() {
             )}
         </div>
 
-        {/* CONTRÔLE DE PAGINATION */}
         {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 bg-slate-900 p-2 rounded-2xl border border-border w-fit mx-auto shadow-xl">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    disabled={currentPage === 1} 
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="h-8 w-8 text-slate-400 hover:text-white"
-                >
-                    <ChevronLeft size={20} />
-                </Button>
-                <span className="text-[10px] font-black text-slate-500 uppercase px-4">
-                    Page {currentPage} / {totalPages}
-                </span>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    disabled={currentPage === totalPages} 
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="h-8 w-8 text-slate-400 hover:text-white"
-                >
-                    <ChevronRight size={20} />
-                </Button>
+                <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="h-8 w-8 text-slate-400 hover:text-white"><ChevronLeft size={20} /></Button>
+                <span className="text-[10px] font-black text-slate-500 px-4">Page {currentPage} / {totalPages}</span>
+                <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="h-8 w-8 text-slate-400 hover:text-white"><ChevronRight size={20} /></Button>
             </div>
         )}
       </Tabs>
@@ -294,7 +277,6 @@ export default function AgencyDepartures() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="rounded-[2rem] p-4 sm:p-8 w-[95vw] max-w-2xl bg-slate-900 text-white border-border overflow-y-auto max-h-[90vh]">
           <DialogTitle className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter text-left">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle>
-          
           <div className="space-y-6 mt-6">
             {!editId && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
@@ -318,34 +300,22 @@ export default function AgencyDepartures() {
                 </div>
               </div>
             )}
-
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Date</Label><Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Départ</Label><Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Arrivée</Label><Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Date</Label><Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Départ</Label><Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Arrivée</Label><Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
             </div>
-
-            {/* SECTION TARIFICATION DÉTAILLÉE */}
             <div className="space-y-4">
-               {/* ADULTES */}
                <div className="p-4 sm:p-5 bg-slate-950 rounded-2xl border border-border space-y-4 text-left">
-                  <div className="flex items-center gap-2 text-primary">
-                    <UserIcon size={14} />
-                    <Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Adultes (FCFA)</Label>
-                  </div>
+                  <div className="flex items-center gap-2 text-primary"><UserIcon size={14} /><Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Adultes (FCFA)</Label></div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Eco</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Business</Label><Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">VIP</Label><Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
                   </div>
                </div>
-
-               {/* ENFANTS */}
                <div className="p-4 sm:p-5 bg-slate-950 rounded-2xl border border-blue-500/20 space-y-4 text-left">
-                  <div className="flex items-center gap-2 text-blue-400">
-                    <Baby size={14} />
-                    <Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Enfants (FCFA)</Label>
-                  </div>
+                  <div className="flex items-center gap-2 text-blue-400"><Baby size={14} /><Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Enfants (FCFA)</Label></div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Eco</Label><Input type="number" value={childPrice} onChange={e => setChildPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Business</Label><Input type="number" value={childBusinessPrice} onChange={e => setChildBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
@@ -353,25 +323,8 @@ export default function AgencyDepartures() {
                   </div>
                </div>
             </div>
-
-            {editId && (
-               <div className="space-y-2 text-left">
-                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Statut opérationnel</Label>
-                 <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="h-12 bg-slate-950 border-none rounded-xl text-white"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-border text-white">
-                        <SelectItem value="Programmé">Programmé</SelectItem>
-                        <SelectItem value="Embarquement">Embarquement</SelectItem>
-                        <SelectItem value="Parti">Parti</SelectItem>
-                        <SelectItem value="Arrivé">Arrivé</SelectItem>
-                        <SelectItem value="Annulé">Annulé</SelectItem>
-                    </SelectContent>
-                 </Select>
-               </div>
-            )}
-
             <Button onClick={handleSave} disabled={saving} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl text-xs active:scale-95 transition-all">
-               {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Enregistrer les modifications
+               {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Enregistrer
             </Button>
           </div>
         </DialogContent>
