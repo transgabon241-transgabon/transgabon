@@ -74,7 +74,10 @@ export default function AgencyDepartures() {
 
   const canEdit = user?.role === 'Agent' || user?.role === 'Administrateur' || user?.role === 'Chef d\'agence';
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  // Date du jour format YYYY-MM-DD locale
+  const todayStr = useMemo(() => {
+    return new Date().toLocaleDateString('en-CA'); 
+  }, []);
 
   const categorizedTrips = useMemo(() => {
     return {
@@ -133,7 +136,7 @@ export default function AgencyDepartures() {
         childVipPrice: Number(t.child_vip_price) || 0,
         childBusinessPrice: Number(t.child_business_price) || 0,
         totalSeats: t.seats_total || 0,
-        bookingCount: t.bookings?.length || 0, // Décompte réel
+        bookingCount: t.bookings?.length || 0, 
         status: t.status || 'Programmé',
         type: t.type,
         stops: t.trip_stops || []
@@ -238,7 +241,6 @@ export default function AgencyDepartures() {
         )}
       </div>
 
-      {/* DASHBOARD STATS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
           <StatCard icon={BarChart3} label="Total" value={stats.total} color="text-blue-400" bg="bg-blue-500/10" />
           <StatCard icon={Clock} label="Auj." value={stats.today} color="text-primary" bg="bg-primary/10" />
@@ -246,7 +248,6 @@ export default function AgencyDepartures() {
           <StatCard icon={Percent} label="Remplissage" value={`${stats.occupancy}%`} color="text-amber-400" bg="bg-amber-500/10" />
       </div>
 
-      {/* ONGLET FILTRÉS */}
       <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setCurrentPage(1); }} className="w-full space-y-6">
         <TabsList className="bg-slate-900 border-2 border-slate-800 p-1 rounded-2xl h-auto flex w-full md:w-fit mx-1">
             <TabsTrigger value="today" className="flex-1 md:w-40 rounded-xl font-black uppercase text-[8px] sm:text-[10px] py-3 data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
@@ -264,7 +265,14 @@ export default function AgencyDepartures() {
             {paginatedTrips.length === 0 ? (
                 <EmptyDisplay message={`Aucun trajet disponible`} />
             ) : (
-                paginatedTrips.map(dep => <DepartureCard key={dep.id} dep={dep} canEdit={canEdit} onEdit={openEdit} />)
+                paginatedTrips.map(dep => (
+                    <DepartureCard 
+                      key={dep.id} 
+                      dep={dep} 
+                      canEdit={canEdit} 
+                      onEdit={() => openEdit(dep)} 
+                    />
+                ))
             )}
         </div>
 
@@ -277,7 +285,6 @@ export default function AgencyDepartures() {
         )}
       </Tabs>
 
-      {/* DIALOG FORMULAIRE */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="rounded-[2rem] p-4 sm:p-8 w-[95vw] max-w-2xl bg-slate-900 text-white border-border overflow-y-auto max-h-[90vh]">
           <DialogTitle className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter text-left">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle>
@@ -310,7 +317,6 @@ export default function AgencyDepartures() {
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Arrivée</Label><Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
             </div>
 
-            {/* TARIFS ADULTES ET ENFANTS */}
             <div className="space-y-4">
                <div className="p-4 sm:p-5 bg-slate-950 rounded-2xl border border-border space-y-4 text-left">
                   <div className="flex items-center gap-2 text-primary"><UserIcon size={14} /><Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Adultes</Label></div>
@@ -329,7 +335,6 @@ export default function AgencyDepartures() {
                   </div>
                </div>
             </div>
-
             <Button onClick={handleSave} disabled={saving} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl text-xs active:scale-95 transition-all border-none">
                {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Enregistrer
             </Button>
@@ -344,6 +349,12 @@ export default function AgencyDepartures() {
 
 function DepartureCard({ dep, canEdit, onEdit }: any) {
     const TransportIcon = dep.type === 'BOAT' ? Ship : dep.type === 'TRAIN' ? Train : dep.type === 'PLANE' ? Plane : Bus;
+    
+    // Formatage de la date en français (ex: 27 Juil.)
+    const formattedDate = useMemo(() => {
+        return new Date(dep.departureDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+    }, [dep.departureDate]);
+
     return (
         <div className="bg-card border border-border rounded-[1.2rem] sm:rounded-[1.5rem] p-4 sm:p-5 hover:border-primary/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
             <div className="flex items-center gap-3 sm:gap-5 text-left min-w-0">
@@ -358,7 +369,16 @@ function DepartureCard({ dep, canEdit, onEdit }: any) {
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span className="text-[8px] sm:text-[10px] font-black text-primary uppercase bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">{dep.registration}</span>
-                        <span className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">{dep.departureTime}</span>
+                        
+                        {/* AFFICHAGE DATE + HEURE */}
+                        <div className="flex items-center gap-1.5 text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase bg-slate-950/50 px-2 py-0.5 rounded border border-border">
+                            <CalendarDays size={10} className="text-primary" />
+                            <span>{formattedDate}</span>
+                            <span className="opacity-30">•</span>
+                            <Clock size={10} className="text-primary" />
+                            <span>{dep.departureTime}</span>
+                        </div>
+
                         <StatusBadge status={dep.status} />
                     </div>
                 </div>
@@ -412,7 +432,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function EmptyDisplay({ message }: { message: string }) {
     return (
-        <div className="py-12 sm:py-20 text-center border-2 border-dashed border-border rounded-[1.5rem] sm:rounded-[2.5rem] bg-slate-950/40">
+        <div className="py-12 sm:py-20 text-center border-2 border-dashed border-border rounded-[1.5rem] sm:rounded-[2.5rem] bg-slate-950/40 px-4">
             <Clock className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-slate-800 mb-4" />
             <p className="text-[8px] sm:text-[10px] font-black uppercase text-slate-600 tracking-widest italic">{message}</p>
         </div>
