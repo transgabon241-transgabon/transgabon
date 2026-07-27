@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from '@/lib/supabase'; 
@@ -32,7 +32,6 @@ type Departure = {
   price: number;
   vipPrice: number;
   businessPrice: number;
-  // Tarifs enfants
   childPrice: number;
   childVipPrice: number;
   childBusinessPrice: number;
@@ -54,7 +53,7 @@ export default function AgencyDepartures() {
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Pagination & Tabs states
+  // Pagination & Tabs
   const [activeTab, setActiveTab] = useState("today");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -68,7 +67,6 @@ export default function AgencyDepartures() {
   const [price, setPrice] = useState('');
   const [vipPrice, setVipPrice] = useState('');
   const [businessPrice, setBusinessPrice] = useState('');
-  // Form states enfants
   const [childPrice, setChildPrice] = useState('');
   const [childVipPrice, setChildVipPrice] = useState('');
   const [childBusinessPrice, setChildBusinessPrice] = useState('');
@@ -85,17 +83,6 @@ export default function AgencyDepartures() {
       past: departures.filter(d => d.departureDate < todayStr),
     };
   }, [departures, todayStr]);
-
-  const paginatedTrips = useMemo(() => {
-    const currentList = categorizedTrips[activeTab as keyof typeof categorizedTrips] || [];
-    const start = (currentPage - 1) * itemsPerPage;
-    return currentList.slice(start, start + itemsPerPage);
-  }, [categorizedTrips, activeTab, currentPage]);
-
-  const totalPages = useMemo(() => {
-    const currentList = categorizedTrips[activeTab as keyof typeof categorizedTrips] || [];
-    return Math.ceil(currentList.length / itemsPerPage);
-  }, [categorizedTrips, activeTab]);
 
   const stats = useMemo(() => {
     const totalSeats = departures.reduce((acc, d) => acc + d.totalSeats, 0);
@@ -115,8 +102,7 @@ export default function AgencyDepartures() {
       const { data: citiesData } = await supabase.from('cities').select('id, name').order('name');
       if (citiesData) setCities(citiesData);
 
-      // RÉCUPÉRATION AVEC COUNT RÉEL DES PASSAGERS
-      const { data: tripsData } = await supabase
+      const { data: tripsData, error } = await supabase
         .from('trips')
         .select(`
           *, 
@@ -124,10 +110,12 @@ export default function AgencyDepartures() {
           to:cities!to_id(name), 
           vehicle:vehicles(registration), 
           trip_stops(*),
-          passengers:passengers(count)
+          bookings(id)
         `)
         .eq('company_id', user.companyId)
         .order('departure_date', { ascending: true });
+
+      if (error) throw error;
 
       setDepartures((tripsData || []).map(t => ({
         id: t.id,
@@ -145,8 +133,7 @@ export default function AgencyDepartures() {
         childVipPrice: Number(t.child_vip_price) || 0,
         childBusinessPrice: Number(t.child_business_price) || 0,
         totalSeats: t.seats_total || 0,
-        // Correction : Utilisation du count réel de la jointure passengers
-        bookingCount: t.passengers?.[0]?.count || 0,
+        bookingCount: t.bookings?.length || 0, // Décompte réel
         status: t.status || 'Programmé',
         type: t.type,
         stops: t.trip_stops || []
@@ -156,8 +143,11 @@ export default function AgencyDepartures() {
       if (rD) setRoutes(rD);
       const { data: vD } = await supabase.from('vehicles').select('*').eq('company_id', user.companyId);
       if (vD) setVehicles(vD);
-    } catch (e) { toast.error('Erreur réseau'); }
-    finally { setLoading(false); }
+    } catch (e: any) { 
+      toast.error('Erreur de chargement'); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => { loadData(); }, [user]);
@@ -169,7 +159,7 @@ export default function AgencyDepartures() {
     setStatus('');
   };
 
-  const openEdit = (dep: Departure) => {
+  const openEdit = useCallback((dep: Departure) => {
     setEditId(dep.id);
     setDepDate(dep.departureDate);
     setDepTime(dep.departureTime);
@@ -182,7 +172,7 @@ export default function AgencyDepartures() {
     setChildBusinessPrice(String(dep.childBusinessPrice || ''));
     setStatus(dep.status);
     setShowForm(true);
-  };
+  }, []);
 
   const handleSave = async () => {
     if (!user?.companyId) return;
@@ -219,7 +209,13 @@ export default function AgencyDepartures() {
     finally { setSaving(false); }
   };
 
-  if (loading && departures.length === 0) return <div className="p-10 text-center text-slate-500 font-black uppercase animate-pulse">Chargement...</div>;
+  const paginatedTrips = useMemo(() => {
+    const currentList = categorizedTrips[activeTab as keyof typeof categorizedTrips] || [];
+    const start = (currentPage - 1) * itemsPerPage;
+    return currentList.slice(start, start + itemsPerPage);
+  }, [categorizedTrips, activeTab, currentPage]);
+
+  const actualTotalPages = Math.ceil((categorizedTrips[activeTab as keyof typeof categorizedTrips]?.length || 0) / itemsPerPage);
 
   return (
     <div className="w-full max-w-6xl mx-auto p-2 sm:p-4 text-left space-y-6 bg-background text-foreground pb-20">
@@ -242,7 +238,7 @@ export default function AgencyDepartures() {
         )}
       </div>
 
-      {/* STATS DASHBOARD */}
+      {/* DASHBOARD STATS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
           <StatCard icon={BarChart3} label="Total" value={stats.total} color="text-blue-400" bg="bg-blue-500/10" />
           <StatCard icon={Clock} label="Auj." value={stats.today} color="text-primary" bg="bg-primary/10" />
@@ -250,7 +246,7 @@ export default function AgencyDepartures() {
           <StatCard icon={Percent} label="Remplissage" value={`${stats.occupancy}%`} color="text-amber-400" bg="bg-amber-500/10" />
       </div>
 
-      {/* TABS FILTRÉS */}
+      {/* ONGLET FILTRÉS */}
       <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setCurrentPage(1); }} className="w-full space-y-6">
         <TabsList className="bg-slate-900 border-2 border-slate-800 p-1 rounded-2xl h-auto flex w-full md:w-fit mx-1">
             <TabsTrigger value="today" className="flex-1 md:w-40 rounded-xl font-black uppercase text-[8px] sm:text-[10px] py-3 data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
@@ -266,52 +262,25 @@ export default function AgencyDepartures() {
 
         <div className="space-y-4 px-1">
             {paginatedTrips.length === 0 ? (
-                <EmptyDisplay message={`Aucun trajet dans "${activeTab === 'today' ? "Aujourd'hui" : activeTab === 'upcoming' ? "À venir" : "Archives"}"`} />
+                <EmptyDisplay message={`Aucun trajet disponible`} />
             ) : (
-                paginatedTrips.map(dep => (
-                    <DepartureCard 
-                      key={dep.id} 
-                      dep={dep} 
-                      canEdit={canEdit} 
-                      onEdit={() => openEdit(dep)} 
-                    />
-                ))
+                paginatedTrips.map(dep => <DepartureCard key={dep.id} dep={dep} canEdit={canEdit} onEdit={openEdit} />)
             )}
         </div>
 
-        {/* CONTRÔLE DE PAGINATION */}
-        {totalPages > 1 && (
+        {actualTotalPages > 1 && (
             <div className="flex items-center justify-center gap-4 bg-slate-900 p-2 rounded-2xl border border-border w-fit mx-auto shadow-xl">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    disabled={currentPage === 1} 
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="h-8 w-8 text-slate-400 hover:text-white"
-                >
-                    <ChevronLeft size={20} />
-                </Button>
-                <span className="text-[10px] font-black text-slate-500 px-4">
-                    Page {currentPage} / {totalPages}
-                </span>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    disabled={currentPage === totalPages} 
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="h-8 w-8 text-slate-400 hover:text-white"
-                >
-                    <ChevronRight size={20} />
-                </Button>
+                <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="h-8 w-8 text-slate-400 hover:text-white"><ChevronLeft size={20} /></Button>
+                <span className="text-[10px] font-black text-slate-500 px-4">Page {currentPage} / {actualTotalPages}</span>
+                <Button variant="ghost" size="icon" disabled={currentPage === actualTotalPages} onClick={() => setCurrentPage(p => p + 1)} className="h-8 w-8 text-slate-400 hover:text-white"><ChevronRight size={20} /></Button>
             </div>
         )}
       </Tabs>
 
-      {/* DIALOG FORMULAIRE AVEC TARIFS ENFANTS */}
+      {/* DIALOG FORMULAIRE */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="rounded-[2rem] p-4 sm:p-8 w-[95vw] max-w-2xl bg-slate-900 text-white border-border overflow-y-auto max-h-[90vh]">
           <DialogTitle className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter text-left">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle>
-          
           <div className="space-y-6 mt-6">
             {!editId && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
@@ -335,33 +304,24 @@ export default function AgencyDepartures() {
                 </div>
               </div>
             )}
-
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Date</Label><Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Départ</Label><Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Arrivée</Label><Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
             </div>
 
+            {/* TARIFS ADULTES ET ENFANTS */}
             <div className="space-y-4">
-               {/* ADULTES */}
                <div className="p-4 sm:p-5 bg-slate-950 rounded-2xl border border-border space-y-4 text-left">
-                  <div className="flex items-center gap-2 text-primary">
-                    <UserIcon size={14} />
-                    <Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Adultes (FCFA)</Label>
-                  </div>
+                  <div className="flex items-center gap-2 text-primary"><UserIcon size={14} /><Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Adultes</Label></div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Eco</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Business</Label><Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">VIP</Label><Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
                   </div>
                </div>
-
-               {/* ENFANTS */}
                <div className="p-4 sm:p-5 bg-slate-950 rounded-2xl border border-blue-500/20 space-y-4 text-left">
-                  <div className="flex items-center gap-2 text-blue-400">
-                    <Baby size={14} />
-                    <Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Enfants (FCFA)</Label>
-                  </div>
+                  <div className="flex items-center gap-2 text-blue-400"><Baby size={14} /><Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Enfants</Label></div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Eco</Label><Input type="number" value={childPrice} onChange={e => setChildPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
                       <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Business</Label><Input type="number" value={childBusinessPrice} onChange={e => setChildBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
@@ -370,24 +330,8 @@ export default function AgencyDepartures() {
                </div>
             </div>
 
-            {editId && (
-               <div className="space-y-2 text-left">
-                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Statut opérationnel</Label>
-                 <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="h-12 bg-slate-950 border-none rounded-xl text-white"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-border text-white">
-                        <SelectItem value="Programmé">Programmé</SelectItem>
-                        <SelectItem value="Embarquement">Embarquement</SelectItem>
-                        <SelectItem value="Parti">Parti</SelectItem>
-                        <SelectItem value="Arrivé">Arrivé</SelectItem>
-                        <SelectItem value="Annulé">Annulé</SelectItem>
-                    </SelectContent>
-                 </Select>
-               </div>
-            )}
-
-            <Button onClick={handleSave} disabled={saving} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl text-xs active:scale-95 transition-all">
-               {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Enregistrer les modifications
+            <Button onClick={handleSave} disabled={saving} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl text-xs active:scale-95 transition-all border-none">
+               {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Enregistrer
             </Button>
           </div>
         </DialogContent>
@@ -395,6 +339,8 @@ export default function AgencyDepartures() {
     </div>
   );
 }
+
+// --- SOUS-COMPOSANTS ---
 
 function DepartureCard({ dep, canEdit, onEdit }: any) {
     const TransportIcon = dep.type === 'BOAT' ? Ship : dep.type === 'TRAIN' ? Train : dep.type === 'PLANE' ? Plane : Bus;
@@ -429,7 +375,7 @@ function DepartureCard({ dep, canEdit, onEdit }: any) {
                         </Button>
                     </Link>
                     {canEdit && (
-                        <Button onClick={onEdit} variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-900 border border-border text-slate-400">
+                        <Button onClick={onEdit} variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-900 border border-border text-slate-400 hover:text-primary transition-colors">
                             <Pencil size={14} />
                         </Button>
                     )}
