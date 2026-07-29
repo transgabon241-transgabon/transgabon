@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ArrowLeft, CheckCircle, Printer, RefreshCw, Ship, Train, Bus, 
-  Hash, MapPin, Gem, Package, Info, ArrowRight, Plane, Baby, User 
+  Hash, MapPin, Gem, Package, Info, ArrowRight, Plane, Baby, User, ShieldCheck, Fingerprint
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -39,12 +39,15 @@ type MappedBooking = {
   seatNumber: string;
   ticketAmount: number;
   luggageAmount: number;
-  amount: number; // Montant total (Billet + Bagages)
+  amount: number; 
   paymentMethod: string;
   paymentStatus: string;
   qrCodeData: string;
   luggages: Luggage[];
-  isChild: boolean; // AJOUTÉ
+  isChild: boolean;
+  // NOUVEAUX CHAMPS D'IDENTITÉ
+  idType: string;
+  idNumber: string;
 };
 
 export default function TicketPage() {
@@ -89,7 +92,6 @@ export default function TicketPage() {
           const destination = b.arrival_city_name || b.trip.to.name;
           const prettyClass = classMapping[b.class_type] || b.travel_class || 'Standard';
 
-          // CALCUL TOTAL : Prix Billet + Somme des Bagages
           const ticketAmount = Number(b.total_amount) || 0;
           const luggageAmount = (b.luggages || []).reduce((sum: number, l: any) => sum + (Number(l.total_price) || 0), 0);
           const totalAmount = ticketAmount + luggageAmount;
@@ -99,7 +101,8 @@ export default function TicketPage() {
             pass: passengerName,
             to: destination,
             seat: seatNumber,
-            child: b.is_child
+            child: b.is_child,
+            idNum: leadPassenger?.id_number // Inclus dans le QR pour vérification rapide
           });
 
           setBooking({
@@ -126,7 +129,9 @@ export default function TicketPage() {
             paymentStatus: b.status === 'PAYE' ? 'Réglé' : 'À régler',
             qrCodeData: qrPayload,
             luggages: b.luggages || [],
-            isChild: b.is_child // RÉCUPÉRATION DU STATUT ENFANT
+            isChild: b.is_child,
+            idType: leadPassenger?.id_type || '—',
+            idNumber: leadPassenger?.id_number || '—'
           });
         }
       } catch (err) {
@@ -198,7 +203,7 @@ export default function TicketPage() {
           <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em]">Scanner au contrôle</p>
         </div>
 
-        {/* DÉTAILS */}
+        {/* DÉTAILS VOYAGEUR & PIÈCE D'IDENTITÉ */}
         <div className="p-8 space-y-8 bg-card">
             <div className="grid grid-cols-2 gap-y-8 text-left">
                 <InfoField label="Voyageur">
@@ -214,6 +219,19 @@ export default function TicketPage() {
                    </span>
                 </InfoField>
 
+                {/* SECTION IDENTITÉ AJOUTÉE */}
+                <InfoField label={booking.isChild ? "Pièce Tuteur" : "Pièce d'identité"}>
+                    <div className="flex items-center gap-1.5 font-black text-xs text-slate-200 uppercase">
+                        <ShieldCheck size={12} className="text-emerald-500" /> {booking.idType}
+                    </div>
+                </InfoField>
+
+                <InfoField label="Numéro de pièce">
+                    <div className="flex items-center gap-1.5 font-black text-xs text-slate-200 uppercase">
+                        <Fingerprint size={12} className="text-emerald-500" /> {booking.idNumber}
+                    </div>
+                </InfoField>
+
                 <InfoField label="Appareil / Immat.">
                     <div className="flex items-center gap-1.5 font-black text-xs text-slate-200 uppercase">
                         <Hash size={12} className="text-primary" /> {booking.registration}
@@ -225,9 +243,8 @@ export default function TicketPage() {
                         <span className="font-black text-[10px] text-primary uppercase italic tracking-wider">
                             {booking.travelClass}
                         </span>
-                        {/* BADGE ENFANT SUR LE BILLET */}
                         {booking.isChild && (
-                            <Badge className="bg-blue-600 text-white text-[7px] uppercase font-black px-1.5 h-4 border-none shadow-sm">
+                            <Badge className="bg-blue-600 text-white text-[7px] uppercase font-black px-1.5 h-4 border-none">
                                 ENFANT
                             </Badge>
                         )}
