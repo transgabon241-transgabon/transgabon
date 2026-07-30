@@ -26,7 +26,9 @@ import {
   User,
   Plane,
   Calendar,
-  Clock
+  Clock,
+  ShieldCheck, // AJOUTÉ
+  Fingerprint  // AJOUTÉ
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -44,6 +46,8 @@ type Passenger = {
   amount: number;
   boarded: boolean;
   isChild: boolean;
+  idType: string;   // AJOUTÉ
+  idNumber: string; // AJOUTÉ
 };
 
 type Data = {
@@ -115,7 +119,9 @@ export default function AgencyPassengers() {
             paymentStatus: b.status === 'PAYE' ? 'Payé' : 'Non payé',
             amount: Math.round((b.total_amount || 0) / (b.passengers?.length || 1)),
             boarded: p.boarded ?? false,
-            isChild: b.is_child ?? false
+            isChild: b.is_child ?? false,
+            idType: p.id_type || '—',     // RÉCUPÉRATION PIÈCE
+            idNumber: p.id_number || '—'  // RÉCUPÉRATION NUMÉRO
           });
         });
       });
@@ -196,13 +202,13 @@ export default function AgencyPassengers() {
     <div className="bg-background text-foreground text-left p-2 md:p-4 max-w-6xl mx-auto animate-in fade-in duration-500">
       
       {/* HEADER WEB */}
-      <div className="print:hidden">
+      <div className="print:hidden text-left">
         <Link to="/agency/departures" className="inline-flex items-center gap-3 text-xs font-black uppercase text-slate-500 hover:text-primary mb-6 transition-all tracking-widest">
           <ArrowLeft size={16} /> <span className="hidden sm:inline">Retour aux départs</span>
         </Link>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-10">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-left">
             <div className={`p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl ${
                 data.transportType === 'BOAT' ? 'bg-blue-600' : 
                 data.transportType === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : 
@@ -211,13 +217,12 @@ export default function AgencyPassengers() {
                <TransportIcon className="h-6 w-6 md:h-10 md:w-10" />
             </div>
             <div className="text-left">
-              <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">Manifeste</h1>
+              <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">Manifeste de bord</h1>
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 <Badge variant="outline" className="font-black text-[10px] border-primary/30 text-primary bg-primary/5 px-2 py-0.5 uppercase">
                     {data.departureCity} ➔ {data.arrivalCity}
                 </Badge>
                 
-                {/* DÉTAILS DE LA DATE ET HEURE DANS LE HEADER */}
                 <div className="flex items-center gap-3 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 text-[9px] font-black uppercase text-slate-400">
                     <div className="flex items-center gap-1">
                         <Calendar size={12} className="text-primary" />
@@ -247,7 +252,7 @@ export default function AgencyPassengers() {
                     <p className="text-xl md:text-3xl font-black text-white leading-none">{stats.total}</p>
                 </div>
              </div>
-             <Button onClick={() => window.print()} className="gap-3 font-black rounded-xl h-14 md:h-20 px-6 md:px-10 shadow-xl text-xs md:text-base flex-1 md:flex-none bg-primary text-white hover:bg-primary/90">
+             <Button onClick={() => window.print()} className="gap-3 font-black rounded-xl h-14 md:h-20 px-6 md:px-10 shadow-xl text-xs md:text-base flex-1 md:flex-none bg-primary text-white hover:bg-primary/90 border-none">
                 <Printer size={20} /> <span className="hidden sm:inline">IMPRIMER</span>
              </Button>
           </div>
@@ -257,11 +262,11 @@ export default function AgencyPassengers() {
       {/* TABLEAU */}
       <div className="border border-slate-800 rounded-[2rem] md:rounded-[3rem] overflow-hidden bg-slate-900 shadow-2xl print:shadow-none print:border-slate-900 print:rounded-none">
         <div className="overflow-x-auto">
-          <table className="w-full text-base min-w-[700px]">
+          <table className="w-full text-base min-w-[850px]">
             <thead className="bg-slate-950 border-b border-slate-800">
               <tr>
                 <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">#</th>
-                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">Passager</th>
+                <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">Passager & Identité</th>
                 <th className="text-center p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">Siège</th>
                 <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest hidden sm:table-cell">Classe</th>
                 <th className="text-left p-4 md:p-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">Destination</th>
@@ -273,16 +278,22 @@ export default function AgencyPassengers() {
               {currentPassengers.map((p, i) => (
                 <tr key={p.id} className="hover:bg-slate-800/40 transition-colors group">
                   <td className="p-4 md:p-6 text-slate-600 font-black text-sm md:text-lg">{(currentPage - 1) * itemsPerPage + (i + 1)}</td>
-                  <td className="p-4 md:p-6">
-                      <div className="flex items-center gap-3">
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${p.isChild ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 text-slate-500'}`}>
-                             {p.isChild ? <Baby size={16} /> : <User size={16} />}
+                  <td className="p-4 md:p-6 text-left">
+                      <div className="flex items-center gap-4">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 border-2 ${p.isChild ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
+                             {p.isChild ? <Baby size={20} /> : <User size={20} />}
                           </div>
-                          <div className="text-left">
-                            <p className="font-black text-white uppercase text-sm md:text-lg leading-tight">{p.passengerName}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
+                          <div className="text-left min-w-0">
+                            <p className="font-black text-white uppercase text-sm md:text-lg leading-tight truncate">{p.passengerName}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <span className="text-[10px] font-mono text-primary font-bold tracking-widest">{p.bookingNumber}</span>
                                 {p.isChild && <span className="text-[7px] font-black bg-blue-600 text-white px-1.5 rounded uppercase">Enfant</span>}
+                                {/* INFOS IDENTITÉ AJOUTÉES ICI */}
+                                <div className="flex items-center gap-2 text-[8px] font-bold text-slate-500 uppercase bg-slate-950 px-2 rounded-md border border-slate-800">
+                                    <ShieldCheck size={10} className="text-emerald-500"/> {p.idType}
+                                    <span className="opacity-20">|</span>
+                                    <Fingerprint size={10} className="text-emerald-500"/> {p.idNumber}
+                                </div>
                             </div>
                           </div>
                       </div>
@@ -292,15 +303,15 @@ export default function AgencyPassengers() {
                         {p.seatNumber}
                     </div>
                   </td>
-                  <td className="p-4 md:p-6 hidden sm:table-cell">
+                  <td className="p-4 md:p-6 hidden sm:table-cell text-left">
                     <Badge variant="outline" className={`text-[9px] font-black uppercase border-2 px-3 py-1 ${p.travelClass.includes('VIP') || p.travelClass.includes('Business') ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'text-slate-400 border-slate-800 bg-slate-950'}`}>
                         {p.travelClass}
                     </Badge>
                   </td>
-                  <td className="p-4 md:p-6">
+                  <td className="p-4 md:p-6 text-left">
                     <div className="flex items-center gap-2 font-black text-slate-300 uppercase text-[10px] md:text-sm tracking-tighter">
                         <MapPin size={14} className="text-primary shrink-0" />
-                        <span className="truncate max-w-[80px] md:max-w-none">{p.destination}</span>
+                        <span className="truncate max-w-[100px] md:max-w-none">{p.destination}</span>
                     </div>
                   </td>
                   <td className="p-4 md:p-6 text-center print:hidden">
