@@ -30,16 +30,15 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isStaff = user && ["Agent", "Administrateur", "Agent Embarquement", "Service Colis", "Caissier"].includes(user.role);
+  const isStaff = user && ["Agent", "Administrateur", "Agent Embarquement", "Service Colis", "Caissier", "Chef d'agence"].includes(user.role);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 selection:text-white">
       
-      {/* --- HEADER : Midnight Navy (bg-card) --- */}
+      {/* --- HEADER --- */}
       <header className="sticky top-0 z-[100] w-full border-b border-border bg-card/90 backdrop-blur-md shadow-2xl">
         <div className="container mx-auto px-4 h-24 md:h-28 flex items-center justify-between">
           
-          {/* LOGO - Correction contraste texte */}
           <Link to="/" className="flex items-center gap-4 group">
             <div className="relative">
                 <img src={logo} alt="Logo" className="h-12 md:h-16 w-auto object-contain group-hover:scale-105 transition-transform duration-500 filter drop-shadow-lg" />
@@ -115,13 +114,12 @@ export default function Layout({ children }: { children: ReactNode }) {
             )}
           </div>
 
-          {/* HAMBURGER MOBILE */}
           <button className="lg:hidden p-4 rounded-2xl bg-muted text-white active:scale-90 transition-transform shadow-lg" onClick={() => setMobileOpen(!mobileOpen)}>
             {mobileOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
 
-        {/* --- MENU MOBILE SOMBRE --- */}
+        {/* --- MENU MOBILE CORRIGÉ --- */}
         {mobileOpen && (
           <div className="lg:hidden fixed inset-x-0 top-24 bg-card border-b border-border shadow-2xl p-6 space-y-6 animate-in slide-in-from-top-4 duration-300 z-50 max-h-[85vh] overflow-y-auto">
             
@@ -132,14 +130,14 @@ export default function Layout({ children }: { children: ReactNode }) {
                     </div>
                     <div className="overflow-hidden text-left">
                         <p className="font-black text-sm uppercase leading-none truncate">{user.firstName} {user.lastName}</p>
-                        <Badge className="mt-2 bg-primary/20 text-primary border-none uppercase font-black text-[8px] px-2 py-0.5">
+                        <Badge className="mt-2 bg-primary/20 text-primary border-none uppercase font-black text-[7px] px-2 py-0.5">
                             {user.role}
                         </Badge>
                     </div>
                 </div>
             )}
 
-            <div className="grid gap-2">
+            <div className="grid gap-2 text-left">
                 <MobileLink to="/" label="Accueil" icon={Globe} onClick={() => setMobileOpen(false)} />
                 <MobileLink to="/send-parcel" label="Envoyer un colis" icon={Package} onClick={() => setMobileOpen(false)} />
                 <MobileLink to="/track" label="Suivre un colis" icon={Truck} onClick={() => setMobileOpen(false)} />
@@ -147,10 +145,17 @@ export default function Layout({ children }: { children: ReactNode }) {
                 {user && (
                     <>
                         <div className="h-px bg-border my-2" />
-                        <p className="text-[10px] font-black uppercase text-muted-foreground ml-4 mb-1 tracking-widest italic text-left">Mon Compte</p>
+                        <p className="text-[10px] font-black uppercase text-muted-foreground ml-4 mb-1 tracking-widest italic">Mon Compte</p>
                         <MobileLink to="/dashboard" label="Mes réservations" icon={LayoutDashboard} onClick={() => setMobileOpen(false)} />
+                        
+                        {/* Espace Agence */}
                         {isStaff && (
                             <MobileLink to="/agency" label="Espace Professionnel" icon={Building2} onClick={() => setMobileOpen(false)} isPrimary />
+                        )}
+
+                        {/* AJOUT ICI : Administration Centrale pour Mobile */}
+                        {user.role === 'Administrateur' && (
+                            <MobileLink to="/admin" label="Administration Centrale" icon={Shield} onClick={() => setMobileOpen(false)} />
                         )}
                     </>
                 )}
@@ -172,12 +177,10 @@ export default function Layout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 relative bg-background">
         {children}
       </main>
 
-      {/* --- FOOTER SOMBRE --- */}
       <footer className="bg-background border-t border-border py-16 mt-auto">
         <div className="container mx-auto px-4 flex flex-col items-center gap-10">
           <img src={logo} alt="Logo" className="h-12 w-auto grayscale opacity-30 brightness-200" />
@@ -194,9 +197,6 @@ export default function Layout({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * COMPOSANTS INTERNES UTILITAIRES SOMBRES
- */
 function NavLink({ to, label, active }: { to: string, label: string, active: boolean }) {
     return (
         <Link 
