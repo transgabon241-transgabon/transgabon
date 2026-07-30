@@ -26,7 +26,7 @@ import {
   Save,
   ShieldCheck,
   Globe,
-  Plane // AJOUT DE L'IMPORT DE L'ICÔNE AVION
+  Plane 
 } from 'lucide-react'; 
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +53,6 @@ export default function AdminCompanies() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Form state
   const [name, setName] = useState('');
   const [transportType, setTransportType] = useState('Bus');
   const [phone, setPhone] = useState('');
@@ -75,7 +74,6 @@ export default function AdminCompanies() {
       setCompanies((data || []).map(c => ({
         id: c.id,
         name: c.name,
-        // MAPPING MIS À JOUR POUR INCLURE 'PLANE'
         transportType: c.transport_type === 'PLANE' ? 'Avion' : c.transport_type === 'BOAT' ? 'Bateau' : c.transport_type === 'TRAIN' ? 'Train' : 'Bus',
         phone: c.phone || '',
         contactEmail: c.contact_email || '',
@@ -100,9 +98,7 @@ export default function AdminCompanies() {
     if (!name) return;
     setSaving(true);
     try {
-      // MAPPING VERS LA BASE DE DONNÉES INCLUANT 'PLANE'
       const dbType = transportType === 'Avion' ? 'PLANE' : transportType === 'Bateau' ? 'BOAT' : transportType === 'Train' ? 'TRAIN' : 'BUS';
-      
       const payload = {
         name,
         transport_type: dbType,
@@ -151,92 +147,87 @@ export default function AdminCompanies() {
   };
 
   if (loading && companies.length === 0) return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6 bg-background min-h-screen text-left">
+    <div className="max-w-6xl mx-auto p-4 space-y-6 bg-background min-h-screen">
         <Skeleton className="h-12 w-64 rounded-xl bg-card" />
         <Skeleton className="h-64 w-full rounded-[2.5rem] bg-card" />
     </div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 text-left space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
+    <div className="max-w-6xl mx-auto p-2 sm:p-4 text-left space-y-6 sm:space-y-8 animate-in fade-in duration-500 bg-background text-foreground pb-20">
       
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2">
         <div className="text-left">
-          <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3 leading-none">
-             <Building2 className="text-primary h-8 w-8" /> Réseau Partenaires
+          <h1 className="text-2xl sm:text-3xl font-black italic text-white uppercase tracking-tighter flex items-center gap-3">
+             <Building2 className="text-primary h-7 w-7 sm:h-8 sm:w-8" /> Réseau Partenaires
           </h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 leading-none">Supervision des agences de transport</p>
+          <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Supervision des agences</p>
         </div>
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="rounded-2xl font-black gap-2 h-14 px-8 shadow-xl bg-primary text-white border-none hover:bg-primary/90 active:scale-95 transition-all uppercase tracking-widest text-xs">
-          <Plus size={20} /> Ajouter un partenaire
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="w-full sm:w-auto rounded-xl font-black gap-2 h-12 sm:h-14 px-6 shadow-xl bg-primary text-white border-none active:scale-95 text-[10px] sm:text-xs">
+          <Plus size={18} /> AJOUTER UNE AGENCE
         </Button>
       </div>
 
       {/* RECHERCHE */}
-      <div className="relative group max-w-md">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600 group-focus-within:text-primary transition-colors" />
+      <div className="relative group max-w-md px-2">
+        <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
         <Input 
           value={search} 
           onChange={e => setSearch(e.target.value)} 
           placeholder="Rechercher une agence..." 
-          className="pl-12 h-14 rounded-2xl border-none bg-slate-900 text-white font-medium text-base shadow-inner focus:ring-1 focus:ring-primary/50 outline-none" 
+          className="pl-12 h-12 rounded-xl border-none bg-slate-900 text-white font-medium text-sm" 
         />
       </div>
 
-      {/* LISTE DES AGENCES SOMBRE */}
-      <div className="space-y-4">
+      {/* LISTE DES AGENCES */}
+      <div className="space-y-4 px-1">
         {paginatedCompanies.length === 0 ? (
-          <div className="p-20 text-center border-2 border-dashed border-border rounded-[3rem] bg-card/40">
-            <Globe className="h-12 w-12 mx-auto mb-4 text-slate-800 opacity-20" />
-            <p className="font-bold text-slate-600 uppercase text-[10px] tracking-widest italic leading-none">Aucun partenaire trouvé</p>
+          <div className="p-10 text-center border-2 border-dashed border-border rounded-[2rem] bg-card/40">
+            <p className="font-bold text-slate-600 uppercase text-[10px] italic">Aucun partenaire trouvé</p>
           </div>
         ) : (
           <>
-            <div className="grid gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {paginatedCompanies.map(c => (
-                <div key={c.id} className="bg-card border border-border rounded-[2.5rem] p-6 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-primary/20 transition-all group flex flex-col md:flex-row justify-between items-center gap-6">
-                  <div className="flex items-center gap-6 flex-1 w-full overflow-hidden text-left">
-                    <div className={`h-16 w-16 md:h-20 md:w-20 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0 ${
-                      // COULEUR INDIGO POUR L'AVION
+                <div key={c.id} className="bg-card border border-border rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-6 hover:border-primary/20 transition-all flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div className="flex items-center gap-4 sm:gap-6 flex-1 w-full overflow-hidden text-left">
+                    <div className={`h-12 w-12 sm:h-16 sm:w-16 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0 ${
                       c.transportType === 'Avion' ? 'bg-indigo-600' : c.transportType === 'Bateau' ? 'bg-blue-600' : c.transportType === 'Train' ? 'bg-slate-950 border border-slate-800' : 'bg-primary'
                     }`}>
-                      {/* ICÔNE AVION POUR LE TYPE 'Avion' */}
-                      {c.transportType === 'Avion' ? <Plane size={32} /> : c.transportType === 'Bateau' ? <Ship size={32} /> : c.transportType === 'Train' ? <Train size={32} /> : <Bus size={32} />}
+                      {c.transportType === 'Avion' ? <Plane size={24} /> : c.transportType === 'Bateau' ? <Ship size={24} /> : c.transportType === 'Train' ? <Train size={24} /> : <Bus size={24} />}
                     </div>
-                    <div className="space-y-2 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <h2 className="font-black text-xl md:text-2xl text-white uppercase tracking-tighter leading-none truncate">{c.name}</h2>
-                        <Badge variant="outline" className={`rounded-full px-2.5 py-0.5 text-[8px] font-black uppercase border ${c.active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                          {c.active ? 'Actif' : 'Suspendu'}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="font-black text-base sm:text-xl text-white uppercase truncate">{c.name}</h2>
+                        <Badge className={`text-[7px] font-black uppercase ${c.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                          {c.active ? 'Actif' : 'Off'}
                         </Badge>
                       </div>
-                      <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                        <span className="flex items-center gap-1.5"><Mail size={12} className="text-primary/50" /> {c.contactEmail}</span>
-                        <span className="flex items-center gap-1.5"><Phone size={12} className="text-primary/50" /> {c.phone}</span>
-                        <span className="flex items-center gap-1.5 text-primary"><ShieldCheck size={12} /> {Math.round(c.commissionRate * 100)}%</span>
+                      <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-x-4 gap-y-1 text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                        <span className="flex items-center gap-1.5 truncate max-w-full"><Mail size={10} className="text-primary/50" /> {c.contactEmail}</span>
+                        <span className="flex items-center gap-1.5"><Phone size={10} className="text-primary/50" /> {c.phone}</span>
+                        <span className="flex items-center gap-1.5 text-primary"><ShieldCheck size={10} /> Comm: {Math.round(c.commissionRate * 100)}%</span>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
-                    <Button variant="outline" className="flex-1 md:flex-none font-black rounded-xl border-border bg-slate-950 text-slate-300 h-11 px-5 text-[10px] uppercase tracking-widest hover:bg-slate-800 hover:text-white transition-all" onClick={() => openEdit(c)}>
-                       Paramètres
+                  <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto shrink-0">
+                    <Button variant="outline" className="font-black rounded-lg border-border bg-slate-950 text-slate-300 h-10 px-3 text-[9px] uppercase tracking-widest hover:bg-slate-800" onClick={() => openEdit(c)}>
+                       Détails
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <button className="flex items-center justify-center border border-border bg-slate-950 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 h-11 w-11 transition-all shadow-sm"><Trash2 size={18} /></button>
+                        <button className="flex items-center justify-center border border-border bg-slate-950 rounded-lg text-red-400 h-10 w-full md:w-10 transition-all"><Trash2 size={16} /></button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="rounded-[2.5rem] bg-slate-900 border border-border text-white shadow-2xl">
+                      <AlertDialogContent className="rounded-[2rem] bg-slate-900 border border-border text-white w-[95vw] max-w-sm mx-auto">
                         <AlertDialogHeader className="text-left">
-                          <AlertDialogTitle className="font-black italic text-xl uppercase text-white">Retirer {c.name} ?</AlertDialogTitle>
-                          <AlertDialogDescription className="text-slate-400 font-medium">
-                            La suppression n'est possible que si l'agence n'a plus de données actives (trajets, ventes).
-                          </AlertDialogDescription>
+                          <AlertDialogTitle className="font-black uppercase text-lg">Retirer {c.name} ?</AlertDialogTitle>
+                          <AlertDialogDescription className="text-slate-400 text-xs font-bold uppercase">Action irréversible.</AlertDialogDescription>
                         </AlertDialogHeader>
-                        <AlertDialogFooter className="mt-6 gap-2">
-                          <AlertDialogCancel className="rounded-xl font-bold bg-slate-800 border-none text-white hover:bg-slate-700 mt-0">ANNULER</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(c.id)} className="bg-red-600 rounded-xl font-bold uppercase text-white hover:bg-red-700 border-none px-6">SUPPRIMER</AlertDialogAction>
+                        <AlertDialogFooter className="mt-6 flex-row gap-2">
+                          <AlertDialogCancel className="rounded-xl flex-1 bg-slate-800 border-none text-white m-0">NON</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(c.id)} className="bg-red-600 rounded-xl flex-1 text-white m-0 border-none">OUI</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -246,84 +237,72 @@ export default function AdminCompanies() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-10 bg-card p-2 rounded-2xl w-fit mx-auto border border-border shadow-2xl">
-                <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-10 w-10 text-slate-500 hover:bg-slate-800 hover:text-white transition-all"><ChevronLeft size={18} /></Button>
-                <div className="flex items-center gap-1 font-black text-[10px] uppercase tracking-widest text-slate-500 px-4">
-                  <span className="text-primary">Page {currentPage}</span>
-                  <span className="mx-1">/</span>
-                  <span>{totalPages}</span>
-                </div>
-                <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-10 w-10 text-slate-500 hover:bg-slate-800 hover:text-white transition-all"><ChevronRight size={18} /></Button>
+              <div className="flex justify-center items-center gap-2 mt-10 bg-slate-900 p-2 rounded-xl w-fit mx-auto border border-border shadow-xl">
+                <Button variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="h-9 w-9 text-slate-500"><ChevronLeft size={18} /></Button>
+                <span className="text-[9px] font-black uppercase text-slate-400 px-2">Page {currentPage} / {totalPages}</span>
+                <Button variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="h-9 w-9 text-slate-500"><ChevronRight size={18} /></Button>
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* DIALOG DE MODIFICATION SOMBRE */}
+      {/* DIALOG FORMULAIRE */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="rounded-[2.5rem] p-8 md:p-10 max-w-xl border-border bg-slate-900 text-white shadow-2xl overflow-y-auto max-h-[90vh]">
+        <DialogContent className="rounded-none sm:rounded-[2.5rem] p-6 sm:p-10 w-full sm:max-w-xl h-full sm:h-auto border-border bg-slate-900 text-white shadow-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-left leading-none text-white">
+            <DialogTitle className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter text-left text-white leading-none">
                 {editId ? 'Fiche Partenaire' : 'Nouveau Transporteur'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 mt-8">
+          <div className="space-y-6 mt-6">
             <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Raison Sociale</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} className="h-14 rounded-2xl bg-slate-950 border-none font-black text-lg px-6 shadow-inner text-white placeholder:text-slate-700 focus:ring-1 focus:ring-primary/50 outline-none" placeholder="Ex: GABON AIR" />
+                <Input value={name} onChange={e => setName(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-black text-base" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Secteur</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Secteur</Label>
                     <Select value={transportType} onValueChange={setTransportType}>
-                        <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200 px-5"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-950 border-none font-bold text-slate-200"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-slate-900 border-border text-white">
-                            {/* AJOUT DE L'OPTION AVION DANS LE SELECT */}
-                            {['Bus', 'Train', 'Bateau', 'Avion', 'Coaster', 'MiniBus'].map(t => <SelectItem key={t} value={t} className="font-bold focus:bg-primary/20">{t}</SelectItem>)}
+                            {['Bus', 'Train', 'Bateau', 'Avion', 'Coaster', 'MiniBus'].map(t => <SelectItem key={t} value={t} className="font-bold">{t}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
                 <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Commission (%)</Label>
-                    <div className="relative group">
-                        <Input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)} className="h-12 rounded-xl bg-primary/5 border-2 border-primary/20 font-black text-primary px-5 shadow-sm outline-none" />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-primary/30">%</span>
-                    </div>
+                    <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Commission (%)</Label>
+                    <Input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)} className="h-12 rounded-xl bg-primary/5 border-2 border-primary/20 font-black text-primary" />
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Téléphone</Label>
-                    <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-5 outline-none" />
+                    <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Téléphone</Label>
+                    <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-white" />
                 </div>
                 <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Email Gestion</Label>
-                    <Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} className="h-12 rounded-xl border-none bg-slate-950 text-white font-bold px-5 outline-none" />
+                    <Label className="text-[10px] font-black uppercase text-slate-500 ml-1">Email Gestion</Label>
+                    <Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} className="h-12 rounded-xl bg-slate-950 border-none font-bold text-white" />
                 </div>
             </div>
 
-            <div className="flex items-center justify-between bg-slate-950 p-6 rounded-3xl border border-border shadow-inner">
+            <div className="flex items-center justify-between bg-slate-950 p-4 rounded-2xl border border-border">
               <div className="space-y-1 text-left">
-                 <p className="text-[10px] font-black uppercase text-primary tracking-widest">État du contrat</p>
-                 <p className="text-xs font-medium text-slate-500 italic leading-tight">Autoriser les réservations en ligne</p>
+                 <p className="text-[10px] font-black uppercase text-primary">État du contrat</p>
+                 <p className="text-[10px] font-medium text-slate-500 italic">Activer les réservations</p>
               </div>
               <Switch checked={active} onCheckedChange={setActive} />
             </div>
 
-            <Button onClick={handleSave} disabled={saving || !name} className="w-full h-16 rounded-[2rem] font-black text-lg md:text-xl shadow-2xl bg-primary text-white border-none hover:bg-primary/90 transition-all active:scale-95">
-                {saving ? <RefreshCw className="animate-spin h-6 w-6" /> : <Save className="mr-2 h-6 w-6" />}
-                {editId ? 'METTRE À JOUR' : 'VALIDER L’INSCRIPTION'}
+            <Button onClick={handleSave} disabled={saving || !name} className="w-full h-14 rounded-2xl font-black text-base bg-primary text-white border-none active:scale-95">
+                {saving ? <RefreshCw className="animate-spin h-6 w-6" /> : <Save className="mr-2 h-5 w-5" />}
+                {editId ? 'METTRE À JOUR' : 'VALIDER'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-      
-      <footer className="text-center opacity-10 pt-10">
-         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white leading-none">TransGabon Connect • Administration Centrale</p>
-      </footer>
     </div>
   );
 }
