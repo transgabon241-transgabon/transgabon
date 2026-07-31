@@ -3,7 +3,7 @@
 import React, { useEffect, useState, ReactNode, useCallback, useMemo } from "react"
 import { supabase } from "./supabase"
 import { AuthContext, AuthUser } from "./auth-context"
-import { RefreshCw, X, AlertCircle, Mail, UserPlus, CheckCircle2 } from "lucide-react"
+import { RefreshCw, X, AlertCircle, Mail, UserPlus, CheckCircle2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,7 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [formLoading, setFormSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  // Stabilisation de la récupération du profil pour éviter les boucles de rendu
+  // Nouvel état pour les conditions
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+
   const fetchProfile = useCallback(async (supabaseUser: any) => {
     if (!supabaseUser) { 
       setUser(null); 
@@ -97,8 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => supabase.auth.signOut(), []);
 
-  // --- HANDLERS D'AUTH ---
-
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormSubmitting(true);
@@ -136,6 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault(); 
+    if (!acceptedTerms) {
+      setMessage({ type: "error", text: "Vous devez accepter les conditions." });
+      return;
+    }
     setFormSubmitting(true); 
     setMessage(null);
     try {
@@ -269,7 +273,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     <Label htmlFor="reg-password" className="text-[9px] font-black uppercase text-slate-500 ml-2">Mot de passe</Label>
                     <Input id="reg-password" type="password" required value={password} onChange={e => setPassword(e.target.value)} className="h-11 rounded-xl bg-slate-950 border-none font-bold text-white shadow-inner" />
                 </div>
-                <Button type="submit" className="w-full font-black h-14 rounded-2xl shadow-xl bg-primary text-white text-lg mt-4 uppercase active:scale-95 border-none transition-all" disabled={formLoading}>
+
+                {/* BLOC CASES À COCHER & INFORMATION DONNÉES */}
+                <div className="space-y-3 pt-4 px-1">
+                    <div className="flex items-start gap-3">
+                        <input 
+                            type="checkbox" 
+                            id="terms" 
+                            checked={acceptedTerms}
+                            onChange={(e) => setAcceptedTerms(e.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-950 text-primary focus:ring-primary accent-primary" 
+                        />
+                        <Label htmlFor="terms" className="text-[10px] text-slate-400 font-medium leading-tight cursor-pointer select-none text-left">
+                            J'accepte les <a href="/terms" className="text-primary hover:underline">conditions d'utilisation</a> et la <a href="/privacy" className="text-primary hover:underline">politique de confidentialité</a>.
+                        </Label>
+                    </div>
+                    <div className="flex items-start gap-2 p-3 bg-slate-950/50 rounded-xl border border-white/5">
+                        <ShieldCheck size={14} className="text-primary shrink-0" />
+                        <p className="text-[9px] text-slate-500 italic leading-tight text-left">
+                            Vos données (nom, contact, email) sont connectées à votre profil pour garantir l'émission de billets officiels et le suivi de vos colis.
+                        </p>
+                    </div>
+                </div>
+
+                <Button 
+                    type="submit" 
+                    className="w-full font-black h-14 rounded-2xl shadow-xl bg-primary text-white text-lg mt-4 uppercase active:scale-95 border-none transition-all disabled:opacity-50 disabled:grayscale" 
+                    disabled={formLoading || !acceptedTerms}
+                >
                   {formLoading ? <RefreshCw className="h-6 w-6 animate-spin" /> : "Créer mon compte"}
                 </Button>
               </form>
@@ -282,6 +313,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   e.preventDefault();
                   setModalView(modalView === "signin" ? "signup" : "signin"); 
                   setMessage(null); 
+                  setAcceptedTerms(false); // Reset lors du switch
                 }} 
                 className="text-xs font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors cursor-pointer relative z-50"
               >
