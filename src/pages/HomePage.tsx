@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -8,23 +8,20 @@ import {
   Train, 
   Bus, 
   ArrowRightLeft, 
-  Calendar, 
+  Calendar as CalendarIcon, 
   MapPin, 
   Ship, 
   ShieldCheck, 
   CheckCircle2, 
   Package,
   ArrowRight,
-  Truck,
   Gem,
   Plane,
-  ChevronLeft,
-  ChevronRight,
   Clock,
-  Hash
+  Hash,
+  Check
 } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Badge } from '@/components/ui/badge'; 
@@ -46,18 +43,23 @@ const GABON_CITIES_FALLBACK = [
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const today = new Date().toISOString().split('T')[0];
+
+  // États de recherche
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [date, setDate] = useState('');
-  const [dbCities, setDbCities] = useState<string[]>([]);
+  const [date, setDate] = useState(today); // Date du jour par défaut
   
+  // États pour les suggestions
+  const [dbCities, setDbCities] = useState<string[]>([]);
+  const [showFromSuggest, setShowFromSuggest] = useState(false);
+  const [showToSuggest, setShowToSuggest] = useState(false);
+
   // États pour les départs à venir
   const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const tripsPerPage = 6;
-
-  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     fetchCities();
@@ -74,130 +76,169 @@ export default function HomePage() {
   const fetchUpcomingTrips = async () => {
     setTripsLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('trips')
-        .select(`
-          *,
-          company:companies(name),
-          from:cities!from_id(name),
-          to:cities!to_id(name),
-          vehicle:vehicles(registration)
-        `)
+        .select(`*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)`)
         .gte('departure_date', today)
         .order('departure_date', { ascending: true })
-        .order('departure_time', { ascending: true })
-        .limit(24); // On en récupère 24 pour la pagination
-
+        .limit(24);
       if (data) setUpcomingTrips(data);
     } catch (err) { console.error(err); }
     finally { setTripsLoading(false); }
   };
 
-  // Logique de pagination
-  const totalPages = Math.ceil(upcomingTrips.length / tripsPerPage);
-  const currentTrips = upcomingTrips.slice((currentPage - 1) * tripsPerPage, currentPage * tripsPerPage);
+  // Filtrage des suggestions
+  const suggestionsFrom = useMemo(() => 
+    dbCities.filter(c => c.toLowerCase().includes(from.toLowerCase()) && c !== to),
+  [from, dbCities, to]);
+
+  const suggestionsTo = useMemo(() => 
+    dbCities.filter(c => c.toLowerCase().includes(to.toLowerCase()) && c !== from),
+  [to, dbCities, from]);
 
   const handleSearch = () => {
     if (!from || !to || !date) return;
     navigate(`/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}`);
   };
 
-  const swap = () => { setFrom(to); setTo(from); };
-
-  const citiesList = dbCities.length > 0 ? dbCities : GABON_CITIES_FALLBACK;
+  const currentTrips = upcomingTrips.slice((currentPage - 1) * tripsPerPage, currentPage * tripsPerPage);
+  const totalPages = Math.ceil(upcomingTrips.length / tripsPerPage);
 
   return (
     <div className="bg-background text-foreground font-sans">
       
       {/* --- HERO SECTION --- */}
-      <section className="relative text-white overflow-hidden min-h-[650px] flex items-center">
+      <section className="relative text-white overflow-hidden min-h-[700px] flex items-center">
         <div className="absolute inset-0 z-0">
-          <img src={heroBg} alt="Voyage Gabon" className="w-full h-full object-cover opacity-60" />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/40 to-background" />
+          <img src={heroBg} alt="Voyage Gabon" className="w-full h-full object-cover opacity-40" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/90 via-slate-950/50 to-background" />
         </div>
 
         <div className="container mx-auto px-4 py-20 relative z-10">
           <div className="max-w-3xl mx-auto text-center mb-12">
-            <Badge className="mb-4 bg-primary text-white border-none px-4 py-1 font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">
+            <Badge className="mb-4 bg-primary text-white border-none px-4 py-1 font-black uppercase text-[10px] tracking-[0.2em]">
                 Plateforme Officielle • Gabon
             </Badge>
-            <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight tracking-tighter italic uppercase">
-              Voyagez et expédiez vos colis <span className="text-primary">en un clic </span>
+            <h1 className="text-4xl md:text-6xl font-black mb-6 leading-[1.1] tracking-tighter italic uppercase">
+              Voyagez et expédiez <br /> <span className="text-primary">en toute simplicité </span>
             </h1>
-            <p className="text-lg md:text-xl font-medium mb-8 text-slate-300">
-              Réservez vos vols, trains, bateaux et bus à travers tout le Gabon. Simple, sécurisé et rapide.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-                <Button onClick={() => navigate('/track')} variant="outline" className="rounded-2xl font-black bg-white/5 border-white/10 text-white h-12 px-8 hover:bg-white/10 uppercase text-[10px] tracking-widest">
-                    SUIVRE UN COLIS
-                </Button>
-            </div>
           </div>
 
-          {/* BARRE DE RECHERCHE */}
-          <div className="max-w-4xl mx-auto bg-slate-900/90 backdrop-blur-xl text-white rounded-[2.5rem] p-5 md:p-10 shadow-2xl border border-white/5">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 md:gap-6 items-end mb-8 text-left">
-              <div className="space-y-2">
+          {/* BARRE DE RECHERCHE AMÉLIORÉE */}
+          <div className="max-w-4xl mx-auto bg-slate-900/80 backdrop-blur-2xl text-white rounded-[3rem] p-6 md:p-10 shadow-2xl border border-white/10">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-start mb-8 relative">
+              
+              {/* VILLE DE DÉPART AVEC SUGGESTIONS */}
+              <div className="relative space-y-2 group">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Départ</Label>
-                <Select value={from} onValueChange={setFrom}>
-                  <SelectTrigger className="h-14 rounded-2xl border-none !bg-slate-950 !text-white font-bold shadow-inner">
-                    <SelectValue placeholder="Ville de départ" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl bg-slate-900 border-border text-white">
-                    {citiesList.filter(c => c !== to).map(c => (
-                      <SelectItem key={c} value={c} className="font-bold uppercase text-xs focus:bg-primary/20">{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary z-10" />
+                    <Input 
+                        placeholder="D'où partez-vous ?"
+                        value={from}
+                        onChange={(e) => { setFrom(e.target.value); setShowFromSuggest(true); }}
+                        onFocus={() => setShowFromSuggest(true)}
+                        onBlur={() => setTimeout(() => setShowFromSuggest(false), 200)}
+                        className="h-14 pl-12 rounded-2xl border-none bg-slate-950/50 text-white font-bold placeholder:text-slate-600 shadow-inner"
+                    />
+                </div>
+                {showFromSuggest && from.length > 0 && suggestionsFrom.length > 0 && (
+                    <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto backdrop-blur-xl">
+                        {suggestionsFrom.map(city => (
+                            <button key={city} onClick={() => { setFrom(city); setShowFromSuggest(false); }} className="w-full text-left px-6 py-3 hover:bg-primary/20 transition-colors font-bold text-sm border-b border-white/5 last:border-none">
+                                {city}
+                            </button>
+                        ))}
+                    </div>
+                )}
               </div>
 
-              <button type="button" onClick={swap} className="hidden md:flex items-center justify-center h-12 w-12 rounded-full bg-primary text-white shadow-lg hover:rotate-180 transition-all duration-500 border-4 border-slate-900 self-end mb-1">
+              <button type="button" onClick={() => { setFrom(to); setTo(from); }} className="hidden md:flex items-center justify-center h-12 w-12 rounded-full bg-primary text-white shadow-lg hover:scale-110 transition-all border-4 border-slate-900 self-center mt-6">
                 <ArrowRightLeft className="h-5 w-5" />
               </button>
 
-              <div className="space-y-2">
+              {/* DESTINATION AVEC SUGGESTIONS */}
+              <div className="relative space-y-2 group">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Destination</Label>
-                <Select value={to} onValueChange={setTo}>
-                  <SelectTrigger className="h-14 rounded-2xl border-none !bg-slate-950 !text-white font-bold shadow-inner">
-                    <SelectValue placeholder="Ville d'arrivée" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl bg-slate-900 border-slate-800 text-white">
-                    {citiesList.filter(c => c !== from).map(c => (
-                      <SelectItem key={c} value={c} className="font-bold uppercase text-xs focus:bg-primary/20">{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary z-10" />
+                    <Input 
+                        placeholder="Où allez-vous ?"
+                        value={to}
+                        onChange={(e) => { setTo(e.target.value); setShowToSuggest(true); }}
+                        onFocus={() => setShowToSuggest(true)}
+                        onBlur={() => setTimeout(() => setShowToSuggest(false), 200)}
+                        className="h-14 pl-12 rounded-2xl border-none bg-slate-950/50 text-white font-bold placeholder:text-slate-600 shadow-inner"
+                    />
+                </div>
+                {showToSuggest && to.length > 0 && suggestionsTo.length > 0 && (
+                    <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto backdrop-blur-xl">
+                        {suggestionsTo.map(city => (
+                            <button key={city} onClick={() => { setTo(city); setShowToSuggest(false); }} className="w-full text-left px-6 py-3 hover:bg-primary/20 transition-colors font-bold text-sm border-b border-white/5 last:border-none">
+                                {city}
+                            </button>
+                        ))}
+                    </div>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-end text-left">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-end">
+              <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Date du voyage</Label>
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} min={today} className="h-14 rounded-2xl border-none !bg-slate-950 !text-white font-black px-6 shadow-inner appearance-none" />
+                <div className="flex flex-col sm:flex-row gap-3">
+                    {/* Bouton Date du Jour Rapide */}
+                    <Button 
+                        type="button" 
+                        variant={date === today ? "default" : "outline"}
+                        onClick={() => setDate(today)}
+                        className={`h-14 rounded-2xl px-6 font-black uppercase text-[10px] tracking-widest border-none transition-all ${date === today ? 'bg-primary text-white' : 'bg-slate-950/50 text-slate-400 hover:bg-slate-800'}`}
+                    >
+                        <Check className={`mr-2 h-4 w-4 ${date === today ? 'opacity-100' : 'opacity-0'}`} />
+                        Aujourd'hui
+                    </Button>
+
+                    <div className="relative flex-1">
+                        <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary pointer-events-none" />
+                        <Input 
+                            type="date" 
+                            value={date} 
+                            min={today}
+                            onChange={e => setDate(e.target.value)} 
+                            className="h-14 pl-12 rounded-2xl border-none bg-slate-950/50 text-white font-black shadow-inner appearance-none cursor-pointer" 
+                        />
+                    </div>
+                </div>
               </div>
-              <Button size="lg" className="w-full md:w-auto h-14 px-12 gap-3 font-black italic uppercase tracking-widest bg-primary hover:bg-primary/90 text-white shadow-xl active:scale-95" onClick={handleSearch} disabled={!from || !to || !date}>
-                <Search className="h-5 w-5" /> Rechercher
+              
+              <Button size="lg" className="w-full md:w-auto h-14 px-12 gap-3 font-black italic uppercase tracking-widest bg-primary hover:bg-primary/90 text-white shadow-xl active:scale-95 transition-all" onClick={handleSearch} disabled={!from || !to || !date}>
+                <Search className="h-5 w-5" /> Trouver mon trajet
               </Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* --- SECTION PROCHAINS DÉPARTS --- */}
-      <section className="py-20 bg-background relative">
+      {/* --- SECTION PROCHAINS DÉPARTS (Pagination 6) --- */}
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <div className="text-left">
-              <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter leading-none mb-2">Prochains Départs</h2>
-              <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">Disponibilités en temps réel sur le réseau national</p>
+              <h2 className="text-3xl md:text-5xl font-black italic uppercase text-white tracking-tighter leading-none mb-3">Départs Imminents</h2>
+              <p className="text-slate-500 text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" /> Disponibilités en temps réel
+              </p>
             </div>
             
             {totalPages > 1 && (
-              <div className="flex gap-2">
-                <Button variant="outline" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl border-slate-800 bg-slate-900 text-white hover:bg-slate-800 h-12 w-12">
+              <div className="flex gap-3 bg-slate-900 p-2 rounded-2xl border border-white/5 shadow-xl">
+                <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-12 w-12 hover:bg-slate-800 text-white">
                   <ChevronLeft size={24} />
                 </Button>
-                <Button variant="outline" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl border-slate-800 bg-slate-900 text-white hover:bg-slate-800 h-12 w-12">
+                <div className="flex items-center px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    Page {currentPage} / {totalPages}
+                </div>
+                <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-12 w-12 hover:bg-slate-800 text-white">
                   <ChevronRight size={24} />
                 </Button>
               </div>
@@ -205,16 +246,15 @@ export default function HomePage() {
           </div>
 
           {tripsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-[2.5rem] bg-slate-900" />)}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-72 w-full rounded-[3rem] bg-slate-900" />)}
             </div>
           ) : upcomingTrips.length === 0 ? (
-            <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-[3rem] bg-slate-900/20">
-               <Clock className="mx-auto h-12 w-12 text-slate-700 mb-4" />
-               <p className="text-slate-500 font-black uppercase tracking-widest italic">Aucun départ prévu prochainement</p>
+            <div className="py-32 text-center border-2 border-dashed border-white/5 rounded-[4rem] bg-slate-900/20">
+               <p className="text-slate-600 font-black uppercase tracking-[0.3em] italic">Aucun voyage pour le moment</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
               {currentTrips.map((trip) => (
                 <TripCard key={trip.id} trip={trip} navigate={navigate} />
               ))}
@@ -223,132 +263,111 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- SERVICES SECTION --- */}
-      <section className="py-24 bg-slate-950 border-y border-slate-900">
-        <div className="container mx-auto px-4 max-w-5xl text-center">
-          <div className="mb-16">
-            <h2 className="text-3xl md:text-4xl font-black italic uppercase tracking-tight mb-4 text-white">Services & Logistique</h2>
-            <div className="h-1.5 w-20 bg-primary mx-auto rounded-full" />
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-8 text-left">
-            <div className="p-8 md:p-10 bg-slate-900/40 rounded-[2.5rem] border-2 border-slate-800 hover:border-primary/30 transition-all group">
-              <div className="h-16 w-16 bg-primary rounded-2xl flex items-center justify-center text-white mb-8 shadow-xl group-hover:scale-110 transition-transform">
-                <Plane size={32} />
-              </div>
-              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-white">Voyages Nationaux</h3>
-              <p className="text-slate-400 leading-relaxed font-medium">
-                Consultez les horaires de toutes les compagnies. Choisissez votre confort <strong>VIP ou Business</strong> et recevez votre billet numérique sécurisé.
-              </p>
-            </div>
-            
-            <div className="p-8 md:p-10 bg-slate-900/40 rounded-[2.5rem] border-2 border-slate-800 hover:border-emerald-500/30 transition-all group">
-              <div className="h-16 w-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white mb-8 shadow-xl group-hover:scale-110 transition-transform">
-                <Package size={32} />
-              </div>
-              <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter text-white">Expédition Fret</h3>
-              <p className="text-slate-400 leading-relaxed font-medium">
-                Envoyez vos colis partout au Gabon. <strong>Enregistrez votre envoi</strong>, obtenez votre bordereau et suivez son acheminement en temps réel.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* --- NETWORK SECTION --- */}
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-4 max-w-5xl text-center">
-          <h2 className="text-2xl font-black uppercase italic mb-12 tracking-widest text-slate-500">Réseau Multimodal National</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {TRANSPORT_TYPES.map((t, i) => (
-              <div key={i} className="bg-slate-900/40 rounded-[2rem] p-8 border-2 border-slate-800 hover:border-primary/40 transition-all group text-center flex flex-col items-center">
-                <div className={`h-14 w-14 mb-6 rounded-xl flex items-center justify-center text-white ${t.color} shadow-lg shadow-black/40`}>
-                    <t.icon size={28} />
+      {/* --- SERVICES & NETWORK (GARDÉS POUR LA COHÉRENCE) --- */}
+      <section className="py-24 bg-slate-950 border-y border-white/5">
+        <div className="container mx-auto px-4 max-w-6xl">
+           <div className="grid md:grid-cols-2 gap-12">
+              <div className="p-10 bg-slate-900/40 rounded-[3.5rem] border border-white/10 hover:border-primary/40 transition-all group">
+                <div className="h-16 w-16 bg-primary rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-primary/20 group-hover:scale-110 transition-transform">
+                    <Plane size={32} />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t.label}</span>
+                <h3 className="text-2xl font-black uppercase text-white mb-4 italic tracking-tighter">Mobilité Nationale</h3>
+                <p className="text-slate-400 font-medium leading-relaxed mb-6">Comparez les tarifs et réservez votre place en quelques secondes.</p>
+                <Link to="/search" className="inline-flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest hover:gap-4 transition-all">Découvrir les trajets <ArrowRight size={14} /></Link>
               </div>
-            ))}
-          </div>
+
+              <div className="p-10 bg-slate-900/40 rounded-[3.5rem] border border-white/10 hover:border-emerald-500/40 transition-all group">
+                <div className="h-16 w-16 bg-emerald-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-emerald-900/20 group-hover:scale-110 transition-transform">
+                    <Package size={32} />
+                </div>
+                <h3 className="text-2xl font-black uppercase text-white mb-4 italic tracking-tighter">Expédition Fret</h3>
+                <p className="text-slate-400 font-medium leading-relaxed mb-6">Un service de messagerie fiable pour vos colis de Libreville à l'intérieur du pays.</p>
+                <Link to="/send-parcel" className="inline-flex items-center gap-2 text-emerald-500 font-black uppercase text-[10px] tracking-widest hover:gap-4 transition-all">Envoyer un colis <ArrowRight size={14} /></Link>
+              </div>
+           </div>
         </div>
       </section>
 
       {/* --- FOOTER --- */}
-      <footer className="py-20 bg-slate-950 border-t border-slate-900">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-12">
-            <Link to="/privacy" className="text-xs font-black uppercase tracking-widest hover:text-primary transition-colors text-slate-500">Confidentialité</Link>
-            <Link to="/terms" className="text-xs font-black uppercase tracking-widest hover:text-primary transition-colors text-slate-500">Conditions</Link>
-            <a href="mailto:transgabon241@gmail.com" className="text-xs font-black uppercase tracking-widest hover:text-primary transition-colors text-slate-500">Support</a>
+      <footer className="py-24 bg-background border-t border-white/5 text-center">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-center gap-12 mb-16 text-[10px] font-black uppercase tracking-widest text-slate-500">
+            <Link to="/privacy" className="hover:text-primary transition-colors">Confidentialité</Link>
+            <Link to="/terms" className="hover:text-primary transition-colors">Conditions</Link>
+            <a href="mailto:support@transgabon.ga" className="hover:text-primary transition-colors">Support</a>
           </div>
-          <p className="text-[10px] text-slate-600 uppercase tracking-[0.4em] font-black mb-2 text-center">
-             TransGabon-Connect • République Gabonaise 2026
-          </p>
+          <p className="text-[10px] text-slate-700 uppercase tracking-[0.5em] font-black">TransGabon Connect • Mobilité Gabonaise 2026</p>
         </div>
       </footer>
     </div>
   );
 }
 
-// --- SOUS-COMPOSANT CARTE DE VOYAGE ---
+// --- CARTE DE VOYAGE PREMIUM ---
 function TripCard({ trip, navigate }: { trip: any, navigate: any }) {
   const Icon = trip.type === 'BOAT' ? Ship : trip.type === 'TRAIN' ? Train : trip.type === 'PLANE' ? Plane : Bus;
   
   return (
-    <div className="bg-slate-900/60 border-2 border-slate-800 rounded-[2.5rem] overflow-hidden hover:border-primary/50 transition-all group shadow-xl flex flex-col text-left">
-      <div className="p-6 sm:p-8 flex-1">
-        <div className="flex justify-between items-start mb-6">
-          <div className={`h-12 w-12 rounded-xl flex items-center justify-center text-white shadow-lg ${
+    <div className="bg-slate-900/40 border border-white/10 rounded-[3rem] overflow-hidden hover:border-primary/50 transition-all group shadow-2xl flex flex-col text-left backdrop-blur-sm">
+      <div className="p-8 flex-1">
+        <div className="flex justify-between items-start mb-8">
+          <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-xl ${
             trip.type === 'BOAT' ? 'bg-blue-600' : trip.type === 'PLANE' ? 'bg-indigo-600' : 'bg-primary'
           }`}>
-            <Icon size={24} />
+            <Icon size={28} />
           </div>
           <div className="text-right">
-             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">À partir de</p>
-             <p className="text-2xl font-black text-primary tracking-tighter leading-none">{trip.price.toLocaleString()} F</p>
+             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Dès</p>
+             <p className="text-3xl font-black text-primary tracking-tighter leading-none">{trip.price.toLocaleString()} <span className="text-[10px] ml-0.5 opacity-50">F</span></p>
           </div>
         </div>
 
-        <div className="mb-6">
-           <h3 className="text-xl font-black text-white uppercase truncate mb-1">{trip.company.name}</h3>
-           <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-              <Hash size={12} className="text-primary" /> {trip.vehicle?.registration || '—'}
+        <div className="mb-8">
+           <h3 className="text-2xl font-black text-white uppercase truncate mb-2 italic tracking-tighter">{trip.company.name}</h3>
+           <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-white/10 text-slate-400 bg-white/5 px-2 py-0.5">
+                  {trip.type === 'PLANE' ? 'Vol Aérien' : trip.type === 'TRAIN' ? 'Ligne Ferroviaire' : 'Route Directe'}
+              </Badge>
+              <div className="flex items-center gap-1 text-[9px] font-bold text-slate-600">
+                 <Hash size={10} /> {trip.vehicle?.registration || '—'}
+              </div>
            </div>
         </div>
 
-        <div className="space-y-4 py-6 border-y border-white/5">
+        <div className="space-y-4 py-8 border-y border-white/5 relative">
            <div className="flex items-center justify-between">
               <div className="min-w-0">
-                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Départ</p>
-                 <p className="font-bold text-white text-sm truncate uppercase">{trip.from.name}</p>
-                 <p className="text-primary font-black text-lg leading-none mt-1">{trip.departure_time}</p>
+                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">Départ</p>
+                 <p className="font-bold text-white text-base truncate uppercase">{trip.from.name}</p>
+                 <p className="text-primary font-black text-xl mt-1 tracking-tighter">{trip.departure_time}</p>
               </div>
-              <ArrowRight className="text-slate-800 shrink-0 mx-2" />
+              <ArrowRight className="text-slate-800 shrink-0 mx-4 opacity-20" size={24} />
               <div className="text-right min-w-0">
-                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Destination</p>
-                 <p className="font-bold text-white text-sm truncate uppercase">{trip.to.name}</p>
-                 <p className="text-slate-400 font-black text-lg leading-none mt-1">{trip.arrival_time}</p>
+                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">Arrivée</p>
+                 <p className="font-bold text-white text-base truncate uppercase">{trip.to.name}</p>
+                 <p className="text-slate-400 font-black text-xl mt-1 tracking-tighter">{trip.arrival_time}</p>
               </div>
            </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between gap-4">
-           <div className="flex items-center gap-2">
-              <Calendar size={14} className="text-primary" />
-              <span className="text-[10px] font-black text-slate-300 uppercase">
-                {new Date(trip.departure_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+        <div className="mt-8 flex items-center justify-between gap-4">
+           <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+              <CalendarIcon size={12} className="text-primary" />
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-tight">
+                {new Date(trip.departure_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
               </span>
            </div>
-           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-none text-[8px] font-black uppercase px-2 h-5">
-              {trip.seats_left} places libres
+           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-none text-[9px] font-black uppercase px-3 py-1">
+              {trip.seats_left} PLACES
            </Badge>
         </div>
       </div>
 
       <Button 
         onClick={() => navigate(`/seats/${trip.id}?from=${trip.from.name}&to=${trip.to.name}&price=${trip.price}`)}
-        className="w-full h-14 rounded-none bg-slate-800 hover:bg-primary text-white font-black uppercase tracking-widest text-[10px] border-none group-hover:h-16 transition-all"
+        className="w-full h-16 rounded-none bg-slate-950/80 hover:bg-primary text-white font-black uppercase tracking-[0.2em] text-[10px] border-t border-white/5 transition-all group-hover:bg-primary"
       >
-        Réserver maintenant
+        Réserver ce trajet
       </Button>
     </div>
   );
