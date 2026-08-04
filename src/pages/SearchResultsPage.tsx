@@ -7,6 +7,7 @@ import { Clock, MapPin, Users, Train, Bus, Ship, ArrowRight, Hash, Info, Plane, 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 type Trip = {
   departureId: string;
@@ -17,7 +18,7 @@ type Trip = {
   departureTime: string;
   arrivalTime: string;
   price: number;
-  childPrice: number; // AJOUTÉ
+  childPrice: number;
   availableSeats: number;
   isStop: boolean;
 };
@@ -25,8 +26,8 @@ type Trip = {
 export default function SearchResultsPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const from = params.get('from') || '';
-  const to = params.get('to') || '';
+  const from = params.get('from')?.trim() || '';
+  const to = params.get('to')?.trim() || '';
   const date = params.get('date') || '';
 
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -39,65 +40,71 @@ export default function SearchResultsPage() {
 
     const fetchTrips = async () => {
       try {
-        const { data: fromCity } = await supabase.from('cities').select('id').eq('name', from).single();
-        const { data: toCity } = await supabase.from('cities').select('id').eq('name', to).single();
+        // 1. On cherche les IDs des villes avec 'ilike' (insensible à la casse)
+        const { data: fromData } = await supabase.from('cities').select('id').ilike('name', from).maybeSingle();
+        const { data: toData } = await supabase.from('cities').select('id').ilike('name', to).maybeSingle();
 
-        if (fromCity && toCity) {
-          const { data, error } = await supabase
-            .from('trips')
-            .select(`
-              *, 
-              company:companies(name), 
-              vehicle:vehicles(registration),
-              trip_stops(*)
-            `)
-            .eq('from_id', fromCity.id)
-            .eq('departure_date', date);
-
-          if (data && !error) {
-            const formatted: Trip[] = data
-              .filter(t => {
-                const arrivesAtTerminus = t.to_id === toCity.id;
-                const hasStopAtDestination = t.trip_stops?.some((s: any) => s.city_id === toCity.id);
-                return arrivesAtTerminus || hasStopAtDestination;
-              })
-              .map(t => {
-                const stopAtDestination = t.trip_stops?.find((s: any) => s.city_id === toCity.id);
-                const isStop = !!stopAtDestination;
-
-                let typeLabel = 'Bus';
-                if (t.type === 'TRAIN') typeLabel = 'Train';
-                if (t.type === 'BOAT') typeLabel = 'Bateau';
-                if (t.type === 'PLANE') typeLabel = 'Avion';
-
-                // LOGIQUE PRIX ADULTE VS ENFANT
-                const adultPrice = isStop ? stopAtDestination.price_from_start : t.price;
-                
-                // Si c'est une escale, on applique 50% sur le prix escale, 
-                // sinon on prend le child_price de la base ou 50% du prix normal.
-                const rawChildPrice = t.child_price || Math.round(adultPrice * 0.5);
-                const finalChildPrice = isStop ? Math.round(adultPrice * 0.5) : rawChildPrice;
-
-                return {
-                  departureId: t.id,
-                  companyName: t.company?.name || 'Opérateur',
-                  transportType: typeLabel,
-                  vehicleNumber: t.vehicle_number,
-                  registration: t.vehicle?.registration || '—',
-                  departureTime: t.departure_time,
-                  arrivalTime: isStop ? stopAtDestination.arrival_time : t.arrival_time,
-                  price: adultPrice,
-                  childPrice: finalChildPrice,
-                  availableSeats: t.seats_left,
-                  isStop: isStop
-                };
-              });
-
-            setTrips(formatted);
-          }
+        if (!fromData || !toData) {
+          console.warn("Villes non trouvées dans la base");
+          setTrips([]);
+          setLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error("Erreur recherche:", err);
+
+        // 2. Recherche des trajets
+        const { data, error } = await supabase
+          .from('trips')
+          .select(`
+            *, 
+            company:companies(name), 
+            vehicle:vehicles(registration),
+            trip_stops(*)
+          `)
+          .eq('from_id', fromData.id)
+          .eq('departure_date', date);
+
+        if (error) throw error;
+
+        if (data) {
+          const formatted: Trip[] = data
+            .filter(t => {
+              // On garde le trajet s'il va au terminus ou s'il a une escale à 'toData.id'
+              const arrivesAtTerminus = t.to_id === toData.id;
+              const hasStopAtDestination = t.trip_stops?.some((s: any) => s.city_id === toData.id);
+              return arrivesAtTerminus || hasStopAtDestination;
+            })
+            .map(t => {
+              const stopAtDestination = t.trip_stops?.find((s: any) => s.city_id === toData.id);
+              const isStop = !!stopAtDestination;
+
+              let typeLabel = 'Bus';
+              if (t.type === 'TRAIN') typeLabel = 'Train';
+              if (t.type === 'BOAT') typeLabel = 'Bateau';
+              if (t.type === 'PLANE') typeLabel = 'Avion';
+
+              const adultPrice = isStop ? stopAtDestination.price_from_start : t.price;
+              const finalChildPrice = t.child_price || Math.round(adultPrice * 0.5);
+
+              return {
+                departureId: t.id,
+                companyName: t.company?.name || 'Opérateur',
+                transportType: typeLabel,
+                vehicleNumber: t.vehicle_number,
+                registration: t.vehicle?.registration || '—',
+                departureTime: t.departure_time,
+                arrivalTime: isStop ? stopAtDestination.arrival_time : t.arrival_time,
+                price: adultPrice,
+                childPrice: isStop ? Math.round(adultPrice * 0.5) : finalChildPrice,
+                availableSeats: t.seats_left,
+                isStop: isStop
+              };
+            });
+
+          setTrips(formatted);
+        }
+      } catch (err: any) {
+        console.error("Erreur recherche:", err.message);
+        toast.error("Erreur lors de la récupération des trajets");
       } finally {
         setLoading(false);
       }
@@ -107,33 +114,26 @@ export default function SearchResultsPage() {
   }, [from, to, date]);
 
   const groupedTrips = useMemo(() => {
-    const groups = {
-      'Avion': [] as Trip[],
-      'Train': [] as Trip[],
-      'Bateau': [] as Trip[],
-      'Bus': [] as Trip[],
-    };
-
+    const groups = { 'Avion': [] as Trip[], 'Train': [] as Trip[], 'Bateau': [] as Trip[], 'Bus': [] as Trip[] };
     trips.forEach(trip => {
       if (groups[trip.transportType as keyof typeof groups]) {
         groups[trip.transportType as keyof typeof groups].push(trip);
       }
     });
-
     Object.keys(groups).forEach(key => {
       groups[key as keyof typeof groups].sort((a, b) =>
         sortBy === 'price' ? a.price - b.price : a.departureTime.localeCompare(b.departureTime)
       );
     });
-
     return groups;
   }, [trips, sortBy]);
 
   const formattedDate = date ? new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl text-left animate-in fade-in duration-500 bg-background">
+    <div className="container mx-auto px-4 py-12 max-w-5xl text-left animate-in fade-in duration-500 bg-background text-foreground">
       
+      {/* Header Itinéraire */}
       <div className="mb-10 bg-card border-2 border-border p-6 md:p-8 rounded-[2rem] shadow-2xl">
         <div className="flex items-center gap-3 text-2xl md:text-3xl font-black italic tracking-tighter text-white mb-2">
           <span>{from}</span>
@@ -143,6 +143,7 @@ export default function SearchResultsPage() {
         <p className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-widest">{formattedDate}</p>
       </div>
 
+      {/* Barre de tri */}
       <div className="flex items-center gap-4 mb-8 px-2">
         <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Trier par :</span>
         <div className="flex bg-slate-900 p-1 rounded-xl border border-border shadow-inner">
@@ -158,30 +159,28 @@ export default function SearchResultsPage() {
       ) : trips.length === 0 ? (
         <div className="text-center py-20 bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-border">
           <MapPin className="h-16 w-16 mx-auto text-slate-700 mb-6" />
-          <h3 className="text-2xl font-black text-white">Aucun trajet trouvé</h3>
-          <Button variant="default" className="mt-8 rounded-2xl font-black px-8 h-12 bg-primary text-white" onClick={() => navigate('/')}>REFAIRE UNE RECHERCHE</Button>
+          <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Aucun voyage trouvé</h3>
+          <p className="text-slate-500 mt-2">Vérifiez l'orthographe des villes ou changez de date.</p>
+          <Button variant="default" className="mt-8 rounded-2xl font-black px-10 h-14 bg-primary text-white" onClick={() => navigate('/')}>REFAIRE UNE RECHERCHE</Button>
         </div>
       ) : (
         <div className="space-y-12">
           {(['Avion', 'Train', 'Bateau', 'Bus'] as const).map(type => {
             const list = groupedTrips[type];
             if (list.length === 0) return null;
-
             const SectionIcon = type === 'Avion' ? Plane : type === 'Train' ? Train : type === 'Bateau' ? Ship : Bus;
-            const label = type === 'Avion' ? 'Vols' : type === 'Bateau' ? 'Trajets Maritimes' : type === 'Train' ? 'Trains' : 'Lignes de Bus';
 
             return (
               <div key={type} className="space-y-6">
-                <div className="flex items-center gap-3 px-2 text-left">
+                <div className="flex items-center gap-3 px-2">
                   <div className="p-2 bg-primary/10 rounded-lg text-primary border border-primary/20">
                     <SectionIcon size={18} />
                   </div>
                   <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white">
-                    {label} <span className="text-primary ml-1">({list.length})</span>
+                    {type} <span className="text-primary ml-1">({list.length})</span>
                   </h2>
                   <div className="h-px bg-slate-800 flex-1 ml-4" />
                 </div>
-
                 <div className="grid gap-5">
                   {list.map(trip => (
                     <TripCard key={trip.departureId} trip={trip} from={from} to={to} navigate={navigate} />
@@ -192,10 +191,6 @@ export default function SearchResultsPage() {
           })}
         </div>
       )}
-
-      <footer className="text-center pt-10 opacity-20">
-         <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white">TransGabon Connect • Mobilité Nationale</p>
-      </footer>
     </div>
   );
 }
@@ -204,7 +199,7 @@ function TripCard({ trip, from, to, navigate }: { trip: Trip, from: string, to: 
   const TransportIcon = trip.transportType === 'Train' ? Train : trip.transportType === 'Bateau' ? Ship : trip.transportType === 'Avion' ? Plane : Bus;
 
   return (
-    <div className="bg-card border-2 border-border rounded-[2rem] p-6 md:p-8 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-primary/30 transition-all duration-300 group overflow-hidden">
+    <div className="bg-card border-2 border-border rounded-[2rem] p-6 md:p-8 hover:shadow-2xl hover:border-primary/30 transition-all duration-300 group overflow-hidden">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         
         <div className="flex items-center gap-5 min-w-[240px] text-left">
@@ -250,7 +245,6 @@ function TripCard({ trip, from, to, navigate }: { trip: Trip, from: string, to: 
               {trip.price.toLocaleString()} 
               <span className="text-[9px] ml-1 font-black text-slate-500">FCFA</span>
             </div>
-            {/* AFFICHAGE DU TARIF ENFANT */}
             <div className="flex items-center lg:justify-end gap-1.5 text-[10px] font-black text-blue-400 uppercase mt-1 tracking-tighter">
               <Baby size={12} />
               Enfant : {trip.childPrice.toLocaleString()} F
