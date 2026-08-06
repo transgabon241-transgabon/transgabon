@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-// Type précis pour les bagages
 type Luggage = {
   id: string;
   label: string;
@@ -45,7 +44,6 @@ type MappedBooking = {
   qrCodeData: string;
   luggages: Luggage[];
   isChild: boolean;
-  // NOUVEAUX CHAMPS D'IDENTITÉ
   idType: string;
   idNumber: string;
 };
@@ -71,11 +69,24 @@ export default function TicketPage() {
       try {
         const { data: b, error } = await supabase
           .from('bookings')
-          .select('*, trip:trips(*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)), passengers(*), luggages(*)')
+          .select(`
+            *, 
+            trip:trips(
+              *, 
+              company:companies(name), 
+              from:cities!from_id(name), 
+              to:cities!to_id(name), 
+              vehicle:vehicles(registration)
+            ), 
+            passengers(*), 
+            luggages(*)
+          `)
           .eq('id', bookingId)
           .single();
 
-        if (b && !error) {
+        if (error) throw error;
+
+        if (b) {
           const leadPassenger = b.passengers[0];
           const passengerName = leadPassenger ? `${leadPassenger.first_name} ${leadPassenger.last_name}` : '—';
           const seatNumber = b.passengers.map((p: any) => p.seat_number).filter(Boolean).join(', ') || '—';
@@ -92,8 +103,11 @@ export default function TicketPage() {
           const destination = b.arrival_city_name || b.trip.to.name;
           const prettyClass = classMapping[b.class_type] || b.travel_class || 'Standard';
 
+          // CALCUL DES MONTANTS
           const ticketAmount = Number(b.total_amount) || 0;
-          const luggageAmount = (b.luggages || []).reduce((sum: number, l: any) => sum + (Number(l.total_price) || 0), 0);
+          // S'assurer que luggages est un tableau avant le reduce
+          const luggageList = b.luggages || [];
+          const luggageAmount = luggageList.reduce((sum: number, l: any) => sum + (Number(l.total_price) || 0), 0);
           const totalAmount = ticketAmount + luggageAmount;
 
           const qrPayload = JSON.stringify({
@@ -102,7 +116,7 @@ export default function TicketPage() {
             to: destination,
             seat: seatNumber,
             child: b.is_child,
-            idNum: leadPassenger?.id_number // Inclus dans le QR pour vérification rapide
+            idNum: leadPassenger?.id_number
           });
 
           setBooking({
@@ -128,7 +142,7 @@ export default function TicketPage() {
             paymentMethod: b.payment_method === 'AGENCE' ? 'Paiement Agence' : b.payment_method,
             paymentStatus: b.status === 'PAYE' ? 'Réglé' : 'À régler',
             qrCodeData: qrPayload,
-            luggages: b.luggages || [],
+            luggages: luggageList, // ON PASSE LA LISTE ICI
             isChild: b.is_child,
             idType: leadPassenger?.id_type || '—',
             idNumber: leadPassenger?.id_number || '—'
@@ -219,7 +233,6 @@ export default function TicketPage() {
                    </span>
                 </InfoField>
 
-                {/* SECTION IDENTITÉ AJOUTÉE */}
                 <InfoField label={booking.isChild ? "Pièce Tuteur" : "Pièce d'identité"}>
                     <div className="flex items-center gap-1.5 font-black text-xs text-slate-200 uppercase">
                         <ShieldCheck size={12} className="text-emerald-500" /> {booking.idType}
@@ -252,8 +265,8 @@ export default function TicketPage() {
                 </InfoField>
             </div>
 
-            {/* SECTION BAGAGES */}
-            {booking.luggages.length > 0 ? (
+            {/* SECTION BAGAGES RÉTABLIE ET VÉRIFIÉE */}
+            {booking.luggages && booking.luggages.length > 0 ? (
               <div className="p-5 bg-slate-950 rounded-[2rem] border-2 border-border animate-in slide-in-from-bottom-2 text-left">
                 <div className="flex items-center gap-2 text-slate-500 mb-4">
                    <Package size={14} className="text-primary" />
@@ -271,7 +284,7 @@ export default function TicketPage() {
             ) : (
               <div className="p-4 bg-slate-950/50 rounded-2xl border border-dashed border-slate-800 flex items-center gap-3">
                  <Info size={14} className="text-slate-700" />
-                 <p className="text-[9px] font-bold text-slate-600 uppercase italic">Aucun supplément déclaré</p>
+                 <p className="text-[9px] font-bold text-slate-600 uppercase italic text-left">Aucun supplément déclaré</p>
               </div>
             )}
 
