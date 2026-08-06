@@ -217,7 +217,7 @@ export default function AgencyDepartures() {
 
       if (editId) {
         await supabase.from('trips').update(tripData).eq('id', editId);
-        await supabase.from('trip_stops').delete().eq('trip_id', editId); // Purge pour ré-insertion
+        await supabase.from('trip_stops').delete().eq('trip_id', editId); 
       } else {
         const route = routes.find(r => r.id === routeId);
         const vehicle = vehicles.find(v => v.id === vehicleId);
@@ -233,7 +233,6 @@ export default function AgencyDepartures() {
         tripId = newTrip.id;
       }
 
-      // Sauvegarde des escales
       const validStops = stops.filter(s => s.cityId !== "");
       if (validStops.length > 0 && tripId) {
         const stopsToInsert = validStops.map((s, i) => ({
@@ -358,9 +357,9 @@ export default function AgencyDepartures() {
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Date</Label><Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Départ</Label><Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Arrivée</Label><Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Date</Label><Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Départ</Label><Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Arrivée</Label><Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
             </div>
 
             {/* TARIFS */}
@@ -383,29 +382,72 @@ export default function AgencyDepartures() {
                </div>
             </div>
 
-            {/* ESCALES DANS LE FORMULAIRE */}
+            {/* ESCALES DANS LE FORMULAIRE AMÉLIORÉES */}
             <div className="p-4 bg-slate-950 rounded-2xl border border-border">
-               <div className="flex justify-between items-center mb-4">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><MapPin size={14}/> Escales</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-7 text-[8px] font-black bg-slate-900 border-slate-700">AJOUTER ESCALE</Button>
+               <div className="flex justify-between items-center mb-6">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><MapPin size={14}/> Gestion des Escales</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-8 text-[9px] font-black bg-slate-900 border-slate-700 hover:bg-slate-800 text-primary">
+                    <Plus size={14} className="mr-1" /> AJOUTER ARRÊT
+                  </Button>
                </div>
-               <div className="space-y-2">
+
+               {/* ENTETE DES COLONNES ESCALES */}
+               {stops.length > 0 && (
+                 <div className="grid grid-cols-[1fr_90px_100px_40px] gap-3 px-2 mb-2">
+                    <span className="text-[8px] font-black text-slate-600 uppercase">Ville d'arrêt</span>
+                    <span className="text-[8px] font-black text-slate-600 uppercase text-center">Arrivée</span>
+                    <span className="text-[8px] font-black text-slate-600 uppercase text-center">Tarif (F)</span>
+                    <span></span>
+                 </div>
+               )}
+
+               <div className="space-y-3">
                   {stops.map((stop, index) => (
-                    <div key={index} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                       <select value={stop.cityId} onChange={e => updateStop(index, 'cityId', e.target.value)} className="bg-slate-900 border-none rounded-lg text-[10px] p-2 text-white outline-none">
-                          <option value="">Ville...</option>
+                    <div key={index} className="grid grid-cols-[1fr_90px_100px_40px] gap-3 items-center animate-in fade-in slide-in-from-right-2">
+                       <select 
+                         value={stop.cityId} 
+                         onChange={e => updateStop(index, 'cityId', e.target.value)} 
+                         className="h-11 rounded-xl bg-slate-950 border border-slate-800 px-3 text-[11px] font-black uppercase text-white outline-none focus:border-primary transition-all shadow-inner"
+                       >
+                          <option value="">Choisir...</option>
                           {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                        </select>
-                       <Input type="time" value={stop.arrivalTime} onChange={e => updateStop(index, 'arrivalTime', e.target.value)} className="w-16 h-8 bg-slate-900 border-none text-[10px]" />
-                       <Input type="number" placeholder="Prix" value={stop.priceFromStart} onChange={e => updateStop(index, 'priceFromStart', e.target.value)} className="w-16 h-8 bg-slate-900 border-none text-[10px]" />
-                       <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-8 w-8 text-red-500"><X size={14}/></Button>
+                       
+                       <Input 
+                         type="time" 
+                         value={stop.arrivalTime} 
+                         onChange={e => updateStop(index, 'arrivalTime', e.target.value)} 
+                         className="h-11 rounded-xl border border-slate-800 bg-slate-950 text-white font-black text-xs text-center shadow-inner" 
+                       />
+                       
+                       <div className="relative">
+                         <Input 
+                           type="number" 
+                           placeholder="0" 
+                           value={stop.priceFromStart} 
+                           onChange={e => updateStop(index, 'priceFromStart', e.target.value)} 
+                           className="h-11 rounded-xl border-2 border-slate-800 bg-slate-950 text-primary font-black text-xs text-center shadow-lg focus:border-primary transition-all" 
+                         />
+                       </div>
+
+                       <Button 
+                         variant="ghost" 
+                         size="icon" 
+                         onClick={() => removeStop(index)} 
+                         className="h-10 w-10 text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                       >
+                         <X size={18}/>
+                       </Button>
                     </div>
                   ))}
+                  {stops.length === 0 && (
+                    <p className="text-[9px] text-slate-600 italic text-center py-4 border border-dashed border-slate-800 rounded-xl">Aucun arrêt intermédiaire programmé</p>
+                  )}
                </div>
             </div>
 
-            <Button onClick={handleSave} disabled={saving} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl text-xs active:scale-95 transition-all border-none">
-               {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Enregistrer
+            <Button onClick={handleSave} disabled={saving} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl text-xs active:scale-95 transition-all border-none shadow-2xl">
+               {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Enregistrer la programmation
             </Button>
           </div>
         </DialogContent>
@@ -471,7 +513,7 @@ function DepartureCard({ dep, canEdit, onEdit }: any) {
 
             {/* AFFICHAGE DES ESCALES SUR LA CARTE */}
             {dep.stops?.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide border-t border-white/5 pt-3">
                     {dep.stops.map((stop: any, idx: number) => (
                         <div key={idx} className="flex items-center gap-1.5 shrink-0 bg-slate-950 px-3 py-1.5 rounded-xl border border-white/5 shadow-inner">
                             <MapPin size={8} className="text-primary" />
