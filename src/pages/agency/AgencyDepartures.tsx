@@ -20,6 +20,14 @@ import {
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
+type TripStop = {
+  cityId: string;
+  cityName?: string;
+  arrivalTime: string;
+  priceFromStart: number;
+  stop_order?: number;
+};
+
 type Departure = {
   id: string;
   departureCode: string;
@@ -39,7 +47,7 @@ type Departure = {
   bookingCount: number;
   status: string;
   type: string;
-  stops: any[];
+  stops: TripStop[];
 };
 
 export default function AgencyDepartures() {
@@ -71,13 +79,11 @@ export default function AgencyDepartures() {
   const [childVipPrice, setChildVipPrice] = useState('');
   const [childBusinessPrice, setChildBusinessPrice] = useState('');
   const [status, setStatus] = useState('');
+  const [stops, setStops] = useState<TripStop[]>([]);
 
   const canEdit = user?.role === 'Agent' || user?.role === 'Administrateur' || user?.role === 'Chef d\'agence';
 
-  // Date du jour format YYYY-MM-DD locale
-  const todayStr = useMemo(() => {
-    return new Date().toLocaleDateString('en-CA'); 
-  }, []);
+  const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
 
   const categorizedTrips = useMemo(() => {
     return {
@@ -112,7 +118,7 @@ export default function AgencyDepartures() {
           from:cities!from_id(name), 
           to:cities!to_id(name), 
           vehicle:vehicles(registration), 
-          trip_stops(*),
+          trip_stops(city_id, arrival_time, price_from_start, stop_order, cities(name)),
           bookings(id)
         `)
         .eq('company_id', user.companyId)
@@ -136,10 +142,16 @@ export default function AgencyDepartures() {
         childVipPrice: Number(t.child_vip_price) || 0,
         childBusinessPrice: Number(t.child_business_price) || 0,
         totalSeats: t.seats_total || 0,
-        bookingCount: t.bookings?.length || 0, 
+        bookingCount: t.bookings?.length || 0,
         status: t.status || 'Programmé',
         type: t.type,
-        stops: t.trip_stops || []
+        stops: (t.trip_stops || []).map((s: any) => ({
+          cityId: s.city_id,
+          cityName: s.cities?.name || 'Escale',
+          arrivalTime: s.arrival_time || '',
+          priceFromStart: Number(s.price_from_start) || 0,
+          stop_order: s.stop_order
+        })).sort((a:any, b:any) => a.stop_order - b.stop_order)
       })));
 
       const { data: rD } = await supabase.from('routes').select('*');
@@ -159,7 +171,7 @@ export default function AgencyDepartures() {
     setEditId(null); setRouteId(''); setVehicleId(''); setDepDate(''); setDepTime(''); setArrTime('');
     setPrice(''); setVipPrice(''); setBusinessPrice('');
     setChildPrice(''); setChildVipPrice(''); setChildBusinessPrice('');
-    setStatus('');
+    setStatus(''); setStops([]);
   };
 
   const openEdit = useCallback((dep: Departure) => {
@@ -174,8 +186,17 @@ export default function AgencyDepartures() {
     setChildVipPrice(String(dep.childVipPrice || ''));
     setChildBusinessPrice(String(dep.childBusinessPrice || ''));
     setStatus(dep.status);
+    setStops(dep.stops);
     setShowForm(true);
   }, []);
+
+  const addStop = () => setStops([...stops, { cityId: '', arrivalTime: '', priceFromStart: 0 }]);
+  const removeStop = (idx: number) => setStops(stops.filter((_, i) => i !== idx));
+  const updateStop = (idx: number, field: keyof TripStop, val: any) => {
+    const newStops = [...stops];
+    (newStops[idx] as any)[field] = val;
+    setStops(newStops);
+  };
 
   const handleSave = async () => {
     if (!user?.companyId) return;
@@ -192,23 +213,45 @@ export default function AgencyDepartures() {
         status: status || 'Programmé'
       };
       
+      let tripId = editId;
+
       if (editId) {
         await supabase.from('trips').update(tripData).eq('id', editId);
+        await supabase.from('trip_stops').delete().eq('trip_id', editId); // Purge pour ré-insertion
       } else {
         const route = routes.find(r => r.id === routeId);
         const vehicle = vehicles.find(v => v.id === vehicleId);
         const { data: fC } = await supabase.from('cities').select('id').ilike('name', route!.departure_city).single();
         const { data: tC } = await supabase.from('cities').select('id').ilike('name', route!.arrival_city).single();
         
-        await supabase.from('trips').insert([{
+        const { data: newTrip, error: tErr } = await supabase.from('trips').insert([{
           ...tripData, company_id: user.companyId, type: vehicle!.type,
           vehicle_number: vehicle!.name, vehicle_id: vehicle!.id,
           from_id: fC!.id, to_id: tC!.id, seats_total: vehicle!.capacity, seats_left: vehicle!.capacity,
-        }]);
+        }]).select().single();
+        if (tErr) throw tErr;
+        tripId = newTrip.id;
       }
+
+      // Sauvegarde des escales
+      const validStops = stops.filter(s => s.cityId !== "");
+      if (validStops.length > 0 && tripId) {
+        const stopsToInsert = validStops.map((s, i) => ({
+          trip_id: tripId, 
+          city_id: s.cityId, 
+          arrival_time: s.arrivalTime || null, 
+          price_from_start: Number(s.priceFromStart) || 0, 
+          stop_order: i + 1
+        }));
+        await supabase.from('trip_stops').insert(stopsToInsert);
+      }
+
       setShowForm(false); resetForm(); await loadData();
       toast.success('Planning mis à jour');
-    } catch (e: any) { toast.error("Erreur de sauvegarde"); }
+    } catch (e: any) { 
+        console.error(e);
+        toast.error("Erreur de sauvegarde"); 
+    }
     finally { setSaving(false); }
   };
 
@@ -227,20 +270,21 @@ export default function AgencyDepartures() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 bg-card p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border-2 border-border shadow-xl">
         <div className="flex items-center gap-3 text-left">
           <div className="p-2 sm:p-3 bg-primary/10 rounded-xl text-primary border border-primary/20 shrink-0">
-            <CalendarDays className="h-6 w-6 sm:h-8 sm:w-8" />
+            <CalendarDays size={28} />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 text-left">
             <h1 className="text-xl sm:text-3xl font-black italic text-white uppercase tracking-tighter leading-none truncate">Planning</h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Exploitation Agence</p>
           </div>
         </div>
         {canEdit && (
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="w-full sm:w-auto rounded-xl font-black gap-2 h-12 sm:h-14 px-6 bg-primary text-white border-none active:scale-95 transition-all text-[10px] sm:text-xs">
+          <Button onClick={() => { resetForm(); setShowForm(true); }} className="w-full sm:w-auto rounded-xl font-black gap-2 h-12 sm:h-14 px-6 bg-primary text-white border-none active:scale-95 transition-all text-[10px] sm:text-xs shadow-lg">
             <Plus size={16} /> PROGRAMMER
           </Button>
         )}
       </div>
 
+      {/* DASHBOARD STATS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
           <StatCard icon={BarChart3} label="Total" value={stats.total} color="text-blue-400" bg="bg-blue-500/10" />
           <StatCard icon={Clock} label="Auj." value={stats.today} color="text-primary" bg="bg-primary/10" />
@@ -248,6 +292,7 @@ export default function AgencyDepartures() {
           <StatCard icon={Percent} label="Remplissage" value={`${stats.occupancy}%`} color="text-amber-400" bg="bg-amber-500/10" />
       </div>
 
+      {/* ONGLET FILTRÉS */}
       <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setCurrentPage(1); }} className="w-full space-y-6">
         <TabsList className="bg-slate-900 border-2 border-slate-800 p-1 rounded-2xl h-auto flex w-full md:w-fit mx-1">
             <TabsTrigger value="today" className="flex-1 md:w-40 rounded-xl font-black uppercase text-[8px] sm:text-[10px] py-3 data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
@@ -285,6 +330,7 @@ export default function AgencyDepartures() {
         )}
       </Tabs>
 
+      {/* DIALOG FORMULAIRE COMPLET */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="rounded-[2rem] p-4 sm:p-8 w-[95vw] max-w-2xl bg-slate-900 text-white border-border overflow-y-auto max-h-[90vh]">
           <DialogTitle className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter text-left">{editId ? 'Modifier' : 'Programmer'} Voyage</DialogTitle>
@@ -292,7 +338,7 @@ export default function AgencyDepartures() {
             {!editId && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Trajet</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Itinéraire</Label>
                   <Select value={routeId} onValueChange={setRouteId}>
                     <SelectTrigger className="h-12 bg-slate-950 border-none rounded-xl text-white"><SelectValue placeholder="Choisir trajet" /></SelectTrigger>
                     <SelectContent className="bg-slate-900 border-border text-white">
@@ -312,29 +358,52 @@ export default function AgencyDepartures() {
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Date</Label><Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Départ</Label><Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Arrivée</Label><Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white shadow-inner" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Date</Label><Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Départ</Label><Input type="time" value={depTime} onChange={e => setDepTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Arrivée</Label><Input type="time" value={arrTime} onChange={e => setArrTime(e.target.value)} className="h-12 bg-slate-950 border-none rounded-xl text-white" /></div>
             </div>
 
+            {/* TARIFS */}
             <div className="space-y-4">
                <div className="p-4 sm:p-5 bg-slate-950 rounded-2xl border border-border space-y-4 text-left">
                   <div className="flex items-center gap-2 text-primary"><UserIcon size={14} /><Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Adultes</Label></div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Eco</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Business</Label><Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">VIP</Label><Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Eco</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs" /></div>
+                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Biz</Label><Input type="number" value={businessPrice} onChange={e => setBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs" /></div>
+                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">VIP</Label><Input type="number" value={vipPrice} onChange={e => setVipPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs" /></div>
                   </div>
                </div>
                <div className="p-4 sm:p-5 bg-slate-950 rounded-2xl border border-blue-500/20 space-y-4 text-left">
                   <div className="flex items-center gap-2 text-blue-400"><Baby size={14} /><Label className="text-[10px] font-black uppercase tracking-widest">Tarifs Enfants</Label></div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Eco</Label><Input type="number" value={childPrice} onChange={e => setChildPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Business</Label><Input type="number" value={childBusinessPrice} onChange={e => setChildBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">VIP</Label><Input type="number" value={childVipPrice} onChange={e => setChildVipPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs sm:text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Eco</Label><Input type="number" value={childPrice} onChange={e => setChildPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs" /></div>
+                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">Biz</Label><Input type="number" value={childBusinessPrice} onChange={e => setChildBusinessPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs" /></div>
+                      <div className="space-y-1"><Label className="text-[8px] text-slate-500 uppercase">VIP</Label><Input type="number" value={childVipPrice} onChange={e => setChildVipPrice(e.target.value)} className="bg-slate-900 border-none text-white font-black text-xs" /></div>
                   </div>
                </div>
             </div>
+
+            {/* ESCALES DANS LE FORMULAIRE */}
+            <div className="p-4 bg-slate-950 rounded-2xl border border-border">
+               <div className="flex justify-between items-center mb-4">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><MapPin size={14}/> Escales</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addStop} className="h-7 text-[8px] font-black bg-slate-900 border-slate-700">AJOUTER ESCALE</Button>
+               </div>
+               <div className="space-y-2">
+                  {stops.map((stop, index) => (
+                    <div key={index} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                       <select value={stop.cityId} onChange={e => updateStop(index, 'cityId', e.target.value)} className="bg-slate-900 border-none rounded-lg text-[10px] p-2 text-white outline-none">
+                          <option value="">Ville...</option>
+                          {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                       </select>
+                       <Input type="time" value={stop.arrivalTime} onChange={e => updateStop(index, 'arrivalTime', e.target.value)} className="w-16 h-8 bg-slate-900 border-none text-[10px]" />
+                       <Input type="number" placeholder="Prix" value={stop.priceFromStart} onChange={e => updateStop(index, 'priceFromStart', e.target.value)} className="w-16 h-8 bg-slate-900 border-none text-[10px]" />
+                       <Button variant="ghost" size="icon" onClick={() => removeStop(index)} className="h-8 w-8 text-red-500"><X size={14}/></Button>
+                    </div>
+                  ))}
+               </div>
+            </div>
+
             <Button onClick={handleSave} disabled={saving} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-xl text-xs active:scale-95 transition-all border-none">
                {saving ? <RefreshCw className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Enregistrer
             </Button>
@@ -350,57 +419,68 @@ export default function AgencyDepartures() {
 function DepartureCard({ dep, canEdit, onEdit }: any) {
     const TransportIcon = dep.type === 'BOAT' ? Ship : dep.type === 'TRAIN' ? Train : dep.type === 'PLANE' ? Plane : Bus;
     
-    // Formatage de la date en français (ex: 27 Juil.)
     const formattedDate = useMemo(() => {
         return new Date(dep.departureDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
     }, [dep.departureDate]);
 
     return (
-        <div className="bg-card border border-border rounded-[1.2rem] sm:rounded-[1.5rem] p-4 sm:p-5 hover:border-primary/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
-            <div className="flex items-center gap-3 sm:gap-5 text-left min-w-0">
-                <div className={`h-10 w-10 sm:h-14 sm:w-14 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0 ${
-                    dep.type === 'BOAT' ? 'bg-blue-600' : dep.type === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : dep.type === 'PLANE' ? 'bg-indigo-600' : 'bg-primary'
-                }`}>
-                    <TransportIcon size={20} className="sm:h-6 sm:w-6" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 font-black text-sm sm:text-xl text-white uppercase leading-none truncate">
-                        {dep.departureCity} <ArrowRight size={12} className="text-primary shrink-0" /> {dep.arrivalCity}
+        <div className="bg-card border border-border rounded-[1.2rem] sm:rounded-[1.5rem] p-4 sm:p-5 hover:border-primary/30 transition-all flex flex-col gap-4 text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 sm:gap-5 text-left min-w-0">
+                    <div className={`h-10 w-10 sm:h-14 sm:w-14 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0 ${
+                        dep.type === 'BOAT' ? 'bg-blue-600' : dep.type === 'TRAIN' ? 'bg-slate-950 border border-slate-800' : dep.type === 'PLANE' ? 'bg-indigo-600' : 'bg-primary'
+                    }`}>
+                        <TransportIcon size={20} className="sm:h-6 sm:w-6" />
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className="text-[8px] sm:text-[10px] font-black text-primary uppercase bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">{dep.registration}</span>
-                        
-                        {/* AFFICHAGE DATE + HEURE */}
-                        <div className="flex items-center gap-1.5 text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase bg-slate-950/50 px-2 py-0.5 rounded border border-border">
-                            <CalendarDays size={10} className="text-primary" />
-                            <span>{formattedDate}</span>
-                            <span className="opacity-30">•</span>
-                            <Clock size={10} className="text-primary" />
-                            <span>{dep.departureTime}</span>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 font-black text-sm sm:text-xl text-white uppercase leading-none truncate">
+                            {dep.departureCity} <ArrowRight size={12} className="text-primary shrink-0" /> {dep.arrivalCity}
                         </div>
-
-                        <StatusBadge status={dep.status} />
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                            <span className="text-[8px] sm:text-[10px] font-black text-primary uppercase bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">{dep.registration}</span>
+                            <div className="flex items-center gap-1.5 text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase bg-slate-950/50 px-2 py-0.5 rounded border border-border">
+                                <CalendarDays size={10} className="text-primary" />
+                                <span>{formattedDate}</span>
+                                <span className="opacity-30">•</span>
+                                <Clock size={10} className="text-primary" />
+                                <span>{dep.departureTime}</span>
+                            </div>
+                            <StatusBadge status={dep.status} />
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 border-slate-800 pt-3 sm:pt-0">
+                    <div className="text-left sm:text-right">
+                        <p className="text-base sm:text-xl font-black text-white leading-none">{(dep.price).toLocaleString()} F</p>
+                        <p className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase mt-1">{dep.bookingCount}/{dep.totalSeats} Places</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Link to={`/agency/passengers/${dep.id}`}>
+                            <Button variant="outline" className="h-9 sm:h-10 px-2 sm:px-4 rounded-xl bg-slate-950 text-slate-300 font-black text-[8px] sm:text-[9px] uppercase shadow-lg">
+                                <Users size={12} className="mr-1 sm:mr-2" /> Manifeste
+                            </Button>
+                        </Link>
+                        {canEdit && (
+                            <Button onClick={onEdit} variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-900 border border-border text-slate-400 hover:text-primary">
+                                <Pencil size={14} />
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
-            <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 border-slate-800 pt-3 sm:pt-0">
-                <div className="text-left sm:text-right">
-                    <p className="text-base sm:text-xl font-black text-white leading-none">{(dep.price).toLocaleString()} F</p>
-                    <p className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase mt-1">{dep.bookingCount}/{dep.totalSeats} Places</p>
+
+            {/* AFFICHAGE DES ESCALES SUR LA CARTE */}
+            {dep.stops?.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    {dep.stops.map((stop: any, idx: number) => (
+                        <div key={idx} className="flex items-center gap-1.5 shrink-0 bg-slate-950 px-3 py-1.5 rounded-xl border border-white/5 shadow-inner">
+                            <MapPin size={8} className="text-primary" />
+                            <span className="text-[8px] font-black text-slate-400 uppercase">{stop.cityName}</span>
+                            <span className="text-[7px] text-slate-600 font-bold">{stop.arrivalTime}</span>
+                        </div>
+                    ))}
                 </div>
-                <div className="flex gap-2">
-                    <Link to={`/agency/passengers/${dep.id}`}>
-                        <Button variant="outline" className="h-9 sm:h-10 px-2 sm:px-4 rounded-xl bg-slate-950 text-slate-300 font-black text-[8px] sm:text-[9px] uppercase">
-                            <Users size={12} className="mr-1 sm:mr-2" /> Manifeste
-                        </Button>
-                    </Link>
-                    {canEdit && (
-                        <Button onClick={onEdit} variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-900 border border-border text-slate-400 hover:text-primary transition-colors">
-                            <Pencil size={14} />
-                        </Button>
-                    )}
-                </div>
-            </div>
+            )}
         </div>
     );
 }
@@ -408,11 +488,9 @@ function DepartureCard({ dep, canEdit, onEdit }: any) {
 function StatCard({ icon: Icon, label, value, color, bg }: any) {
     return (
         <div className="bg-card border border-border rounded-2xl sm:rounded-[1.5rem] p-3 sm:p-5 shadow-xl flex items-center gap-3 sm:gap-4 transition-all group min-h-[70px] sm:min-h-0 text-left">
-            <div className={`h-8 w-8 sm:h-12 sm:w-12 rounded-lg sm:rounded-2xl ${bg} flex items-center justify-center shrink-0 border border-white/5`}>
-                <Icon className={`h-4 w-4 sm:h-6 sm:w-6 ${color}`} />
-            </div>
-            <div className="min-w-0 text-left">
-                <p className="text-[7px] sm:text-[9px] font-black uppercase text-slate-500 tracking-tighter sm:tracking-widest leading-none mb-1 truncate">{label}</p>
+            <div className={`h-8 w-8 sm:h-12 sm:w-12 rounded-lg sm:rounded-2xl ${bg} flex items-center justify-center shrink-0 border border-white/5 shadow-inner`}><Icon className={`h-4 w-4 sm:h-6 sm:w-6 ${color}`} /></div>
+            <div className="min-w-0">
+                <p className="text-[7px] sm:text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none mb-1 truncate">{label}</p>
                 <p className={`text-sm sm:text-xl font-black tracking-tighter leading-none ${color}`}>{value}</p>
             </div>
         </div>
