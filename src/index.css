@@ -1,8 +1,9 @@
 /* 
    Thème Global : TransGabon Connect - SaaS Premium (Style School Tech)
    Design : Deep Midnight Navy & Emerald Green
+   FIX : Compatibilité build v4 (Syntaxe !important corrigée)
 */
-@import "tailwindcss/index.css";
+@import "tailwindcss";
 
 :root {
   /* Fond Bleu Nuit très profond */
@@ -75,14 +76,12 @@
   }
   
   html {
-    background-color: #020617;
+    background-color: #020817;
     scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
-    /* On force le fond sans casser le build */
-    background-color: #020817; 
   }
 
   /* --- TYPOGRAPHIE --- */
@@ -93,10 +92,9 @@
 
   /* --- FORMULAIRES STYLE SCHOOL TECH --- */
   input, select, textarea {
-    @apply bg-slate-950 border-white/10 rounded-xl focus:ring-primary/50 transition-all;
-    background-color: #050810 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    color: #ffffff !important;
+    @apply bg-slate-950 border-white/10 rounded-xl focus:ring-primary/50 transition-all text-white;
+    background-color: #050810;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   /* Cache les flèches du input type number */
@@ -115,10 +113,6 @@
     @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl;
   }
 
-  .btn-premium {
-    @apply shadow-[0_10px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_15px_30px_rgba(16,185,129,0.3)] transition-all active:scale-95;
-  }
-
   /* --- SCROLLBAR --- */
   ::-webkit-scrollbar {
     width: 6px;
@@ -135,18 +129,19 @@
   }
 }
 
-/* Effets spéciaux pour les calendriers (Input Date) */
+/* Effets spéciaux pour les calendriers */
 ::-webkit-calendar-picker-indicator {
   filter: invert(1) brightness(100%) sepia(100%) saturate(10000%) hue-rotate(120deg);
   cursor: pointer;
 }
 
-/* Style spécifique pour les boutons actifs dans les onglets */
+/* Style spécifique pour les boutons actifs (Tabs) */
+/* Note : Utilisation de ! au début pour forcer l'importance en Tailwind v4 */
 [data-state="active"] {
-  @apply bg-primary text-white shadow-lg !important;
+  @apply !bg-primary !text-white !shadow-lg;
 }
 
-/* Animation de flottement pour les icônes importantes */
+/* Animation de flottement */
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
