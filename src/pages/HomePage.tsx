@@ -4,8 +4,22 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { 
-  Search, Train, Bus, ArrowRightLeft, Calendar as CalendarIcon, 
-  MapPin, Ship, Package, ArrowRight, Plane, Clock, Check, ChevronLeft, ChevronRight
+  Search, 
+  Train, 
+  Bus, 
+  ArrowRightLeft, 
+  Calendar as CalendarIcon, 
+  MapPin, 
+  Ship, 
+  ShieldCheck, 
+  CheckCircle2, 
+  Package,
+  ArrowRight,
+  Gem,
+  Plane,
+  Clock,
+  Hash,
+  Check
 } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,16 +29,28 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import heroBg from '@/assets/hero-gabon.png';
 
+const TRANSPORT_TYPES = [
+  { icon: Plane, label: 'Vols (Aérien)', color: 'bg-indigo-600' },
+  { icon: Train, label: 'Train (SETRAG)', color: 'bg-slate-950 border-slate-800' },
+  { icon: Ship, label: 'Navires (Maritime)', color: 'bg-blue-600' },
+  { icon: Bus, label: 'Autocars & Bus', color: 'bg-primary' },
+];
+
 export default function HomePage() {
   const navigate = useNavigate();
   const today = new Date().toISOString().split('T')[0];
 
+  // États de recherche
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(today); // Date du jour par défaut
+  
+  // États pour les suggestions
   const [dbCities, setDbCities] = useState<string[]>([]);
   const [showFromSuggest, setShowFromSuggest] = useState(false);
   const [showToSuggest, setShowToSuggest] = useState(false);
+
+  // États pour les départs à venir
   const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,191 +73,306 @@ export default function HomePage() {
     try {
       const { data } = await supabase
         .from('trips')
-        .select(`*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name)`)
+        .select(`*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)`)
         .gte('departure_date', today)
         .order('departure_date', { ascending: true })
-        .limit(18);
+        .limit(24);
       if (data) setUpcomingTrips(data);
     } catch (err) { console.error(err); }
     finally { setTripsLoading(false); }
+  };
+
+  const suggestionsFrom = useMemo(() => 
+    dbCities.filter(c => c.toLowerCase().includes(from.toLowerCase()) && c !== to),
+  [from, dbCities, to]);
+
+  const suggestionsTo = useMemo(() => 
+    dbCities.filter(c => c.toLowerCase().includes(to.toLowerCase()) && c !== from),
+  [to, dbCities, from]);
+
+  const handleSearch = () => {
+    if (!from || !to || !date) return;
+    navigate(`/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}`);
   };
 
   const currentTrips = upcomingTrips.slice((currentPage - 1) * tripsPerPage, currentPage * tripsPerPage);
   const totalPages = Math.ceil(upcomingTrips.length / tripsPerPage);
 
   return (
-    <div className="bg-[#020617] text-white font-sans selection:bg-emerald-500/30">
+    <div className="bg-background text-foreground font-sans relative overflow-hidden">
       
-      {/* --- EFFETS DE LUMIÈRE D'ARRIÈRE-PLAN (Style School Tech) --- */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute top-[20%] -right-[5%] w-[30%] h-[30%] bg-blue-500/5 blur-[100px] rounded-full" />
-      </div>
+      {/* Tache lumineuse de fond (Style School Tech) */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] bg-emerald-500/10 blur-[120px] pointer-events-none z-0" />
 
       {/* --- HERO SECTION --- */}
-      <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
+      <section className="relative text-white min-h-[750px] flex items-center pt-20">
         <div className="absolute inset-0 z-0">
-          <img src={heroBg} alt="Gabon" className="w-full h-full object-cover opacity-10 scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#020617] via-transparent to-[#020617]" />
+          <img src={heroBg} alt="Voyage Gabon" className="w-full h-full object-cover opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#020817] via-transparent to-[#020817]" />
         </div>
 
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="max-w-4xl mx-auto text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-full mb-8 backdrop-blur-md">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">Réseau National Connecté</span>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full mb-6">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Plateforme Officielle • Gabon</span>
             </div>
-            
-            <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter leading-[0.95] uppercase italic">
-              Le futur du <br /> 
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-600">voyage au Gabon</span>
+            <h1 className="text-5xl md:text-7xl font-black mb-8 leading-[1.1] tracking-tighter italic uppercase">
+              Voyagez et expédiez <br /> <span className="text-emerald-500">en toute simplicité </span>
             </h1>
-            <p className="text-slate-400 text-lg max-w-xl mx-auto font-medium">
-              Plateforme unifiée pour vos déplacements et expéditions à travers les 9 provinces.
-            </p>
           </div>
 
-          {/* BARRE DE RECHERCHE ULTRA-MODERNE */}
-          <div className="max-w-5xl mx-auto glass-panel rounded-[3rem] p-4 md:p-8 shadow-2xl reveal">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* BARRE DE RECHERCHE GLASSMORPHISM */}
+          <div className="max-w-5xl mx-auto glass-card rounded-[3rem] p-6 md:p-12 shadow-2xl relative">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-start mb-8 relative">
               
-              <div className="group relative space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70 ml-4">Origine</Label>
+              {/* DEPART */}
+              <div className="relative space-y-2 group text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500 ml-2 italic">Départ</Label>
                 <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 group-focus-within:scale-110 transition-transform" />
-                  <Input 
-                    placeholder="Ville de départ"
-                    className="h-16 pl-12 rounded-2xl border-white/5 bg-slate-950/50 text-white font-bold placeholder:text-slate-600 focus:bg-slate-900 transition-all"
-                    value={from} onChange={(e) => setFrom(e.target.value)}
-                  />
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 z-10" />
+                    <Input 
+                        placeholder="D'où partez-vous ?"
+                        value={from}
+                        onChange={(e) => { setFrom(e.target.value); setShowFromSuggest(true); }}
+                        onFocus={() => setShowFromSuggest(true)}
+                        onBlur={() => setTimeout(() => setShowFromSuggest(false), 200)}
+                        className="h-16 pl-12 rounded-2xl border-white/10 bg-slate-950 text-white font-bold placeholder:text-slate-700 shadow-inner focus:border-emerald-500/50"
+                    />
                 </div>
+                {showFromSuggest && from.length > 0 && suggestionsFrom.length > 0 && (
+                    <div className="absolute top-full left-0 w-full mt-2 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto">
+                        {suggestionsFrom.map(city => (
+                            <button 
+                              key={city} 
+                              type="button"
+                              onMouseDown={(e) => { 
+                                e.preventDefault(); // Empêche le Blur de fermer la liste
+                                setFrom(city); 
+                                setShowFromSuggest(false); 
+                              }} 
+                              className="w-full text-left px-6 py-4 hover:bg-emerald-500/20 text-white font-bold text-sm border-b border-white/5 last:border-none transition-colors"
+                            >
+                                {city}
+                            </button>
+                        ))}
+                    </div>
+                )}
               </div>
 
-              <div className="group relative space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70 ml-4">Destination</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 group-focus-within:scale-110 transition-transform" />
-                  <Input 
-                    placeholder="Ville d'arrivée"
-                    className="h-16 pl-12 rounded-2xl border-white/5 bg-slate-950/50 text-white font-bold placeholder:text-slate-600 focus:bg-slate-900 transition-all"
-                    value={to} onChange={(e) => setTo(e.target.value)}
-                  />
-                </div>
-              </div>
+              <button type="button" onClick={() => { setFrom(to); setTo(from); }} className="hidden md:flex items-center justify-center h-14 w-14 rounded-full bg-emerald-500 text-white shadow-lg hover:scale-110 transition-all border-4 border-[#020817] self-center mt-6">
+                <ArrowRightLeft className="h-6 w-6" />
+              </button>
 
-              <div className="group relative space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70 ml-4">Date de départ</Label>
+              {/* DESTINATION */}
+              <div className="relative space-y-2 group text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500 ml-2 italic">Destination</Label>
                 <div className="relative">
-                  <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500" />
-                  <Input 
-                    type="date"
-                    className="h-16 pl-12 rounded-2xl border-white/5 bg-slate-950/50 text-white font-bold focus:bg-slate-900 transition-all cursor-pointer"
-                    value={date} onChange={(e) => setDate(e.target.value)}
-                  />
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 z-10" />
+                    <Input 
+                        placeholder="Où allez-vous ?"
+                        value={to}
+                        onChange={(e) => { setTo(e.target.value); setShowToSuggest(true); }}
+                        onFocus={() => setShowToSuggest(true)}
+                        onBlur={() => setTimeout(() => setShowToSuggest(false), 200)}
+                        className="h-16 pl-12 rounded-2xl border-white/10 bg-slate-950 text-white font-bold placeholder:text-slate-700 shadow-inner focus:border-emerald-500/50"
+                    />
                 </div>
+                {showToSuggest && to.length > 0 && suggestionsTo.length > 0 && (
+                    <div className="absolute top-full left-0 w-full mt-2 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto">
+                        {suggestionsTo.map(city => (
+                            <button 
+                              key={city} 
+                              type="button"
+                              onMouseDown={(e) => { 
+                                e.preventDefault();
+                                setTo(city); 
+                                setShowToSuggest(false); 
+                              }} 
+                              className="w-full text-left px-6 py-4 hover:bg-emerald-500/20 text-white font-bold text-sm border-b border-white/5 last:border-none transition-colors"
+                            >
+                                {city}
+                            </button>
+                        ))}
+                    </div>
+                )}
               </div>
             </div>
 
-            <Button 
-              className="w-full h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-xs italic shadow-xl shadow-emerald-500/20 transition-all active:scale-[0.98]"
-              onClick={() => navigate(`/search?from=${from}&to=${to}&date=${date}`)}
-            >
-              <Search className="mr-2 h-5 w-5" /> Explorer les trajets disponibles
-            </Button>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-end">
+              <div className="space-y-2 text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500 ml-2 italic">Date du voyage</Label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Button 
+                        type="button" 
+                        onClick={() => setDate(today)}
+                        className={`h-16 rounded-2xl px-8 font-black uppercase text-[10px] tracking-widest transition-all ${date === today ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
+                    >
+                        {date === today && <Check className="mr-2 h-4 w-4" />}
+                        Aujourd'hui
+                    </Button>
+
+                    <div className="relative flex-1">
+                        <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 pointer-events-none" />
+                        <Input 
+                            type="date" 
+                            value={date} 
+                            min={today}
+                            onChange={e => setDate(e.target.value)} 
+                            className="h-16 pl-12 rounded-2xl border-white/10 bg-slate-950 text-white font-black shadow-inner appearance-none cursor-pointer" 
+                        />
+                    </div>
+                </div>
+              </div>
+              
+              <Button size="lg" className="w-full md:w-auto h-16 px-12 gap-3 font-black italic uppercase tracking-widest bg-emerald-600 hover:bg-emerald-500 text-white shadow-2xl active:scale-95 transition-all border-none" onClick={handleSearch} disabled={!from || !to || !date}>
+                <Search className="h-5 w-5" /> Trouver mon trajet
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* --- SECTION DÉPARTS --- */}
-      <section className="py-32 relative">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center mb-16 gap-6">
+      {/* --- SECTION PROCHAINS DÉPARTS --- */}
+      <section className="py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <div className="text-left">
-              <h2 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter mb-2">Départs en temps réel</h2>
-              <div className="h-1.5 w-20 bg-emerald-500 rounded-full" />
+              <h2 className="text-3xl md:text-5xl font-black italic uppercase text-white tracking-tighter leading-none mb-3">Départs Imminents</h2>
+              <p className="text-slate-500 text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+                <Clock className="h-4 w-4 text-emerald-500" /> Disponibilités en temps réel
+              </p>
             </div>
+            
+            {totalPages > 1 && (
+              <div className="flex gap-3 bg-white/5 p-2 rounded-2xl border border-white/10">
+                <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => { setCurrentPage(p => p - 1); }} className="rounded-xl h-12 w-12 hover:bg-white/10 text-white">
+                  <ChevronLeft size={24} />
+                </Button>
+                <div className="flex items-center px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    {currentPage} / {totalPages}
+                </div>
+                <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => { setCurrentPage(p => p + 1); }} className="rounded-xl h-12 w-12 hover:bg-white/10 text-white">
+                  <ChevronRight size={24} />
+                </Button>
+              </div>
+            )}
           </div>
 
           {tripsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-80 w-full rounded-[3rem] bg-slate-900/50 border border-white/5" />)}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-72 w-full rounded-[3rem] bg-slate-900" />)}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
               {currentTrips.map((trip) => (
-                <TripCardPremium key={trip.id} trip={trip} navigate={navigate} />
+                <TripCard key={trip.id} trip={trip} navigate={navigate} />
               ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* --- CTA SECTION (Style l'image 2 de School Tech) --- */}
-      <section className="py-20">
-        <div className="container mx-auto px-6">
-          <div className="glass-panel rounded-[4rem] p-12 md:p-20 text-center relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-            <h2 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter mb-8 relative z-10">
-              Prêt à transformer vos <br/> <span className="text-emerald-500">habitudes de voyage ?</span>
-            </h2>
-            <div className="flex flex-wrap justify-center gap-6 relative z-10">
-              <Button className="h-16 px-10 rounded-full bg-emerald-500 hover:bg-emerald-600 font-bold uppercase tracking-widest text-xs">Acheter un billet</Button>
-              <Button variant="outline" className="h-16 px-10 rounded-full border-white/20 bg-white/5 hover:bg-white/10 font-bold uppercase tracking-widest text-xs">Suivre un colis</Button>
-            </div>
-          </div>
+      {/* --- SERVICES --- */}
+      <section className="py-24 bg-slate-950 border-y border-white/5">
+        <div className="container mx-auto px-4 max-w-6xl text-left">
+           <div className="grid md:grid-cols-2 gap-12">
+              <div className="p-10 glass-card rounded-[3.5rem] hover:border-emerald-500/40 transition-all group">
+                <div className="h-16 w-16 bg-emerald-500 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-emerald-500/20 group-hover:scale-110 transition-transform">
+                    <Plane size={32} />
+                </div>
+                <h3 className="text-2xl font-black uppercase text-white mb-4 italic tracking-tighter">Mobilité Nationale</h3>
+                <p className="text-slate-400 font-medium leading-relaxed mb-6">Comparez les tarifs et réservez votre place en quelques secondes auprès des meilleures compagnies.</p>
+                <Link to="/" className="inline-flex items-center gap-2 text-emerald-500 font-black uppercase text-[10px] tracking-widest hover:gap-4 transition-all">Découvrir les trajets <ArrowRight size={14} /></Link>
+              </div>
+
+              <div className="p-10 glass-card rounded-[3.5rem] hover:border-emerald-500/40 transition-all group">
+                <div className="h-16 w-16 bg-emerald-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-emerald-900/20 group-hover:scale-110 transition-transform">
+                    <Package size={32} />
+                </div>
+                <h3 className="text-2xl font-black uppercase text-white mb-4 italic tracking-tighter">Expédition Fret</h3>
+                <p className="text-slate-400 font-medium leading-relaxed mb-6">Un service de messagerie fiable pour vos colis à l'intérieur du pays. Suivi GPS inclus.</p>
+                <Link to="/send-parcel" className="inline-flex items-center gap-2 text-emerald-500 font-black uppercase text-[10px] tracking-widest hover:gap-4 transition-all">Envoyer un colis <ArrowRight size={14} /></Link>
+              </div>
+           </div>
         </div>
       </section>
+
+      {/* --- FOOTER --- */}
+      <footer className="py-24 bg-[#020817] border-t border-white/5 text-center">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-center gap-12 mb-16 text-[10px] font-black uppercase tracking-widest text-slate-500">
+            <Link to="/privacy" className="hover:text-emerald-500 transition-colors">Confidentialité</Link>
+            <Link to="/terms" className="hover:text-emerald-500 transition-colors">Conditions</Link>
+            <a href="mailto:support@transgabon.ga" className="hover:text-emerald-500 transition-colors">Support</a>
+          </div>
+          <p className="text-[10px] text-slate-700 uppercase tracking-[0.5em] font-black">TransGabon Connect • Mobilité Gabonaise 2026</p>
+        </div>
+      </footer>
     </div>
   );
 }
 
-function TripCardPremium({ trip, navigate }: { trip: any, navigate: any }) {
+function TripCard({ trip, navigate }: { trip: any, navigate: any }) {
   const Icon = trip.type === 'BOAT' ? Ship : trip.type === 'TRAIN' ? Train : trip.type === 'PLANE' ? Plane : Bus;
   
   return (
-    <div className="glass-panel rounded-[3.5rem] overflow-hidden group hover:-translate-y-2 transition-all duration-500 border-white/5 hover:border-emerald-500/30">
-      <div className="p-8">
-        <div className="flex justify-between items-start mb-10">
-          <div className="h-16 w-16 bg-slate-950/50 rounded-2xl flex items-center justify-center border border-white/10 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/50 transition-colors">
-            <Icon className="h-8 w-8 text-emerald-500" />
+    <div className="glass-card rounded-[3rem] overflow-hidden hover:border-emerald-500/50 transition-all group shadow-2xl flex flex-col text-left">
+      <div className="p-8 flex-1">
+        <div className="flex justify-between items-start mb-8">
+          <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-xl ${
+            trip.type === 'BOAT' ? 'bg-blue-600' : trip.type === 'PLANE' ? 'bg-indigo-600' : 'bg-emerald-500'
+          }`}>
+            <Icon size={28} />
           </div>
           <div className="text-right">
-             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tarif</p>
-             <p className="text-3xl font-black text-white">{trip.price.toLocaleString()} <span className="text-xs text-emerald-500">FCFA</span></p>
+             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Dès</p>
+             <p className="text-3xl font-black text-emerald-500 tracking-tighter leading-none">{trip.price.toLocaleString()} <span className="text-[10px] ml-0.5 opacity-50">F</span></p>
           </div>
         </div>
 
-        <div className="mb-10">
-          <h3 className="text-2xl font-black uppercase italic tracking-tight mb-2 group-hover:text-emerald-400 transition-colors">{trip.company.name}</h3>
-          <span className="text-[10px] font-bold bg-white/5 px-3 py-1 rounded-full border border-white/10 text-slate-400 uppercase tracking-widest">
-            {trip.type}
-          </span>
+        <div className="mb-8">
+           <h3 className="text-2xl font-black text-white uppercase truncate mb-2 italic tracking-tighter">{trip.company.name}</h3>
+           <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-white/10 text-slate-400 bg-white/5 px-2 py-0.5">
+               {trip.type === 'PLANE' ? 'Vol Aérien' : trip.type === 'TRAIN' ? 'Ligne Ferroviaire' : 'Route Directe'}
+           </Badge>
         </div>
 
-        <div className="flex items-center gap-6 py-6 border-y border-white/5">
-           <div className="flex-1">
-             <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Dép.</p>
-             <p className="text-lg font-black">{trip.from.name}</p>
-             <p className="text-emerald-500 font-bold">{trip.departure_time}</p>
+        <div className="space-y-4 py-8 border-y border-white/5 relative">
+           <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">Départ</p>
+                 <p className="font-bold text-white text-base truncate uppercase">{trip.from.name}</p>
+                 <p className="text-emerald-500 font-black text-xl mt-1 tracking-tighter">{trip.departure_time}</p>
+              </div>
+              <ArrowRight className="text-slate-800 shrink-0 mx-4 opacity-20" size={24} />
+              <div className="text-right min-w-0">
+                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">Arrivée</p>
+                 <p className="font-bold text-white text-base truncate uppercase">{trip.to.name}</p>
+                 <p className="text-slate-400 font-black text-xl mt-1 tracking-tighter">{trip.arrival_time}</p>
+              </div>
            </div>
-           <ArrowRight className="text-slate-700 h-6 w-6 opacity-30" />
-           <div className="flex-1 text-right">
-             <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Arr.</p>
-             <p className="text-lg font-black">{trip.to.name}</p>
-             <p className="text-slate-400 font-bold">{trip.arrival_time}</p>
+        </div>
+
+        <div className="mt-8 flex items-center justify-between gap-4">
+           <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+              <CalendarIcon size={12} className="text-emerald-500" />
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-tight">
+                {new Date(trip.departure_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+              </span>
            </div>
+           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-none text-[9px] font-black uppercase px-3 py-1">
+              {trip.seats_left} PLACES
+           </Badge>
         </div>
       </div>
 
-      <button 
-        onClick={() => navigate(`/seats/${trip.id}`)}
-        className="w-full h-16 bg-slate-950/80 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-[10px] transition-all border-t border-white/5"
+      <Button 
+        onClick={() => navigate(`/seats/${trip.id}?from=${trip.from.name}&to=${trip.to.name}&price=${trip.price}`)}
+        className="w-full h-16 rounded-none bg-slate-950/80 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.2em] text-[10px] border-t border-white/5 transition-all"
       >
-        Réserver maintenant
-      </button>
+        Réserver ce trajet
+      </Button>
     </div>
   );
 }

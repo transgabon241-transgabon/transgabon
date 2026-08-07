@@ -6,67 +6,99 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        // Inter est parfait, Geist (de Vercel) est aussi une excellente alternative pour ce look
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "monospace"],
+        // Le design SaaS utilise souvent Inter ou Geist pour ce look "Apple"
+        sans: ["Inter", "var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       colors: {
-        border: "rgba(255, 255, 255, 0.1)", 
+        // COULEURS DE RÉFÉRENCE "SCHOOL TECH"
+        border: "rgba(255, 255, 255, 0.1)", // Bordures fines et translucides
         input: "rgba(255, 255, 255, 0.05)",
-        ring: "#10b981", 
-        background: "#020617", // Un poil plus sombre pour faire ressortir le vert
+        ring: "#10b981", // Le vert émeraude pour les focus
+        background: "#020817", // Le bleu nuit très profond de l'image
         foreground: "#f8fafc",
         primary: {
-          DEFAULT: "#10b981", // Le vert émeraude School Tech
+          DEFAULT: "#10b981", // Vert Émeraude (Emerald 500)
           foreground: "#ffffff",
-          hover: "#059669",
-          "surface": "rgba(16, 185, 129, 0.1)", // Pour les badges avec fond vert translucide
-        },
-        // Couleur spécifique pour les fonds de section Transgabon
-        navy: {
-          900: "#020617",
-          800: "#0f172a",
-          700: "#1e293b",
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
         },
         secondary: {
-          DEFAULT: "rgba(30, 41, 59, 0.5)", // Utilisé pour les cartes en mode verre
+          DEFAULT: "#0f172a", // Bleu ardoise foncé
           foreground: "#f8fafc"
         },
+        destructive: {
+          DEFAULT: "#ef4444",
+          foreground: "#f8fafc"
+        },
+        muted: {
+          DEFAULT: "#1e293b", // Couleur pour les textes secondaires
+          foreground: "#94a3b8"
+        },
         accent: {
-          DEFAULT: "#38bdf8", // Un bleu ciel léger (utilisé discrètement dans certains reflets)
-          foreground: "#0f172a"
+          DEFAULT: "rgba(16, 185, 129, 0.1)", // Reflet vert léger
+          foreground: "#10b981"
+        },
+        popover: {
+          DEFAULT: "#020817",
+          foreground: "#f8fafc"
         },
         card: {
-          DEFAULT: "rgba(15, 23, 42, 0.6)", // L'effet de transparence exact du dashboard SIKOLO
-          foreground: "#f8fafc",
-          border: "rgba(255, 255, 255, 0.08)"
+          // L'effet translucide des cartes sur l'image
+          DEFAULT: "rgba(15, 23, 42, 0.4)", 
+          foreground: "#f8fafc"
         },
       },
       borderRadius: {
-        "3xl": "1.5rem",
-        "4xl": "2rem",      
-        "5xl": "2.5rem",    
-        "pill": "9999px",
-      },
-      backgroundImage: {
-        // Le dégradé signature que l'on voit sur le Hero et le Footer
-        "hero-gradient": "radial-gradient(circle at top right, rgba(16, 185, 129, 0.15), transparent 40%), radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.05), transparent 40%)",
-        "glass-gradient": "linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03))",
+        "4xl": "2rem",      // 32px
+        "5xl": "2.5rem",    // 40px (Arrondi des grandes cartes de l'image)
+        "6xl": "3rem",      // 48px
+        lg: "1rem",         // Radius standard plus grand
+        md: "0.75rem",
+        sm: "0.5rem"
       },
       boxShadow: {
-        "glass": "0 8px 32px 0 rgba(0, 0, 0, 0.4)",
-        "emerald-glow": "0 0 20px rgba(16, 185, 129, 0.2)", // Pour faire briller les boutons verts
+        // Les ombres portées de l'image sont douces et larges
+        "soft": "0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)",
+        "premium": "0 20px 50px rgba(0, 0, 0, 0.5)",
+        "glass": "0 8px 32px 0 rgba(0, 0, 0, 0.37)", // Ombre spéciale pour effet verre
+        "2xl": "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
       },
-      animation: {
-        "float": "float 6s ease-in-out infinite",
-        "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+      backdropBlur: {
+        xs: '2px',
       },
       keyframes: {
-        float: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "float": {
           "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-15px)" },
+          "50%": { transform: "translateY(-10px)" }, // Flottement plus prononcé
+        },
+        "pulse-slow": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
         }
-      }
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+        "float": "float 4s ease-in-out infinite",
+        "pulse-slow": "pulse-slow 3s ease-in-out infinite",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
