@@ -10,22 +10,25 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-white shadow-xl shadow-primary/20 hover:bg-primary/90 font-black",
-        destructive: "bg-red-600 text-white shadow-xl shadow-red-100 hover:bg-red-700 font-black",
-        outline: "border-2 border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/30 text-slate-900 font-black shadow-sm",
-        secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200 font-bold",
-        premium: "bg-slate-900 text-white shadow-2xl shadow-slate-200 hover:bg-black font-black",
-        ghost: "hover:bg-primary/5 hover:text-primary font-black text-slate-600",
+        // VERT ÉMÉRAUDE AVEC GLOW (Action principale)
+        default: "bg-primary text-white shadow-[0_10px_30px_rgba(16,185,129,0.3)] hover:bg-primary/90 font-black border-none",
+        // ROUGE PREMIUM
+        destructive: "bg-red-600 text-white shadow-xl shadow-red-900/20 hover:bg-red-700 font-black",
+        // EFFET VERRE (Bordure fine)
+        outline: "border border-white/10 bg-white/5 hover:bg-white/10 hover:border-primary/50 text-white font-black backdrop-blur-md",
+        // NAVY FONCÉ
+        secondary: "bg-slate-900 text-slate-200 hover:bg-slate-800 font-bold border border-white/5",
+        // VARIANT GRADIENT (Pour les actions critiques comme Payer/Réserver)
+        premium: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-2xl hover:brightness-110 font-black border-none",
+        // DISCRET
+        ghost: "hover:bg-white/5 text-slate-400 hover:text-primary font-black",
         link: "text-primary underline-offset-4 hover:underline font-black",
       },
       size: {
-        // h-16 (64px) : Le nouveau standard pour votre app
-        default: "h-16 px-10 rounded-[1.25rem] text-base",
-        // h-12 (48px) pour les petites actions
-        sm: "h-12 px-6 rounded-xl text-sm",
-        // h-20 (80px) pour les boutons d'action critique (Rechercher, Payer)
-        lg: "h-20 px-14 rounded-[2rem] text-lg",
-        icon: "h-16 w-16 rounded-[1.25rem]",
+        default: "h-14 px-10 rounded-2xl text-sm",
+        sm: "h-11 px-6 rounded-xl text-xs",
+        lg: "h-20 px-14 rounded-3xl text-lg",
+        icon: "h-14 w-14 rounded-2xl",
       },
     },
     defaultVariants: {

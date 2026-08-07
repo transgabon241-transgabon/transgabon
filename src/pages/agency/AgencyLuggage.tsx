@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Scale, Search, RefreshCw, CheckCircle2, 
-  Plus, User, Package, Calculator, ArrowRight, Hash, Info, AlertTriangle 
+  Plus, User, Package, Calculator, ArrowRight, Hash, Info, AlertTriangle, ShieldCheck, Fingerprint
 } from 'lucide-react';
 
 export default function AgencyLuggage() {
@@ -55,23 +55,26 @@ export default function AgencyLuggage() {
         .maybeSingle();
 
       if (error) throw error;
-
       if (!b) {
         toast.error("Billet introuvable");
         return;
       }
 
-      // SÉCURITÉ : L'agent ne peut peser que les billets de sa propre compagnie
+      // SÉCURITÉ AGENCE
       if (b.trip.company_id !== user?.companyId) {
         toast.error("ACCÈS REFUSÉ : Ce billet appartient à une autre agence.");
         return; 
       }
 
-      setResult(b);
+      // On force luggages à être un tableau vide si null
+      setResult({
+        ...b,
+        luggages: b.luggages || []
+      });
+      
       await loadRates(b.trip.company_id);
     } catch (e) {
-      toast.error("Erreur lors de la récupération du billet");
-      console.error(e);
+      toast.error("Erreur de recherche");
     } finally {
       setLoading(false);
     }
@@ -81,6 +84,7 @@ export default function AgencyLuggage() {
     return agencyRates.find(r => r.id === selectedRateId);
   }, [selectedRateId, agencyRates]);
 
+  // LOGIQUE DE CALCUL
   const calculationDetails = useMemo(() => {
     if (!result) return { total: 0, excessWeight: 0, pricePerUnit: 0, label: "" };
     const totalWeight = parseFloat(weightInput) || 0;
@@ -106,20 +110,28 @@ export default function AgencyLuggage() {
     if (!result || !isWeightFilled) return;
     setLoading(true);
     try {
-      const existingStandard = (result.luggages || []).find((l: any) => l.label.includes("Excédent Standard"));
+      // On cherche une pesée existante (Standard ou Estimée en ligne) pour la mettre à jour
+      const existingStandard = result.luggages.find((l: any) => 
+        l.label.includes("Standard") || l.label.includes("estimé") || l.label.includes("Pesée")
+      );
+      
       const label = calculationDetails.excessWeight > 0 ? `${calculationDetails.label} (${weightInput}kg)` : calculationDetails.label;
 
       if (!selectedRateId && existingStandard) {
-        await supabase.from('luggages').update({ label, total_price: currentCalculation, quantity: 1 }).eq('id', existingStandard.id);
+        // MISE À JOUR DU POIDS
+        const { error: upError } = await supabase.from('luggages').update({ label, total_price: currentCalculation, quantity: 1 }).eq('id', existingStandard.id);
+        if (upError) throw upError;
       } else {
-        await supabase.from('luggages').insert([{ booking_id: result.id, passenger_id: result.passengers[0]?.id, label, quantity: parseInt(qtyInput), total_price: currentCalculation }]);
+        // NOUVELLE LIGNE (Forfait ou premier ajout)
+        const { error: lugError } = await supabase.from('luggages').insert([{ booking_id: result.id, passenger_id: result.passengers[0]?.id, label, quantity: parseInt(qtyInput), total_price: currentCalculation }]);
+        if (lugError) throw lugError;
       }
 
       if (currentCalculation > 0) {
-        await supabase.from('bookings').update({ status: 'ATTENTE_PAIEMENT' }).eq('id', result.id);
-        toast.warning("Excédent enregistré : Caisse requise");
+        await supabase.from('bookings').update({ status: 'EN_ATTENTE_PAIEMENT' }).eq('id', result.id);
+        toast.warning("Montant mis à jour : Caisse requise");
       } else {
-        toast.success("Vérification terminée");
+        toast.success("Vérification enregistrée");
       }
       setWeightInput("");
       setSelectedRateId("");
@@ -134,7 +146,7 @@ export default function AgencyLuggage() {
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6 text-left animate-in fade-in duration-500 bg-background pb-20">
       
-      <div className="bg-card p-6 rounded-[2rem] border-2 border-border shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-card p-6 rounded-[2rem] border-2 border-border shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4 text-left">
         <div className="flex items-center gap-4 text-left">
           <div className="p-3 bg-primary/10 rounded-2xl border border-primary/20 text-primary">
             <Scale size={28} />
@@ -162,15 +174,27 @@ export default function AgencyLuggage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4">
           
           <div className="lg:col-span-1 space-y-6 text-left">
-            <div className="bg-card border-2 border-border p-6 rounded-[2rem] shadow-xl relative overflow-hidden">
+            {/* PASSAGER & IDENTITÉ */}
+            <div className="bg-card border-2 border-border p-6 rounded-[2rem] shadow-xl relative overflow-hidden text-left">
               <div className="flex items-center gap-3 mb-6">
-                <div className="h-12 w-12 bg-slate-800 rounded-2xl flex items-center justify-center text-primary border border-slate-700">
-                  <User size={24} />
+                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center border-2 ${result.is_child ? 'bg-blue-600 text-white border-blue-400' : 'bg-slate-800 text-primary border-slate-700'}`}>
+                  {result.is_child ? <Baby size={24} /> : <User size={24} />}
                 </div>
-                <div className="min-w-0 text-left">
-                  <p className="text-[10px] font-black text-slate-500 uppercase">Passager</p>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black text-slate-500 uppercase">Passager {result.is_child && "(Enfant)"}</p>
                   <p className="font-black text-white uppercase truncate text-sm">{result.passengers[0]?.first_name} {result.passengers[0]?.last_name}</p>
                 </div>
+              </div>
+
+              <div className="bg-slate-950/50 p-4 rounded-xl border border-white/5 mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                     <ShieldCheck size={14} className="text-emerald-500" />
+                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Identité vérifiée</span>
+                  </div>
+                  <p className="text-[11px] font-black text-white uppercase">{result.passengers[0]?.id_type || '—'}</p>
+                  <p className="text-[10px] font-mono text-emerald-400 mt-1 flex items-center gap-1">
+                    <Fingerprint size={10} /> {result.passengers[0]?.id_number || '—'}
+                  </p>
               </div>
               
               <div className="space-y-3 pt-4 border-t border-dashed border-slate-800 text-left">
@@ -183,27 +207,28 @@ export default function AgencyLuggage() {
                    <span className="text-emerald-500 font-black">{result.trip.company?.default_free_weight_limit || 0} KG INCLUS</span>
                 </div>
                 <div className={`flex justify-between text-[10px] font-bold uppercase p-2 rounded-lg mt-2 ${result.status === 'PAYE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                   <span>Statut :</span>
+                   <span>Statut Billet :</span>
                    <span className="font-black">{result.status}</span>
                 </div>
               </div>
             </div>
 
+            {/* DÉJÀ ENREGISTRÉ */}
             <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-border">
-               <h3 className="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest flex items-center gap-2">
-                 <Package size={14} /> Déjà Enregistré
+               <h3 className="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest flex items-center gap-2 text-left">
+                 <Package size={14} /> Inventaire Pesée
                </h3>
-               <div className="space-y-2 text-left text-left">
-                  {(!result.luggages || result.luggages.length === 0) ? (
-                    <p className="text-[10px] text-slate-600 italic text-center py-4">Aucun supplément enregistré</p>
+               <div className="space-y-2 text-left">
+                  {result.luggages.length === 0 ? (
+                    <p className="text-[10px] text-slate-600 italic text-center py-4">Aucune pesée enregistrée</p>
                   ) : (
                     result.luggages.map((lug: any) => (
                       <div key={lug.id} className="flex justify-between items-center p-3 bg-slate-900 rounded-xl border border-white/5">
-                        <div className="min-w-0">
+                        <div className="min-w-0 pr-2">
                           <p className="text-[10px] font-black text-white uppercase truncate">{lug.label}</p>
                           <p className="text-[9px] font-bold text-primary">{Number(lug.total_price).toLocaleString()} F</p>
                         </div>
-                        <Badge variant="outline" className="text-[8px] border-slate-700">x{lug.quantity}</Badge>
+                        <Badge variant="outline" className="text-[8px] border-slate-700 h-5">x{lug.quantity}</Badge>
                       </div>
                     ))
                   )}
@@ -211,7 +236,8 @@ export default function AgencyLuggage() {
             </div>
           </div>
 
-          <div className="lg:col-span-2 space-y-6">
+          {/* CONSOLE DE PESÉE */}
+          <div className="lg:col-span-2 space-y-6 text-left">
             <div className="bg-slate-900 border-2 border-primary/20 p-6 md:p-8 rounded-[2.5rem] shadow-2xl text-left">
                <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
@@ -244,7 +270,7 @@ export default function AgencyLuggage() {
                     </div>
 
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Poids total mesuré (KG)</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Poids total sur balance (KG)</Label>
                         <div className="relative">
                         <Input 
                             type="number" 
@@ -263,23 +289,35 @@ export default function AgencyLuggage() {
                       <div className={`text-4xl md:text-5xl font-black tracking-tighter mb-2 ${hasExcess ? 'text-primary' : 'text-emerald-500'}`}>
                         {Math.round(currentCalculation).toLocaleString()} <span className="text-sm">F</span>
                       </div>
+                      
                       <div className="mb-6 h-6">
                          {isWeightFilled && (
                             <p className="text-[9px] font-bold text-slate-500 uppercase">
                                {calculationDetails.excessWeight > 0 
                                  ? `Détail : ${calculationDetails.excessWeight} kg (facturés) x ${calculationDetails.pricePerUnit} F`
-                                 : "Poids conforme à la franchise"}
+                                 : "Poids dans la franchise autorisée"}
                             </p>
                          )}
                       </div>
+                      
                       <Button 
                         onClick={handleConfirmInspection}
                         disabled={loading || !isWeightFilled}
                         className={`w-full h-16 rounded-2xl font-black uppercase shadow-xl active:scale-95 transition-all border-none flex items-center justify-center gap-2 px-4 
                           ${hasExcess ? 'bg-primary text-white' : 'bg-emerald-600 text-white'}
-                          text-[10px] md:text-[11px]`}
+                          text-[10px] tracking-tighter sm:tracking-normal md:text-[11px]`}
                       >
-                         {hasExcess ? <><Plus size={20} className="mr-2" /> Enregistrer Excédent</> : <><CheckCircle2 size={20} className="mr-2" /> Confirmer Conformité</>}
+                         {hasExcess ? (
+                           <>
+                             <Plus size={20} className="mr-2" /> 
+                             <span className="truncate">Enregistrer Excédent</span>
+                           </>
+                         ) : (
+                           <>
+                             <CheckCircle2 size={20} className="mr-2" /> 
+                             <span className="truncate">Confirmer Conformité</span>
+                           </>
+                         )}
                       </Button>
                   </div>
                </div>

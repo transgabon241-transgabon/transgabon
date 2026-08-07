@@ -1,30 +1,49 @@
 /* 
-   Thème Global : Bleu Marine Professionnel (Midnight Navy)
-   CORRIGÉ : Build Vercel Tailwind v4 (Suppression conflit !important)
+   Thème Global : TransGabon Connect - SaaS Premium (Style School Tech)
+   Design : Deep Midnight Navy & Emerald Green
 */
 @import "tailwindcss/index.css";
 
 :root {
-  --background: 222 47% 7%; 
+  /* Fond Bleu Nuit très profond */
+  --background: 222 47% 4%; 
   --foreground: 210 40% 98%; 
-  --muted: 217 32% 15%;
-  --muted-foreground: 215 20% 70%;
-  --popover: 222 47% 8%;
+
+  /* Éléments muets (Slate) */
+  --muted: 217 32% 12%;
+  --muted-foreground: 215 20% 65%;
+
+  /* Popovers et Menus */
+  --popover: 222 47% 5%;
   --popover-foreground: 210 40% 98%;
-  --border: 217 32% 20%;
-  --input: 217 32% 20%;
-  --card: 222 47% 10%;
+
+  /* Bordures translucides type SaaS */
+  --border: 217 32% 15%;
+  --input: 217 32% 12%;
+
+  /* Cartes Translucides (Glassmorphism) */
+  --card: 222 47% 6%;
   --card-foreground: 210 40% 98%; 
-  --primary: 158 94% 30%;
+
+  /* Vert Émeraude Vibrant (Emerald 500) */
+  --primary: 158 94% 40%;
   --primary-foreground: 0 0% 100%;
+
+  /* Accents Secondaires (Ambre/Or pour les alertes) */
   --secondary: 40 95% 55%;
   --secondary-foreground: 224 71% 4%;
-  --accent: 217 32% 20%;
-  --accent-foreground: 210 40% 98%;
+
+  /* Effets de surbrillance */
+  --accent: 158 94% 15%;
+  --accent-foreground: 158 94% 45%;
+
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
-  --ring: 158 94% 30%;
-  --radius: 1.25rem;
+
+  --ring: 158 94% 40%;
+  
+  /* Arrondis larges comme sur l'image */
+  --radius: 1.5rem;
 }
 
 @theme {
@@ -44,6 +63,10 @@
   --color-input: hsl(var(--input));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
+  
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
 }
 
 @layer base {
@@ -52,76 +75,83 @@
   }
   
   html {
-    background-color: #0a0e17; /* Équivalent à var(--background) */
-    -webkit-tap-highlight-color: transparent;
+    background-color: #020617;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
-    background-color: #0a0e17 !important;
-    color: #f8fafc !important;
+    /* On force le fond sans casser le build */
+    background-color: #020817; 
   }
 
-  /* --- FIX INPUTS & SELECTS --- */
-  input, select, textarea, button[role="combobox"] {
-    @apply bg-slate-950 border-slate-800;
-    background-color: #05080f !important;
-    color: #ffffff !important; 
+  /* --- TYPOGRAPHIE --- */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-black tracking-tighter text-white;
+    letter-spacing: -0.05em;
+  }
+
+  /* --- FORMULAIRES STYLE SCHOOL TECH --- */
+  input, select, textarea {
+    @apply bg-slate-950 border-white/10 rounded-xl focus:ring-primary/50 transition-all;
+    background-color: #050810 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+  }
+
+  /* Cache les flèches du input type number */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 
   ::placeholder {
-    color: #64748b !important; 
-    opacity: 1;
+    @apply text-slate-600;
   }
 
-  /* Fix autocomplétion */
-  input:-webkit-autofill {
-    -webkit-text-fill-color: white !important;
-    -webkit-box-shadow: 0 0 0px 1000px #05080f inset !important;
+  /* --- COMPOSANTS UI --- */
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl;
   }
 
-  /* --- TEXTES & LABELS --- */
-  label, .text-muted-foreground {
-    color: #94a3b8 !important;
+  .btn-premium {
+    @apply shadow-[0_10px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_15px_30px_rgba(16,185,129,0.3)] transition-all active:scale-95;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    color: #ffffff !important;
+  /* --- SCROLLBAR --- */
+  ::-webkit-scrollbar {
+    width: 6px;
   }
-
-  /* --- FIX CONTRASTE SUR ÉLÉMENTS CLAIRS --- */
-  /* Force le texte sombre sur les fonds blancs ou émeraude clair */
-  .bg-white, .bg-slate-100, .bg-emerald-50, [data-state="active"] {
-    color: #020617 !important;
+  ::-webkit-scrollbar-track {
+    background: #020817;
   }
-
-  /* --- DROPDOWNS --- */
-  [role="listbox"], [role="menu"], .dropdown-content, .select-content {
-    background-color: #0f172a !important;
-    border: 1px solid #1e293b !important;
-    color: #ffffff !important;
+  ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 10px;
   }
-
-  [role="option"], [role="menuitem"] {
-    color: #e2e8f0 !important;
+  ::-webkit-scrollbar-thumb:hover {
+    background: #10b981;
   }
 }
 
-/* Sélection de texte */
-::selection {
-  background-color: #0f766e;
-  color: #ffffff;
+/* Effets spéciaux pour les calendriers (Input Date) */
+::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(100%) sepia(100%) saturate(10000%) hue-rotate(120deg);
+  cursor: pointer;
 }
 
-/* Utilitaires */
-.dark-card {
-  background-color: #0f172a;
-  color: #f8fafc;
-  border: 1px solid #1e293b;
+/* Style spécifique pour les boutons actifs dans les onglets */
+[data-state="active"] {
+  @apply bg-primary text-white shadow-lg !important;
 }
 
-.responsive-table {
-  width: 100%;
-  overflow-x: auto;
-  display: block;
+/* Animation de flottement pour les icônes importantes */
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }

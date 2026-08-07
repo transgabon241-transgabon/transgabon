@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -36,26 +36,18 @@ const TRANSPORT_TYPES = [
   { icon: Bus, label: 'Autocars & Bus', color: 'bg-primary' },
 ];
 
-const GABON_CITIES_FALLBACK = [
-  "Libreville", "Port-Gentil", "Franceville", "Oyem", "Moanda", 
-  "Lambaréné", "Mouila", "Tchibanga", "Makokou", "Booué", "Ndjolé", "Lastoursville"
-];
-
 export default function HomePage() {
   const navigate = useNavigate();
   const today = new Date().toISOString().split('T')[0];
 
-  // États de recherche
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [date, setDate] = useState(today); // Date du jour par défaut
+  const [date, setDate] = useState(today);
   
-  // États pour les suggestions
   const [dbCities, setDbCities] = useState<string[]>([]);
   const [showFromSuggest, setShowFromSuggest] = useState(false);
   const [showToSuggest, setShowToSuggest] = useState(false);
 
-  // États pour les départs à venir
   const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,7 +79,6 @@ export default function HomePage() {
     finally { setTripsLoading(false); }
   };
 
-  // Filtrage des suggestions
   const suggestionsFrom = useMemo(() => 
     dbCities.filter(c => c.toLowerCase().includes(from.toLowerCase()) && c !== to),
   [from, dbCities, to]);
@@ -128,8 +119,8 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto bg-slate-900/80 backdrop-blur-2xl text-white rounded-[3rem] p-6 md:p-10 shadow-2xl border border-white/10">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-start mb-8 relative">
               
-              {/* VILLE DE DÉPART AVEC SUGGESTIONS */}
-              <div className="relative space-y-2 group">
+              {/* DEPART */}
+              <div className="relative space-y-2 group text-left">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Départ</Label>
                 <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary z-10" />
@@ -142,10 +133,21 @@ export default function HomePage() {
                         className="h-14 pl-12 rounded-2xl border-none bg-slate-950/50 text-white font-bold placeholder:text-slate-600 shadow-inner"
                     />
                 </div>
+                {/* LISTE SUGGESTIONS DEPART */}
                 {showFromSuggest && from.length > 0 && suggestionsFrom.length > 0 && (
                     <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto backdrop-blur-xl">
                         {suggestionsFrom.map(city => (
-                            <button key={city} onClick={() => { setFrom(city); setShowFromSuggest(false); }} className="w-full text-left px-6 py-3 hover:bg-primary/20 transition-colors font-bold text-sm border-b border-white/5 last:border-none">
+                            <button 
+                              key={city} 
+                              type="button"
+                              // FIX: On utilise onMouseDown avec preventDefault pour forcer la sélection avant le blur
+                              onMouseDown={(e) => { 
+                                e.preventDefault();
+                                setFrom(city); 
+                                setShowFromSuggest(false); 
+                              }} 
+                              className="w-full text-left px-6 py-3 hover:bg-primary/20 transition-colors font-bold text-sm border-b border-white/5 last:border-none"
+                            >
                                 {city}
                             </button>
                         ))}
@@ -157,8 +159,8 @@ export default function HomePage() {
                 <ArrowRightLeft className="h-5 w-5" />
               </button>
 
-              {/* DESTINATION AVEC SUGGESTIONS */}
-              <div className="relative space-y-2 group">
+              {/* DESTINATION */}
+              <div className="relative space-y-2 group text-left">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Destination</Label>
                 <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary z-10" />
@@ -171,10 +173,21 @@ export default function HomePage() {
                         className="h-14 pl-12 rounded-2xl border-none bg-slate-950/50 text-white font-bold placeholder:text-slate-600 shadow-inner"
                     />
                 </div>
+                {/* LISTE SUGGESTIONS DESTINATION */}
                 {showToSuggest && to.length > 0 && suggestionsTo.length > 0 && (
                     <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto backdrop-blur-xl">
                         {suggestionsTo.map(city => (
-                            <button key={city} onClick={() => { setTo(city); setShowToSuggest(false); }} className="w-full text-left px-6 py-3 hover:bg-primary/20 transition-colors font-bold text-sm border-b border-white/5 last:border-none">
+                            <button 
+                              key={city} 
+                              type="button"
+                              // FIX: On utilise onMouseDown avec preventDefault pour forcer la sélection
+                              onMouseDown={(e) => { 
+                                e.preventDefault();
+                                setTo(city); 
+                                setShowToSuggest(false); 
+                              }} 
+                              className="w-full text-left px-6 py-3 hover:bg-primary/20 transition-colors font-bold text-sm border-b border-white/5 last:border-none"
+                            >
                                 {city}
                             </button>
                         ))}
@@ -187,12 +200,11 @@ export default function HomePage() {
               <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-2 italic">Date du voyage</Label>
                 <div className="flex flex-col sm:flex-row gap-3">
-                    {/* Bouton Date du Jour Rapide */}
                     <Button 
                         type="button" 
                         variant={date === today ? "default" : "outline"}
                         onClick={() => setDate(today)}
-                        className={`h-14 rounded-2xl px-6 font-black uppercase text-[10px] tracking-widest border-none transition-all ${date === today ? 'bg-primary text-white' : 'bg-slate-950/50 text-slate-400 hover:bg-slate-800'}`}
+                        className={`h-14 rounded-2xl px-6 font-black uppercase text-[10px] tracking-widest border-none transition-all ${date === today ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-950/50 text-slate-400 hover:bg-slate-800'}`}
                     >
                         <Check className={`mr-2 h-4 w-4 ${date === today ? 'opacity-100' : 'opacity-0'}`} />
                         Aujourd'hui
@@ -205,7 +217,7 @@ export default function HomePage() {
                             value={date} 
                             min={today}
                             onChange={e => setDate(e.target.value)} 
-                            className="h-14 pl-12 rounded-2xl border-none bg-slate-950/50 text-white font-black shadow-inner appearance-none cursor-pointer" 
+                            className="h-14 pl-12 rounded-2xl border-none bg-slate-950/50 text-white font-black shadow-inner appearance-none cursor-pointer invert-calendar" 
                         />
                     </div>
                 </div>
@@ -219,7 +231,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- SECTION PROCHAINS DÉPARTS (Pagination 6) --- */}
+      {/* --- SECTION PROCHAINS DÉPARTS --- */}
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
@@ -232,13 +244,13 @@ export default function HomePage() {
             
             {totalPages > 1 && (
               <div className="flex gap-3 bg-slate-900 p-2 rounded-2xl border border-white/5 shadow-xl">
-                <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="rounded-xl h-12 w-12 hover:bg-slate-800 text-white">
+                <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => { setCurrentPage(p => p - 1); window.scrollTo({top: 600, behavior: 'smooth'}); }} className="rounded-xl h-12 w-12 hover:bg-slate-800 text-white">
                   <ChevronLeft size={24} />
                 </Button>
                 <div className="flex items-center px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     Page {currentPage} / {totalPages}
                 </div>
-                <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="rounded-xl h-12 w-12 hover:bg-slate-800 text-white">
+                <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => { setCurrentPage(p => p + 1); window.scrollTo({top: 600, behavior: 'smooth'}); }} className="rounded-xl h-12 w-12 hover:bg-slate-800 text-white">
                   <ChevronRight size={24} />
                 </Button>
               </div>
@@ -263,9 +275,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- SERVICES & NETWORK (GARDÉS POUR LA COHÉRENCE) --- */}
+      {/* --- SERVICES --- */}
       <section className="py-24 bg-slate-950 border-y border-white/5">
-        <div className="container mx-auto px-4 max-w-6xl">
+        <div className="container mx-auto px-4 max-w-6xl text-left">
            <div className="grid md:grid-cols-2 gap-12">
               <div className="p-10 bg-slate-900/40 rounded-[3.5rem] border border-white/10 hover:border-primary/40 transition-all group">
                 <div className="h-16 w-16 bg-primary rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-primary/20 group-hover:scale-110 transition-transform">
@@ -281,7 +293,7 @@ export default function HomePage() {
                     <Package size={32} />
                 </div>
                 <h3 className="text-2xl font-black uppercase text-white mb-4 italic tracking-tighter">Expédition Fret</h3>
-                <p className="text-slate-400 font-medium leading-relaxed mb-6">Un service de messagerie fiable pour vos colis de Libreville à l'intérieur du pays.</p>
+                <p className="text-slate-400 font-medium leading-relaxed mb-6">Un service de messagerie fiable pour vos colis à l'intérieur du pays.</p>
                 <Link to="/send-parcel" className="inline-flex items-center gap-2 text-emerald-500 font-black uppercase text-[10px] tracking-widest hover:gap-4 transition-all">Envoyer un colis <ArrowRight size={14} /></Link>
               </div>
            </div>
@@ -303,7 +315,6 @@ export default function HomePage() {
   );
 }
 
-// --- CARTE DE VOYAGE PREMIUM ---
 function TripCard({ trip, navigate }: { trip: any, navigate: any }) {
   const Icon = trip.type === 'BOAT' ? Ship : trip.type === 'TRAIN' ? Train : trip.type === 'PLANE' ? Plane : Bus;
   
@@ -357,7 +368,7 @@ function TripCard({ trip, navigate }: { trip: any, navigate: any }) {
                 {new Date(trip.departure_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
               </span>
            </div>
-           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-none text-[9px] font-black uppercase px-3 py-1">
+           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-none text-[9px] font-black uppercase px-3 py-1">
               {trip.seats_left} PLACES
            </Badge>
         </div>

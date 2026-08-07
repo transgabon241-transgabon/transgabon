@@ -10,20 +10,21 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        // h-16 (64px) : Surface de clic maximale
-        // text-base (16px) : EMPECHE LE ZOOM AUTOMATIQUE SUR IPHONE
-        "flex h-16 w-full min-w-0 rounded-[1.25rem] border-2 border-slate-200 bg-slate-50/50 px-6 py-4 text-base font-bold text-slate-900 transition-all shadow-inner outline-none",
+        // Fond ultra-sombre pour le contraste
+        "flex h-14 w-full min-w-0 rounded-2xl border border-white/10 bg-slate-950 px-6 py-4 text-base font-bold text-white transition-all shadow-inner outline-none",
         
-        "placeholder:text-slate-400 placeholder:font-medium",
+        // Placeholder gris ardoise
+        "placeholder:text-slate-600 placeholder:font-medium",
         
-        // Focus : Bordure plus épaisse et fond blanc
-        "focus-visible:bg-white focus-visible:border-primary focus-visible:ring-8 focus-visible:ring-primary/5 focus-visible:shadow-none",
+        // Focus : Lueur émeraude sur la bordure
+        "focus-visible:bg-slate-900 focus-visible:border-primary/50 focus-visible:ring-4 focus-visible:ring-primary/10",
         
-        "disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60",
-        "aria-invalid:border-red-500 aria-invalid:ring-red-100",
+        // États désactivés ou invalides
+        "disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed",
+        "aria-invalid:border-red-500 aria-invalid:ring-red-500/20",
         
-        // Taille du texte pour les fichiers aussi
-        "file:border-0 file:bg-transparent file:text-base file:font-black file:text-primary",
+        // Style pour l'upload de fichiers
+        "file:border-0 file:bg-transparent file:text-sm file:font-black file:text-primary",
         
         className
       )}
