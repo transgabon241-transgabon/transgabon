@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Building2, Check, Ship, Gem, RefreshCw, Train, Bus, 
-  MapPin, Package, Plus, Trash2, Scale, Calculator, Info, Plane, User, Baby
+  MapPin, Package, Plus, Trash2, Scale, Calculator, Info, Plane, User, Baby, CheckCircle
 } from 'lucide-react';
 
 const PAYMENT_METHODS = [
@@ -54,11 +54,9 @@ export default function BookingConfirmPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
-  // États Passager
   const [isChild, setIsChild] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  // NOUVEAUX ÉTATS POUR LA PIÈCE D'IDENTITÉ
   const [idType, setIdType] = useState('');
   const [idNumber, setIdNumber] = useState('');
   
@@ -143,7 +141,6 @@ export default function BookingConfirmPage() {
   const finalTotal = activeTicketPrice + luggageTotal;
 
   const handleSubmit = async () => {
-    // Validation des nouveaux champs
     if (!name || !phone || !paymentMethod || !idType || !idNumber) return toast.error('Tous les champs du passager sont requis');
     setSubmitting(true);
 
@@ -152,35 +149,57 @@ export default function BookingConfirmPage() {
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || '—';
 
-      // MISE À JOUR RPC : On envoie les infos de la pièce d'identité
+      // 1. CRÉATION DE LA RÉSERVATION VIA RPC
       const { data: res, error } = await supabase.rpc('create_booking_transaction', {
         p_trip_id: departureId,
         p_user_id: user?.id,
-        p_company_id: user?.companyId || null,
+        p_company_id: trip?.companyId || null,
         p_contact_phone: phone,
         p_contact_email: user?.email,
         p_passenger_first_name: firstName,
         p_passenger_last_name: lastName,
         p_seat_number: seat,
         p_payment_method: paymentMethod.toUpperCase(),
-        p_total_amount: activeTicketPrice,
+        p_total_amount: finalTotal, // On envoie le total final incluant bagages
         p_arrival_city_name: destinationName,
         p_class_type: selectedClass,
         p_is_child: isChild,
-        p_passenger_id_type: idType,     // NOUVEAU
-        p_passenger_id_number: idNumber  // NOUVEAU
+        p_passenger_id_type: idType,
+        p_passenger_id_number: idNumber
       });
 
       if (error || !res?.success) throw new Error(error?.message || res?.error);
 
-      // (Le reste de la fonction est inchangé)
-      if (luggages.length > 0) {
-        // ... Logique pour les bagages
+      // 2. ENREGISTREMENT DES BAGAGES DANS LA TABLE 'luggages'
+      if (luggages.length > 0 && res.booking_id) {
+        // On calcule si chaque bagage contribue à l'excédent
+        // Pour simplifier, on proratise le prix total des bagages sur chaque item
+        const itemsToInsert = luggages.map(lug => ({
+          booking_id: res.booking_id,
+          label: lug.label || 'Bagage',
+          weight: Number(lug.weight),
+          quantity: 1,
+          total_price: luggageTotal > 0 ? (lug.weight / totalWeight) * luggageTotal : 0,
+          is_excess_weight: totalWeight > (trip?.freeWeight || 30)
+        }));
+
+        const { error: luggageErr } = await supabase
+          .from('luggages')
+          .insert(itemsToInsert);
+
+        if (luggageErr) {
+            console.error("Erreur insertion bagages:", luggageErr);
+            // On ne bloque pas la réservation si seul le bagage échoue, mais on prévient
+            toast.error("Erreur lors de l'enregistrement du détail des bagages.");
+        }
       }
 
       toast.success('Réservation effectuée !');
       navigate(`/ticket/${res.booking_id}`);
-    } catch (err: any) { toast.error(err.message); } 
+    } catch (err: any) { 
+        console.error("Erreur soumission:", err);
+        toast.error(err.message || "Une erreur est survenue"); 
+    } 
     finally { setSubmitting(false); }
   };
 
@@ -229,12 +248,10 @@ export default function BookingConfirmPage() {
           </div>
       </div>
 
-      {/* FORMULAIRE PASSAGER AVEC PIÈCE D'IDENTITÉ */}
+      {/* FORMULAIRE PASSAGER */}
       <div className="space-y-4 bg-card border-2 border-border rounded-[2.5rem] p-8 shadow-xl">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">
-              Nom complet {isChild ? "de l'enfant" : "du passager"}
-            </Label>
+            <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Nom complet passager</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="Prénom et Nom" className="h-12 bg-slate-950 border-none rounded-xl font-bold text-white shadow-inner" />
           </div>
           <div className="space-y-1.5">
@@ -242,18 +259,15 @@ export default function BookingConfirmPage() {
             <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="066 00 00 00" className="h-12 bg-slate-950 border-none rounded-xl font-bold text-white shadow-inner" />
           </div>
           
-          {/* NOUVEAUX CHAMPS D'IDENTITÉ */}
           <div className="pt-6 border-t border-dashed border-slate-800 space-y-4">
               <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">
-                    {isChild ? "Pièce du Tuteur/Parent" : "Pièce d'identité"}
-                  </Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-500 ml-2">Pièce d'identité</Label>
                   <Select value={idType} onValueChange={setIdType}>
                     <SelectTrigger className="h-12 bg-slate-950 border-none rounded-xl font-bold text-white shadow-inner">
                       <SelectValue placeholder="Type de pièce..." />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-border text-white">
-                      <SelectItem value="CNI">CNI (Carte Nationale d'Identité)</SelectItem>
+                      <SelectItem value="CNI">CNI</SelectItem>
                       <SelectItem value="Passeport">Passeport</SelectItem>
                       <SelectItem value="Permis de conduire">Permis de conduire</SelectItem>
                       <SelectItem value="Acte de naissance">Acte de naissance</SelectItem>
@@ -267,7 +281,6 @@ export default function BookingConfirmPage() {
           </div>
       </div>
 
-
       {/* SECTION BAGAGES */}
       <div className="bg-card border-2 border-border rounded-[2.5rem] p-6 sm:p-8 shadow-xl space-y-6">
         <div className="flex items-center gap-3">
@@ -280,25 +293,14 @@ export default function BookingConfirmPage() {
 
         <div className="space-y-3 p-4 bg-slate-950 rounded-3xl border border-border">
             <div className="grid grid-cols-1 gap-3">
-                <Input 
-                    placeholder="Objet (ex: Valise, Sac...)" 
-                    value={tempLabel}
-                    onChange={(e) => setTempLabel(e.target.value)}
-                    className="h-11 bg-slate-900 border-none shadow-inner rounded-xl font-bold text-xs text-white"
-                />
+                <Input placeholder="Objet (ex: Valise...)" value={tempLabel} onChange={(e) => setTempLabel(e.target.value)} className="h-11 bg-slate-900 border-none shadow-inner rounded-xl font-bold text-xs text-white" />
                 <div className="flex gap-2">
                     <div className="relative flex-1">
-                        <Input 
-                            type="number" 
-                            placeholder="Poids" 
-                            value={tempWeight}
-                            onChange={(e) => setTempWeight(e.target.value)}
-                            className="h-11 bg-slate-900 border-none shadow-inner rounded-xl font-black text-center text-white outline-none"
-                        />
+                        <Input type="number" placeholder="Poids" value={tempWeight} onChange={(e) => setTempWeight(e.target.value)} className="h-11 bg-slate-900 border-none shadow-inner rounded-xl font-black text-center text-white outline-none" />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-600">KG</span>
                     </div>
                     <Button onClick={addLuggage} type="button" className="h-11 px-4 sm:px-6 rounded-xl bg-primary text-white font-black text-[10px] uppercase shadow-lg border-none active:scale-95">
-                        <Plus size={16} className="mr-1 sm:mr-2" /> <span className="hidden sm:inline">Ajouter</span>
+                        <Plus size={16} /> Ajouter
                     </Button>
                 </div>
             </div>
@@ -313,26 +315,17 @@ export default function BookingConfirmPage() {
                     </div>
                     <div className="flex items-center gap-4 shrink-0 ml-2">
                         <span className="font-black text-sm text-slate-500">{lug.weight} KG</span>
-                        <button onClick={() => removeLuggage(lug.id)} className="text-red-400 hover:text-red-300">
-                            <Trash2 size={16} />
-                        </button>
+                        <button onClick={() => removeLuggage(lug.id)} className="text-red-400 hover:text-red-300"><Trash2 size={16} /></button>
                     </div>
                 </div>
             ))}
-            {luggages.length > 0 && (
-                <div className="pt-4 px-2 flex justify-between items-center border-t border-dashed border-border">
-                    <p className="text-[10px] font-black text-slate-500 uppercase">Poids Total :</p>
-                    <p className="font-black text-white">{totalWeight} KG</p>
-                </div>
-            )}
         </div>
       </div>
 
       {/* TOTAL ET PAIEMENT */}
       <div className="space-y-6">
-        <div className="bg-slate-900 border border-border p-6 sm:p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-            <Calculator className="absolute -right-4 -bottom-4 h-24 w-24 opacity-5 text-primary" />
-            <div className="space-y-2 relative z-10 text-left">
+        <div className="bg-slate-900 border border-border p-6 sm:p-8 rounded-[2.5rem] text-white shadow-2xl">
+            <div className="space-y-2 text-left">
                 <div className="flex justify-between text-[10px] font-bold uppercase opacity-60">
                    <span>Billet {isChild ? '(Enfant)' : '(Adulte)'}</span>
                    <span className="text-slate-200">{activeTicketPrice.toLocaleString()} F</span>
@@ -340,12 +333,12 @@ export default function BookingConfirmPage() {
                 {luggageTotal > 0 && (
                     <div className="flex justify-between text-[10px] font-bold uppercase text-primary">
                         <span>Excédent ({totalWeight}kg)</span>
-                        <span className="animate-pulse">+{luggageTotal.toLocaleString()} F</span>
+                        <span>+{luggageTotal.toLocaleString()} F</span>
                     </div>
                 )}
                 <div className="h-px bg-white/10 my-4 border-t border-dashed border-border" />
                 <div className="flex justify-between items-center">
-                    <p className="text-[10px] sm:text-xs font-black uppercase text-primary tracking-widest leading-none">Total à régler</p>
+                    <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">Total à régler</p>
                     <p className="text-3xl sm:text-4xl font-black tracking-tighter text-white leading-none">{finalTotal.toLocaleString()} <span className="text-sm">F</span></p>
                 </div>
             </div>
@@ -356,31 +349,23 @@ export default function BookingConfirmPage() {
             <button
               key={pm.value}
               onClick={() => setPaymentMethod(pm.value)}
-              className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border-2 transition-all group ${
-                paymentMethod === pm.value 
-                  ? 'border-primary bg-primary/10 shadow-lg' 
-                  : 'border-border bg-slate-900/50 hover:bg-slate-900'
-              }`}
+              className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border-2 transition-all ${paymentMethod === pm.value ? 'border-primary bg-primary/10' : 'border-border bg-slate-900/50'}`}
             >
               <div className="flex items-center gap-4 text-left">
-                <div className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all ${paymentMethod === pm.value ? 'bg-primary text-white' : 'bg-slate-950 text-slate-500'}`}><pm.icon size={22} /></div>
-                <span className={`font-black uppercase text-[10px] sm:text-[11px] tracking-tight ${paymentMethod === pm.value ? 'text-white' : 'text-slate-300'}`}>{pm.label}</span>
+                <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${paymentMethod === pm.value ? 'bg-primary text-white' : 'bg-slate-950 text-slate-500'}`}><pm.icon size={22} /></div>
+                <span className={`font-black uppercase text-[10px] ${paymentMethod === pm.value ? 'text-white' : 'text-slate-300'}`}>{pm.label}</span>
               </div>
-              {paymentMethod === pm.value && (
-                <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center text-white border-2 border-slate-900 shrink-0">
-                    <Check size={12} strokeWidth={4} />
-                </div>
-              )}
+              {paymentMethod === pm.value && <Check size={16} className="text-primary" />}
             </button>
           ))}
         </div>
 
         <Button
-          className="w-full h-16 sm:h-20 rounded-[2rem] font-black text-lg sm:text-xl md:text-2xl shadow-2xl bg-primary text-white border-none hover:bg-primary/90 active:scale-95 transition-all mt-4 uppercase tracking-tighter sm:tracking-widest"
+          className="w-full h-16 sm:h-20 rounded-[2rem] font-black text-lg bg-primary text-white border-none hover:bg-primary/90 active:scale-95 transition-all mt-4 uppercase"
           onClick={handleSubmit}
           disabled={submitting || !paymentMethod}
         >
-          {submitting ? <RefreshCw className="animate-spin mr-2 sm:mr-3" /> : <CheckCircleIcon className="mr-2 sm:mr-3" />}
+          {submitting ? <RefreshCw className="animate-spin mr-3" /> : <CheckCircle className="mr-3" />}
           {submitting ? 'TRAITEMENT...' : 'VALIDER MA RÉSERVATION'}
         </Button>
       </div>
@@ -389,25 +374,5 @@ export default function BookingConfirmPage() {
         TransGabon Connect • Billetterie & Fret 2026
       </p>
     </div>
-  );
-}
-
-function CheckCircleIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
   );
 }
