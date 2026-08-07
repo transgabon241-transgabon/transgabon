@@ -19,7 +19,13 @@ import {
   Plane,
   Clock,
   Hash,
-  Check
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Baby,
+  Star,
+  Zap,
+  Ticket
 } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,28 +35,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import heroBg from '@/assets/hero-gabon.png';
 
-const TRANSPORT_TYPES = [
-  { icon: Plane, label: 'Vols (Aérien)', color: 'bg-indigo-600' },
-  { icon: Train, label: 'Train (SETRAG)', color: 'bg-slate-950 border-slate-800' },
-  { icon: Ship, label: 'Navires (Maritime)', color: 'bg-blue-600' },
-  { icon: Bus, label: 'Autocars & Bus', color: 'bg-primary' },
-];
-
 export default function HomePage() {
   const navigate = useNavigate();
   const today = new Date().toISOString().split('T')[0];
 
-  // États de recherche
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [date, setDate] = useState(today); // Date du jour par défaut
+  const [date, setDate] = useState(today);
   
-  // États pour les suggestions
   const [dbCities, setDbCities] = useState<string[]>([]);
   const [showFromSuggest, setShowFromSuggest] = useState(false);
   const [showToSuggest, setShowToSuggest] = useState(false);
 
-  // États pour les départs à venir
   const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -73,7 +69,14 @@ export default function HomePage() {
     try {
       const { data } = await supabase
         .from('trips')
-        .select(`*, company:companies(name), from:cities!from_id(name), to:cities!to_id(name), vehicle:vehicles(registration)`)
+        .select(`
+          *, 
+          company:companies(name), 
+          from:cities!from_id(name), 
+          to:cities!to_id(name), 
+          vehicle:vehicles(registration),
+          trip_stops(city_id, arrival_time, price_from_start, cities(name))
+        `)
         .gte('departure_date', today)
         .order('departure_date', { ascending: true })
         .limit(24);
@@ -101,7 +104,6 @@ export default function HomePage() {
   return (
     <div className="bg-background text-foreground font-sans relative overflow-hidden">
       
-      {/* Tache lumineuse de fond (Style School Tech) */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] bg-emerald-500/10 blur-[120px] pointer-events-none z-0" />
 
       {/* --- HERO SECTION --- */}
@@ -122,11 +124,9 @@ export default function HomePage() {
             </h1>
           </div>
 
-          {/* BARRE DE RECHERCHE GLASSMORPHISM */}
           <div className="max-w-5xl mx-auto glass-card rounded-[3rem] p-6 md:p-12 shadow-2xl relative">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-start mb-8 relative">
               
-              {/* DEPART */}
               <div className="relative space-y-2 group text-left">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500 ml-2 italic">Départ</Label>
                 <div className="relative">
@@ -143,28 +143,14 @@ export default function HomePage() {
                 {showFromSuggest && from.length > 0 && suggestionsFrom.length > 0 && (
                     <div className="absolute top-full left-0 w-full mt-2 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto">
                         {suggestionsFrom.map(city => (
-                            <button 
-                              key={city} 
-                              type="button"
-                              onMouseDown={(e) => { 
-                                e.preventDefault(); // Empêche le Blur de fermer la liste
-                                setFrom(city); 
-                                setShowFromSuggest(false); 
-                              }} 
-                              className="w-full text-left px-6 py-4 hover:bg-emerald-500/20 text-white font-bold text-sm border-b border-white/5 last:border-none transition-colors"
-                            >
-                                {city}
-                            </button>
+                            <button key={city} type="button" onMouseDown={(e) => { e.preventDefault(); setFrom(city); setShowFromSuggest(false); }} className="w-full text-left px-6 py-4 hover:bg-emerald-500/20 text-white font-bold text-sm border-b border-white/5 last:border-none transition-colors">{city}</button>
                         ))}
                     </div>
                 )}
               </div>
 
-              <button type="button" onClick={() => { setFrom(to); setTo(from); }} className="hidden md:flex items-center justify-center h-14 w-14 rounded-full bg-emerald-500 text-white shadow-lg hover:scale-110 transition-all border-4 border-[#020817] self-center mt-6">
-                <ArrowRightLeft className="h-6 w-6" />
-              </button>
+              <button type="button" onClick={() => { setFrom(to); setTo(from); }} className="hidden md:flex items-center justify-center h-14 w-14 rounded-full bg-emerald-500 text-white shadow-lg hover:scale-110 transition-all border-4 border-[#020817] self-center mt-6"><ArrowRightLeft className="h-6 w-6" /></button>
 
-              {/* DESTINATION */}
               <div className="relative space-y-2 group text-left">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500 ml-2 italic">Destination</Label>
                 <div className="relative">
@@ -181,18 +167,7 @@ export default function HomePage() {
                 {showToSuggest && to.length > 0 && suggestionsTo.length > 0 && (
                     <div className="absolute top-full left-0 w-full mt-2 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto">
                         {suggestionsTo.map(city => (
-                            <button 
-                              key={city} 
-                              type="button"
-                              onMouseDown={(e) => { 
-                                e.preventDefault();
-                                setTo(city); 
-                                setShowToSuggest(false); 
-                              }} 
-                              className="w-full text-left px-6 py-4 hover:bg-emerald-500/20 text-white font-bold text-sm border-b border-white/5 last:border-none transition-colors"
-                            >
-                                {city}
-                            </button>
+                            <button key={city} type="button" onMouseDown={(e) => { e.preventDefault(); setTo(city); setShowToSuggest(false); }} className="w-full text-left px-6 py-4 hover:bg-emerald-500/20 text-white font-bold text-sm border-b border-white/5 last:border-none transition-colors">{city}</button>
                         ))}
                     </div>
                 )}
@@ -203,31 +178,14 @@ export default function HomePage() {
               <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500 ml-2 italic">Date du voyage</Label>
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <Button 
-                        type="button" 
-                        onClick={() => setDate(today)}
-                        className={`h-16 rounded-2xl px-8 font-black uppercase text-[10px] tracking-widest transition-all ${date === today ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-                    >
-                        {date === today && <Check className="mr-2 h-4 w-4" />}
-                        Aujourd'hui
-                    </Button>
-
+                    <Button type="button" onClick={() => setDate(today)} className={`h-16 rounded-2xl px-8 font-black uppercase text-[10px] tracking-widest transition-all ${date === today ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>{date === today && <Check className="mr-2 h-4 w-4" />}Aujourd'hui</Button>
                     <div className="relative flex-1">
                         <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 pointer-events-none" />
-                        <Input 
-                            type="date" 
-                            value={date} 
-                            min={today}
-                            onChange={e => setDate(e.target.value)} 
-                            className="h-16 pl-12 rounded-2xl border-white/10 bg-slate-950 text-white font-black shadow-inner appearance-none cursor-pointer" 
-                        />
+                        <Input type="date" value={date} min={today} onChange={e => setDate(e.target.value)} className="h-16 pl-12 rounded-2xl border-white/10 bg-slate-950 text-white font-black shadow-inner cursor-pointer" />
                     </div>
                 </div>
               </div>
-              
-              <Button size="lg" className="w-full md:w-auto h-16 px-12 gap-3 font-black italic uppercase tracking-widest bg-emerald-600 hover:bg-emerald-500 text-white shadow-2xl active:scale-95 transition-all border-none" onClick={handleSearch} disabled={!from || !to || !date}>
-                <Search className="h-5 w-5" /> Trouver mon trajet
-              </Button>
+              <Button size="lg" className="w-full md:w-auto h-16 px-12 gap-3 font-black italic uppercase tracking-widest bg-emerald-600 hover:bg-emerald-500 text-white shadow-2xl transition-all" onClick={handleSearch} disabled={!from || !to || !date}><Search className="h-5 w-5" /> Trouver mon trajet</Button>
             </div>
           </div>
         </div>
@@ -246,15 +204,9 @@ export default function HomePage() {
             
             {totalPages > 1 && (
               <div className="flex gap-3 bg-white/5 p-2 rounded-2xl border border-white/10">
-                <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => { setCurrentPage(p => p - 1); }} className="rounded-xl h-12 w-12 hover:bg-white/10 text-white">
-                  <ChevronLeft size={24} />
-                </Button>
-                <div className="flex items-center px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                    {currentPage} / {totalPages}
-                </div>
-                <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => { setCurrentPage(p => p + 1); }} className="rounded-xl h-12 w-12 hover:bg-white/10 text-white">
-                  <ChevronRight size={24} />
-                </Button>
+                <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => { setCurrentPage(p => p - 1); }} className="rounded-xl h-12 w-12 hover:bg-white/10 text-white"><ChevronLeft size={24} /></Button>
+                <div className="flex items-center px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">{currentPage} / {totalPages}</div>
+                <Button variant="ghost" size="icon" disabled={currentPage === totalPages} onClick={() => { setCurrentPage(p => p + 1); }} className="rounded-xl h-12 w-12 hover:bg-white/10 text-white"><ChevronRight size={24} /></Button>
               </div>
             )}
           </div>
@@ -278,18 +230,13 @@ export default function HomePage() {
         <div className="container mx-auto px-4 max-w-6xl text-left">
            <div className="grid md:grid-cols-2 gap-12">
               <div className="p-10 glass-card rounded-[3.5rem] hover:border-emerald-500/40 transition-all group">
-                <div className="h-16 w-16 bg-emerald-500 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-emerald-500/20 group-hover:scale-110 transition-transform">
-                    <Plane size={32} />
-                </div>
+                <div className="h-16 w-16 bg-emerald-500 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl group-hover:scale-110 transition-transform"><Plane size={32} /></div>
                 <h3 className="text-2xl font-black uppercase text-white mb-4 italic tracking-tighter">Mobilité Nationale</h3>
                 <p className="text-slate-400 font-medium leading-relaxed mb-6">Comparez les tarifs et réservez votre place en quelques secondes auprès des meilleures compagnies.</p>
                 <Link to="/" className="inline-flex items-center gap-2 text-emerald-500 font-black uppercase text-[10px] tracking-widest hover:gap-4 transition-all">Découvrir les trajets <ArrowRight size={14} /></Link>
               </div>
-
               <div className="p-10 glass-card rounded-[3.5rem] hover:border-emerald-500/40 transition-all group">
-                <div className="h-16 w-16 bg-emerald-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-emerald-900/20 group-hover:scale-110 transition-transform">
-                    <Package size={32} />
-                </div>
+                <div className="h-16 w-16 bg-emerald-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl group-hover:scale-110 transition-transform"><Package size={32} /></div>
                 <h3 className="text-2xl font-black uppercase text-white mb-4 italic tracking-tighter">Expédition Fret</h3>
                 <p className="text-slate-400 font-medium leading-relaxed mb-6">Un service de messagerie fiable pour vos colis à l'intérieur du pays. Suivi GPS inclus.</p>
                 <Link to="/send-parcel" className="inline-flex items-center gap-2 text-emerald-500 font-black uppercase text-[10px] tracking-widest hover:gap-4 transition-all">Envoyer un colis <ArrowRight size={14} /></Link>
@@ -298,7 +245,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- FOOTER --- */}
       <footer className="py-24 bg-[#020817] border-t border-white/5 text-center">
         <div className="container mx-auto px-4">
           <div className="flex justify-center gap-12 mb-16 text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -316,45 +262,91 @@ export default function HomePage() {
 function TripCard({ trip, navigate }: { trip: any, navigate: any }) {
   const Icon = trip.type === 'BOAT' ? Ship : trip.type === 'TRAIN' ? Train : trip.type === 'PLANE' ? Plane : Bus;
   
+  // Calcul du tarif enfant (50% par défaut si non spécifié)
+  const childPrice = trip.child_price || Math.round(trip.price * 0.5);
+
   return (
     <div className="glass-card rounded-[3rem] overflow-hidden hover:border-emerald-500/50 transition-all group shadow-2xl flex flex-col text-left">
       <div className="p-8 flex-1">
-        <div className="flex justify-between items-start mb-8">
+        <div className="flex justify-between items-start mb-6">
           <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-xl ${
             trip.type === 'BOAT' ? 'bg-blue-600' : trip.type === 'PLANE' ? 'bg-indigo-600' : 'bg-emerald-500'
           }`}>
             <Icon size={28} />
           </div>
           <div className="text-right">
-             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Dès</p>
+             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Standard</p>
              <p className="text-3xl font-black text-emerald-500 tracking-tighter leading-none">{trip.price.toLocaleString()} <span className="text-[10px] ml-0.5 opacity-50">F</span></p>
           </div>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-6">
            <h3 className="text-2xl font-black text-white uppercase truncate mb-2 italic tracking-tighter">{trip.company.name}</h3>
-           <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-white/10 text-slate-400 bg-white/5 px-2 py-0.5">
-               {trip.type === 'PLANE' ? 'Vol Aérien' : trip.type === 'TRAIN' ? 'Ligne Ferroviaire' : 'Route Directe'}
-           </Badge>
+           <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-white/10 text-slate-400 bg-white/5">
+                  {trip.type === 'PLANE' ? 'Vol Aérien' : trip.type === 'TRAIN' ? 'Ligne Ferroviaire' : 'Route Directe'}
+              </Badge>
+              {trip.class_vip_price > 0 && (
+                <Badge className="bg-amber-500/10 text-amber-500 border-none text-[8px] font-black uppercase flex items-center gap-1">
+                  <Gem size={8} /> VIP : {trip.class_vip_price.toLocaleString()} F
+                </Badge>
+              )}
+           </div>
         </div>
 
-        <div className="space-y-4 py-8 border-y border-white/5 relative">
+        {/* SECTION ESCALES */}
+        {trip.trip_stops && trip.trip_stops.length > 0 && (
+          <div className="mb-6 p-4 bg-white/5 rounded-2xl border border-white/5">
+             <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+               <Zap size={10} className="text-emerald-500" /> Escales ({trip.trip_stops.length})
+             </p>
+             <div className="flex flex-wrap gap-2">
+                {trip.trip_stops.map((stop: any, idx: number) => (
+                  <span key={idx} className="text-[9px] font-bold text-slate-300 bg-slate-950 px-2 py-1 rounded-lg border border-white/5">
+                    {stop.cities?.name}
+                  </span>
+                ))}
+             </div>
+          </div>
+        )}
+
+        <div className="space-y-4 py-6 border-y border-white/5 relative">
            <div className="flex items-center justify-between">
               <div className="min-w-0">
                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">Départ</p>
-                 <p className="font-bold text-white text-base truncate uppercase">{trip.from.name}</p>
+                 <p className="font-bold text-white text-sm md:text-base truncate uppercase">{trip.from.name}</p>
                  <p className="text-emerald-500 font-black text-xl mt-1 tracking-tighter">{trip.departure_time}</p>
               </div>
-              <ArrowRight className="text-slate-800 shrink-0 mx-4 opacity-20" size={24} />
+              <div className="flex flex-col items-center gap-1">
+                 <ArrowRight className="text-slate-800 opacity-20" size={20} />
+              </div>
               <div className="text-right min-w-0">
                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">Arrivée</p>
-                 <p className="font-bold text-white text-base truncate uppercase">{trip.to.name}</p>
+                 <p className="font-bold text-white text-sm md:text-base truncate uppercase">{trip.to.name}</p>
                  <p className="text-slate-400 font-black text-xl mt-1 tracking-tighter">{trip.arrival_time}</p>
               </div>
            </div>
         </div>
 
-        <div className="mt-8 flex items-center justify-between gap-4">
+        {/* TARIF ENFANT & BUSINESS */}
+        <div className="mt-6 grid grid-cols-2 gap-4">
+           <div className="flex flex-col gap-1 p-3 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+              <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
+                <Baby size={10} /> Enfant
+              </p>
+              <p className="text-sm font-black text-white">{childPrice.toLocaleString()} F</p>
+           </div>
+           {trip.class_business_price > 0 && (
+              <div className="flex flex-col gap-1 p-3 bg-purple-500/5 rounded-2xl border border-purple-500/10">
+                 <p className="text-[8px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1">
+                   <Star size={10} /> Business
+                 </p>
+                 <p className="text-sm font-black text-white">{trip.class_business_price.toLocaleString()} F</p>
+              </div>
+           )}
+        </div>
+
+        <div className="mt-6 flex items-center justify-between gap-4">
            <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
               <CalendarIcon size={12} className="text-emerald-500" />
               <span className="text-[10px] font-black text-slate-300 uppercase tracking-tight">
@@ -369,9 +361,9 @@ function TripCard({ trip, navigate }: { trip: any, navigate: any }) {
 
       <Button 
         onClick={() => navigate(`/seats/${trip.id}?from=${trip.from.name}&to=${trip.to.name}&price=${trip.price}`)}
-        className="w-full h-16 rounded-none bg-slate-950/80 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.2em] text-[10px] border-t border-white/5 transition-all"
+        className="w-full h-16 rounded-none bg-slate-950/80 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.2em] text-[10px] border-t border-white/5 transition-all group"
       >
-        Réserver ce trajet
+        <Ticket size={16} className="mr-2 group-hover:rotate-12 transition-transform" /> Réserver ce trajet
       </Button>
     </div>
   );
